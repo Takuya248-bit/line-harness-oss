@@ -5,11 +5,7 @@
 set -euo pipefail
 
 API_BASE="${API_BASE:?Set API_BASE env var}"
-API_TOKEN="${API_TOKEN:-}"
-AUTH_HEADER=""
-if [ -n "$API_TOKEN" ]; then
-  AUTH_HEADER="-H \"Authorization: Bearer $API_TOKEN\""
-fi
+API_TOKEN="${API_TOKEN:?Set API_TOKEN env var}"
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -19,10 +15,10 @@ echo ""
 
 api_post() {
   local path="$1" data="$2"
-  eval curl -s -X POST "$API_BASE$path" \
-    -H "'Content-Type: application/json'" \
-    $AUTH_HEADER \
-    -d "'$data'"
+  curl -s -X POST "$API_BASE$path" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $API_TOKEN" \
+    -d "$data"
 }
 
 # --- 1. Tags ---

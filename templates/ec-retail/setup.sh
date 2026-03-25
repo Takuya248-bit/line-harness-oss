@@ -5,11 +5,7 @@
 set -euo pipefail
 
 API_BASE="${API_BASE:?Set API_BASE env var}"
-API_TOKEN="${API_TOKEN:-}"
-AUTH_HEADER=""
-if [ -n "$API_TOKEN" ]; then
-  AUTH_HEADER="-H \"Authorization: Bearer $API_TOKEN\""
-fi
+API_TOKEN="${API_TOKEN:?Set API_TOKEN env var}"
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -19,10 +15,10 @@ echo ""
 
 api_post() {
   local path="$1" data="$2"
-  eval curl -s -X POST "$API_BASE$path" \
-    -H "'Content-Type: application/json'" \
-    $AUTH_HEADER \
-    -d "'$data'"
+  curl -s -X POST "$API_BASE$path" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $API_TOKEN" \
+    -d "$data"
 }
 
 # --- 1. Tags ---
@@ -61,7 +57,7 @@ with open('$DIR/conversion-points.json') as f:
 # --- 3. Scoring Rules ---
 echo ">>> Creating scoring rules..."
 while IFS= read -r rule_json; do
-  api_post "/api/scoring-rules" "$rule_json" > /dev/null
+  result=$(api_post "/api/scoring-rules" "$rule_json")
   name=$(echo "$rule_json" | python3 -c "import sys,json; print(json.load(sys.stdin)['name'])")
   echo "  Scoring Rule: $name"
 done < <(python3 -c "

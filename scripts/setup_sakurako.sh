@@ -2,15 +2,15 @@
 # 櫻子さん LINE Harness セットアップスクリプト
 # Usage: bash scripts/setup_sakurako.sh
 
-set -e
+set -euo pipefail
 
-API_BASE="${API_BASE:-https://line-crm-worker.YOUR_SUBDOMAIN.workers.dev}"
-API_KEY="${API_KEY:?ERROR: API_KEY environment variable is required. Set it with: export API_KEY=your_api_key}"
+API_BASE="${API_BASE:?ERROR: API_BASE environment variable is required. Set it with: export API_BASE=https://your.workers.dev}"
+API_TOKEN="${API_TOKEN:?ERROR: API_TOKEN environment variable is required. Set it with: export API_TOKEN=your_api_token}"
 
 api() {
   local method=$1 path=$2 data=$3
   curl -s -X "$method" \
-    -H "Authorization: Bearer $API_KEY" \
+    -H "Authorization: Bearer $API_TOKEN" \
     -H "Content-Type: application/json" \
     ${data:+-d "$data"} \
     "$API_BASE$path"

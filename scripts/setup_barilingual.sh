@@ -14,7 +14,7 @@
 set -euo pipefail
 
 API_BASE="${API_BASE:-http://localhost:8787}"
-API_TOKEN="${API_TOKEN:-test-api-key}"
+API_TOKEN="${API_TOKEN:?Set API_TOKEN env var}"
 TEMPLATE_DIR="$(cd "$(dirname "$0")/../templates/english-school" && pwd)"
 
 echo "============================================"
