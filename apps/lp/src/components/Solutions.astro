@@ -1,0 +1,45 @@
+---
+const solutions = [
+  {
+    number: '01',
+    title: 'ツール月額費用0円',
+    description: 'LINE Harnessはオープンソース。Cloudflareの無料枠で運用するため、ツールの月額費用は一切かかりません。必要なのは初期の構築費用だけ。',
+    color: 'from-cyan-500 to-cyan-600',
+  },
+  {
+    number: '02',
+    title: 'Lステップ同等の機能',
+    description: 'ステップ配信、セグメント配信、リッチメニュー切替、スコアリング、自動応答など、Lステップでできることはほぼ全て実現可能です。',
+    color: 'from-emerald-500 to-emerald-600',
+  },
+  {
+    number: '03',
+    title: 'ベンダーロックインなし',
+    description: 'コードもデータもすべてあなたのもの。GitHubでソースコードを管理し、いつでも自由にカスタマイズ・移行が可能です。',
+    color: 'from-violet-500 to-violet-600',
+  },
+];
+---
+
+<section class="py-20">
+  <div class="max-w-6xl mx-auto px-4">
+    <p class="text-cyan-600 font-semibold text-center mb-2">Solution</p>
+    <h2 class="section-title">LINE Harnessなら、すべて解決。</h2>
+    <p class="section-subtitle">オープンソースの力で、高機能なLINE自動化を低コストで実現します。</p>
+
+    <div class="grid md:grid-cols-3 gap-8">
+      {solutions.map((solution) => (
+        <div class="relative group">
+          <div class="absolute -inset-1 bg-gradient-to-r {solution.color} rounded-2xl blur opacity-10 group-hover:opacity-25 transition-opacity"></div>
+          <div class="relative bg-white rounded-2xl p-8 border border-gray-100 h-full">
+            <div class={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-r ${solution.color} text-white font-bold text-lg mb-5`}>
+              {solution.number}
+            </div>
+            <h3 class="text-xl font-bold mb-3">{solution.title}</h3>
+            <p class="text-gray-600 text-sm leading-relaxed">{solution.description}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

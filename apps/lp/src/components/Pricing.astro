@@ -1,0 +1,117 @@
+---
+const plans = [
+  {
+    name: 'ライトプラン',
+    price: '9,800',
+    description: 'まずは自動応答から始めたい方に',
+    features: [
+      'LINE公式アカウント初期設定',
+      '自動応答(キーワード5個)',
+      'リッチメニュー1パターン',
+      '友だち追加時あいさつ設定',
+      'メール/チャットサポート(1ヶ月)',
+    ],
+    notIncluded: [
+      'ステップ配信',
+      'セグメント配信',
+      'スコアリング',
+      'AI自動応答',
+    ],
+    popular: false,
+    cta: '無料相談する',
+  },
+  {
+    name: 'スタンダードプラン',
+    price: '24,800',
+    description: '本格的なLINEマーケティングを始めたい方に',
+    features: [
+      'ライトプランの全機能',
+      'ステップ配信(シナリオ3本)',
+      'セグメント配信',
+      'リッチメニュー切替(3パターン)',
+      'アンケートフォーム1個',
+      'スコアリング設定',
+      'メール/チャットサポート(2ヶ月)',
+    ],
+    notIncluded: [
+      'AI自動応答',
+    ],
+    popular: true,
+    cta: '無料相談する',
+  },
+  {
+    name: 'プレミアムプラン',
+    price: '49,800',
+    description: '高度な自動化で売上最大化したい方に',
+    features: [
+      'スタンダードプランの全機能',
+      'ステップ配信(無制限)',
+      'リッチメニュー切替(無制限)',
+      'AI自動応答(Claude連携)',
+      '予約管理システム',
+      'ダッシュボード構築',
+      'アンケートフォーム(無制限)',
+      'メール/チャットサポート(3ヶ月)',
+      '月1回のオンラインMTG(3ヶ月)',
+    ],
+    notIncluded: [],
+    popular: false,
+    cta: '無料相談する',
+  },
+];
+---
+
+<section id="pricing" class="py-20">
+  <div class="max-w-6xl mx-auto px-4">
+    <p class="text-cyan-600 font-semibold text-center mb-2">Pricing</p>
+    <h2 class="section-title">料金プラン</h2>
+    <p class="section-subtitle">すべて初期構築費用のみ。ツールの月額費用は0円です。</p>
+
+    <div class="grid md:grid-cols-3 gap-6 items-start">
+      {plans.map((plan) => (
+        <div class={`relative rounded-2xl p-8 border-2 ${plan.popular ? 'border-cyan-500 shadow-xl shadow-cyan-500/10' : 'border-gray-200'} bg-white`}>
+          {plan.popular && (
+            <div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white text-sm font-bold px-6 py-1 rounded-full">
+              人気 No.1
+            </div>
+          )}
+
+          <h3 class="text-lg font-bold mb-1">{plan.name}</h3>
+          <p class="text-sm text-gray-500 mb-4">{plan.description}</p>
+
+          <div class="mb-6">
+            <span class="text-4xl font-bold">{plan.price}</span>
+            <span class="text-gray-500 text-sm ml-1">円(税込)</span>
+          </div>
+
+          <a href="#contact" class={`block text-center py-3 rounded-full font-bold text-sm transition-colors mb-6 ${plan.popular ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 text-white hover:from-cyan-600 hover:to-emerald-600' : 'border-2 border-gray-200 text-gray-700 hover:border-cyan-500 hover:text-cyan-600'}`}>
+            {plan.cta}
+          </a>
+
+          <ul class="space-y-3">
+            {plan.features.map((feature) => (
+              <li class="flex items-start gap-2 text-sm">
+                <svg class="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+                <span>{feature}</span>
+              </li>
+            ))}
+            {plan.notIncluded.map((feature) => (
+              <li class="flex items-start gap-2 text-sm text-gray-400">
+                <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+
+    <p class="text-center text-sm text-gray-500 mt-8">
+      ※ カスタマイズやオプション追加も承ります。まずはお気軽にご相談ください。
+    </p>
+  </div>
+</section>

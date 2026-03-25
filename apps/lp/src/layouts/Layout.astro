@@ -1,0 +1,107 @@
+---
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#06B6D4" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+
+    <!-- OGP -->
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ja_JP" />
+
+    <!-- JSON-LD -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "LocalBusiness",
+          "name": "LINE Harness",
+          "description": "LINE公式アカウント自動化の構築代行サービス",
+          "url": "https://line-harness.pages.dev",
+          "priceRange": "$$",
+          "areaServed": {
+            "@type": "Country",
+            "name": "JP"
+          }
+        },
+        {
+          "@type": "Service",
+          "name": "LINE Harness 構築代行サービス",
+          "description": "LINE公式アカウントの自動化を月額0円で実現する構築代行サービス。ステップ配信、セグメント配信、リッチメニュー、スコアリングなどLステップ同等の機能をオープンソースで提供。",
+          "provider": {
+            "@type": "LocalBusiness",
+            "name": "LINE Harness"
+          },
+          "serviceType": "LINE公式アカウント自動化構築代行",
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "ライトプラン",
+              "price": "9800",
+              "priceCurrency": "JPY"
+            },
+            {
+              "@type": "Offer",
+              "name": "スタンダードプラン",
+              "price": "24800",
+              "priceCurrency": "JPY"
+            },
+            {
+              "@type": "Offer",
+              "name": "プレミアムプラン",
+              "price": "49800",
+              "priceCurrency": "JPY"
+            }
+          ]
+        }
+      ]
+    })} />
+  </head>
+  <body class="overflow-x-hidden">
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
+      <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-2 text-lg font-bold text-gray-800">
+          <img src="/favicon.svg" alt="" width="28" height="28" />
+          LINE Harness
+        </a>
+        <a href="#contact" class="text-sm font-semibold text-white bg-cyan-500 hover:bg-cyan-600 px-4 py-2 rounded-full transition-colors">
+          無料相談
+        </a>
+      </div>
+    </header>
+
+    <main class="pt-14">
+      <slot />
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-12">
+      <div class="max-w-6xl mx-auto px-4 text-center">
+        <p class="text-white font-bold text-lg mb-2">LINE Harness</p>
+        <p class="text-sm mb-6">LINE公式アカウント自動化の構築代行サービス</p>
+        <div class="flex justify-center gap-6 text-sm mb-8">
+          <a href="#features" class="hover:text-white transition-colors">機能一覧</a>
+          <a href="#pricing" class="hover:text-white transition-colors">料金プラン</a>
+          <a href="#faq" class="hover:text-white transition-colors">よくある質問</a>
+          <a href="#contact" class="hover:text-white transition-colors">お問い合わせ</a>
+        </div>
+        <p class="text-xs text-gray-600">&copy; 2026 LINE Harness. All rights reserved.</p>
+      </div>
+    </footer>
+  </body>
+</html>

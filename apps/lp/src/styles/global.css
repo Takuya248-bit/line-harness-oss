@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      'Helvetica Neue', Arial, 'Noto Sans JP', sans-serif;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply text-gray-800 bg-white;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white rounded-full
+      bg-gradient-to-r from-cyan-500 to-emerald-500
+      hover:from-cyan-600 hover:to-emerald-600
+      transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-8 py-4 text-lg font-bold rounded-full
+      border-2 border-cyan-500 text-cyan-600
+      hover:bg-cyan-50 transition-all duration-300;
+  }
+
+  .section-title {
+    @apply text-2xl md:text-3xl font-bold text-center mb-4;
+  }
+
+  .section-subtitle {
+    @apply text-gray-500 text-center mb-12 max-w-2xl mx-auto;
+  }
+}

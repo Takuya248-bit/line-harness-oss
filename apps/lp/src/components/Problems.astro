@@ -1,0 +1,42 @@
+---
+const problems = [
+  {
+    icon: '💸',
+    title: 'Lステップの月額が高い',
+    description: 'スタートプランでも月額2,980円、プロプランは月額21,780円。友だち数が増えるほどコストも膨らむ。',
+  },
+  {
+    icon: '😵',
+    title: '機能が多すぎて使いこなせない',
+    description: '高額なプランを契約しても、実際に使っている機能はほんの一部。設定の複雑さに挫折する人が多い。',
+  },
+  {
+    icon: '🔒',
+    title: 'ベンダーにロックインされる',
+    description: 'ツールを変えたくても、蓄積したデータやシナリオが移行できない。ずっと同じツールに縛られてしまう。',
+  },
+  {
+    icon: '🤷',
+    title: '設定する時間がない',
+    description: '本業が忙しくて、LINEの自動化設定まで手が回らない。外注しようにもどこに頼めばいいかわからない。',
+  },
+];
+---
+
+<section class="py-20 bg-gray-50">
+  <div class="max-w-6xl mx-auto px-4">
+    <p class="text-cyan-600 font-semibold text-center mb-2">Problem</p>
+    <h2 class="section-title">こんなお悩みありませんか?</h2>
+    <p class="section-subtitle">LINE公式アカウントの自動化には、意外と多くの課題があります。</p>
+
+    <div class="grid md:grid-cols-2 gap-6">
+      {problems.map((problem) => (
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div class="text-3xl mb-3">{problem.icon}</div>
+          <h3 class="text-lg font-bold mb-2">{problem.title}</h3>
+          <p class="text-gray-600 text-sm leading-relaxed">{problem.description}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
