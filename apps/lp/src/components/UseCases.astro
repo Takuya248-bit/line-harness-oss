@@ -12,7 +12,7 @@ const useCases = [
       'スコアリング → 来店頻度で VIP顧客を自動識別',
       'VIP顧客 → 限定メニューの先行案内',
     ],
-    result: 'リピート率が向上し、予約の空き枠が減少。手動での連絡作業がゼロに。',
+    result: '来店後のフォロー自動化で、次回予約率が向上。スタッフの連絡業務が月20時間以上削減。',
   },
   {
     id: 'restaurant',
@@ -26,7 +26,7 @@ const useCases = [
       'セグメント → 好みに合わせた新メニュー情報を配信',
       '誕生月 → バースデー特典を自動配信',
     ],
-    result: '客単価とリピート率が向上。顧客の好みに合わせた配信で開封率の大幅な改善を実現。',
+    result: '誕生日クーポンの自動配信で再来店率が向上。好み別セグメント配信で、ブロック率の低減を実現。',
   },
   {
     id: 'english',
@@ -40,7 +40,7 @@ const useCases = [
       'セグメント → レベル別のクラス案内を配信',
       'AI自動応答 → 英語の質問にAIが即座に回答',
     ],
-    result: '体験レッスンの申込率が向上。入会後もLINEでフォローすることで継続率アップ。',
+    result: 'ステップ配信で体験申込までの導線を自動化。入会後のフォロー配信で退会率の低減に貢献。',
   },
 ];
 ---
@@ -56,10 +56,10 @@ const useCases = [
       {useCases.map((uc, i) => (
         <button
           data-tab={uc.id}
-          class={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${i === 0 ? 'bg-cyan-500 text-white shadow-lg' : 'bg-white text-gray-600 border border-gray-200 hover:border-cyan-300'}`}
+          class={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${i === 0 ? 'bg-cyan-500 text-white shadow-lg' : 'bg-white text-gray-600 border border-gray-200 hover:border-cyan-300'}`}
         >
           <span>{uc.icon}</span>
-          <span class="hidden sm:inline">{uc.label}</span>
+          <span>{uc.label}</span>
         </button>
       ))}
     </div>
