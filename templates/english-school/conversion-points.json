@@ -1,0 +1,5 @@
+[
+  { "name": "体験レッスン申込", "eventType": "trial_booking", "value": 0 },
+  { "name": "入会完了", "eventType": "enrollment", "value": null },
+  { "name": "相談予約", "eventType": "consultation_booking", "value": 0 }
+]

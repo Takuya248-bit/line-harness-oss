@@ -1,0 +1,44 @@
+[
+  {
+    "keyword": "人気商品を見る",
+    "matchType": "exact",
+    "responseType": "flex",
+    "responseContent": "{\"type\":\"carousel\",\"contents\":[{\"type\":\"bubble\",\"hero\":{\"type\":\"image\",\"url\":\"__PRODUCT_1_IMAGE__\",\"size\":\"full\",\"aspectRatio\":\"1:1\",\"aspectMode\":\"cover\"},\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"__PRODUCT_1_NAME__\",\"weight\":\"bold\",\"size\":\"md\",\"wrap\":true},{\"type\":\"text\",\"text\":\"__PRODUCT_1_PRICE__円\",\"size\":\"lg\",\"color\":\"#059669\",\"margin\":\"sm\"}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"詳細を見る\",\"uri\":\"__PRODUCT_1_URL__\"},\"style\":\"primary\",\"color\":\"#059669\"}]}},{\"type\":\"bubble\",\"hero\":{\"type\":\"image\",\"url\":\"__PRODUCT_2_IMAGE__\",\"size\":\"full\",\"aspectRatio\":\"1:1\",\"aspectMode\":\"cover\"},\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"__PRODUCT_2_NAME__\",\"weight\":\"bold\",\"size\":\"md\",\"wrap\":true},{\"type\":\"text\",\"text\":\"__PRODUCT_2_PRICE__円\",\"size\":\"lg\",\"color\":\"#059669\",\"margin\":\"sm\"}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"詳細を見る\",\"uri\":\"__PRODUCT_2_URL__\"},\"style\":\"primary\",\"color\":\"#059669\"}]}},{\"type\":\"bubble\",\"hero\":{\"type\":\"image\",\"url\":\"__PRODUCT_3_IMAGE__\",\"size\":\"full\",\"aspectRatio\":\"1:1\",\"aspectMode\":\"cover\"},\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"__PRODUCT_3_NAME__\",\"weight\":\"bold\",\"size\":\"md\",\"wrap\":true},{\"type\":\"text\",\"text\":\"__PRODUCT_3_PRICE__円\",\"size\":\"lg\",\"color\":\"#059669\",\"margin\":\"sm\"}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"詳細を見る\",\"uri\":\"__PRODUCT_3_URL__\"},\"style\":\"primary\",\"color\":\"#059669\"}]}}]}",
+    "isActive": true
+  },
+  {
+    "keyword": "問い合わせ",
+    "matchType": "exact",
+    "responseType": "text",
+    "responseContent": "お問い合わせありがとうございます。\n\n担当者が確認次第、ご返信いたします。\n通常1営業日以内にご連絡いたします。\n\nお急ぎの場合:\nメール: __SUPPORT_EMAIL__\n電話: __PHONE_NUMBER__",
+    "isActive": true
+  },
+  {
+    "keyword": "配送状況",
+    "matchType": "contains",
+    "responseType": "text",
+    "responseContent": "配送状況の確認は以下からお願いします:\n\n__TRACKING_URL__\n\nご不明な点がございましたら「問い合わせ」と送ってください。",
+    "isActive": true
+  },
+  {
+    "keyword": "返品",
+    "matchType": "contains",
+    "responseType": "text",
+    "responseContent": "返品・交換について\n\n商品到着後__RETURN_DAYS__日以内にご連絡ください。\n\n返品ポリシーの詳細:\n__RETURN_POLICY_URL__\n\n返品手続きは「問い合わせ」と送っていただくか、下記までご連絡ください:\n__SUPPORT_EMAIL__",
+    "isActive": true
+  },
+  {
+    "keyword": "セール",
+    "matchType": "contains",
+    "responseType": "text",
+    "responseContent": "セール情報はLINEで最速でお届けします!\n\nセール通知をご希望の方は「セール通知希望」と送ってください。",
+    "isActive": true
+  },
+  {
+    "keyword": "セール通知希望",
+    "matchType": "exact",
+    "responseType": "text",
+    "responseContent": "セール通知の登録が完了しました!\n\n次回セール開始時にいち早くお知らせします。\nお楽しみに!",
+    "isActive": true
+  }
+]

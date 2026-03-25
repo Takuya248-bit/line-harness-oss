@@ -1,0 +1,44 @@
+[
+  {
+    "keyword": "無料体験に申し込む",
+    "matchType": "exact",
+    "responseType": "flex",
+    "responseContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"無料体験レッスンのお申し込み\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"ありがとうございます!以下のリンクからご予約ください。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"予約ページへ\",\"uri\":\"__BOOKING_URL__\"},\"style\":\"primary\",\"color\":\"#10B981\"}]}}",
+    "isActive": true
+  },
+  {
+    "keyword": "料金を見る",
+    "matchType": "exact",
+    "responseType": "flex",
+    "responseContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"料金プラン\",\"weight\":\"bold\",\"size\":\"lg\"},{\"type\":\"separator\",\"margin\":\"md\"},{\"type\":\"box\",\"layout\":\"vertical\",\"margin\":\"md\",\"contents\":[{\"type\":\"box\",\"layout\":\"horizontal\",\"contents\":[{\"type\":\"text\",\"text\":\"月4回コース\",\"size\":\"sm\",\"flex\":2},{\"type\":\"text\",\"text\":\"__PRICE_4__円/月\",\"size\":\"sm\",\"align\":\"end\",\"flex\":2}]},{\"type\":\"box\",\"layout\":\"horizontal\",\"margin\":\"sm\",\"contents\":[{\"type\":\"text\",\"text\":\"月8回コース\",\"size\":\"sm\",\"flex\":2},{\"type\":\"text\",\"text\":\"__PRICE_8__円/月\",\"size\":\"sm\",\"align\":\"end\",\"flex\":2}]},{\"type\":\"box\",\"layout\":\"horizontal\",\"margin\":\"sm\",\"contents\":[{\"type\":\"text\",\"text\":\"通い放題コース\",\"size\":\"sm\",\"flex\":2},{\"type\":\"text\",\"text\":\"__PRICE_UNLIMITED__円/月\",\"size\":\"sm\",\"align\":\"end\",\"flex\":2}]}]}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"相談する\",\"text\":\"相談する\"},\"style\":\"primary\",\"color\":\"#10B981\"}]}}",
+    "isActive": true
+  },
+  {
+    "keyword": "相談する",
+    "matchType": "exact",
+    "responseType": "text",
+    "responseContent": "ご相談ありがとうございます!\n\nスタッフが確認次第、ご連絡いたします。少々お待ちくださいませ。\n\nお急ぎの場合はお電話ください:\n__PHONE_NUMBER__",
+    "isActive": true
+  },
+  {
+    "keyword": "FAQ",
+    "matchType": "contains",
+    "responseType": "flex",
+    "responseContent": "{\"type\":\"carousel\",\"contents\":[{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"Q. レッスンの振替はできますか?\",\"weight\":\"bold\",\"size\":\"sm\",\"wrap\":true},{\"type\":\"text\",\"text\":\"A. はい、前日までのご連絡で振替可能です。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]}},{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"Q. 初心者でも大丈夫?\",\"weight\":\"bold\",\"size\":\"sm\",\"wrap\":true},{\"type\":\"text\",\"text\":\"A. もちろんです!受講者の70%が初心者からスタートしています。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]}},{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"Q. オンラインレッスンはありますか?\",\"weight\":\"bold\",\"size\":\"sm\",\"wrap\":true},{\"type\":\"text\",\"text\":\"A. __ONLINE_ANSWER__\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]}}]}",
+    "isActive": true
+  },
+  {
+    "keyword": "よくある質問",
+    "matchType": "exact",
+    "responseType": "flex",
+    "responseContent": "{\"type\":\"carousel\",\"contents\":[{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"Q. レッスンの振替はできますか?\",\"weight\":\"bold\",\"size\":\"sm\",\"wrap\":true},{\"type\":\"text\",\"text\":\"A. はい、前日までのご連絡で振替可能です。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]}},{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"Q. 初心者でも大丈夫?\",\"weight\":\"bold\",\"size\":\"sm\",\"wrap\":true},{\"type\":\"text\",\"text\":\"A. もちろんです!受講者の70%が初心者からスタートしています。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]}}]}",
+    "isActive": true
+  },
+  {
+    "keyword": "アクセス",
+    "matchType": "exact",
+    "responseType": "text",
+    "responseContent": "__SCHOOL_NAME__\n\n住所: __ADDRESS__\n最寄駅: __STATION__\n営業時間: __HOURS__\n\nGoogle Map: __MAP_URL__",
+    "isActive": true
+  }
+]

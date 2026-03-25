@@ -1,0 +1,114 @@
+{
+  "_comment": "EC/Retail scenarios. Replace __TAG_ID_xxx__ and __PLACEHOLDER__ values.",
+  "scenarios": [
+    {
+      "name": "友だち追加シナリオ（初回クーポン）",
+      "description": "友だち追加後に初回購入クーポン配信",
+      "triggerType": "friend_add",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 0,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"hero\":{\"type\":\"image\",\"url\":\"__SHOP_IMAGE_URL__\",\"size\":\"full\",\"aspectRatio\":\"20:13\"},\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"友だち追加ありがとうございます!\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"__SHOP_NAME__です。\\nLINE限定クーポンをプレゼント!\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true},{\"type\":\"box\",\"layout\":\"vertical\",\"margin\":\"lg\",\"backgroundColor\":\"#ECFDF5\",\"cornerRadius\":\"md\",\"paddingAll\":\"16px\",\"contents\":[{\"type\":\"text\",\"text\":\"初回購入限定\",\"weight\":\"bold\",\"color\":\"#065F46\"},{\"type\":\"text\",\"text\":\"__FIRST_ORDER_COUPON__\",\"size\":\"xl\",\"weight\":\"bold\",\"color\":\"#059669\",\"margin\":\"sm\"},{\"type\":\"text\",\"text\":\"クーポンコード: __COUPON_CODE__\",\"size\":\"sm\",\"color\":\"#065F46\",\"margin\":\"sm\"},{\"type\":\"text\",\"text\":\"有効期限: __COUPON_EXPIRY__\",\"size\":\"xs\",\"color\":\"#064E3B\",\"margin\":\"sm\"}]}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"spacing\":\"sm\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"今すぐショップへ\",\"uri\":\"__SHOP_URL__\"},\"style\":\"primary\",\"color\":\"#059669\"},{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"人気商品を見る\",\"text\":\"人気商品を見る\"},\"style\":\"secondary\"}]}}"
+        },
+        {
+          "stepOrder": 2,
+          "delayMinutes": 4320,
+          "messageType": "text",
+          "messageContent": "こんにちは、__SHOP_NAME__です!\n\n初回クーポンはもうお使いいただけましたか?\n\n今週の人気ランキングをチェックしてみてください。\n「人気商品を見る」と送ってくださいね!",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_購入済__"
+        },
+        {
+          "stepOrder": 3,
+          "delayMinutes": 10080,
+          "messageType": "text",
+          "messageContent": "【最終案内】初回クーポンの期限が近づいています!\n\nクーポンコード: __COUPON_CODE__\n\nお見逃しなく!\n__SHOP_URL__",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_購入済__"
+        }
+      ]
+    },
+    {
+      "name": "カート放棄フォロー",
+      "description": "カート放棄タグ付与後にリマインド配信。Webhook連携でEC側からタグ付け",
+      "triggerType": "tag_added",
+      "triggerTagId": "__TAG_ID_カート放棄__",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 60,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"お買い忘れはありませんか?\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"カートに商品が残っています。\\n在庫がなくなる前にお早めにどうぞ!\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"カートを見る\",\"uri\":\"__CART_URL__\"},\"style\":\"primary\",\"color\":\"#EF4444\"}]}}"
+        },
+        {
+          "stepOrder": 2,
+          "delayMinutes": 1440,
+          "messageType": "text",
+          "messageContent": "カートの商品、まだお取り置き中です!\n\n今なら送料無料キャンペーン中。\nこの機会にぜひ!\n\n__CART_URL__",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_購入済__"
+        },
+        {
+          "stepOrder": 3,
+          "delayMinutes": 4320,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"特別割引のご案内\",\"weight\":\"bold\",\"size\":\"lg\"},{\"type\":\"text\",\"text\":\"カートの商品を今購入いただくと...\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true},{\"type\":\"box\",\"layout\":\"vertical\",\"margin\":\"lg\",\"backgroundColor\":\"#FEF2F2\",\"cornerRadius\":\"md\",\"paddingAll\":\"16px\",\"contents\":[{\"type\":\"text\",\"text\":\"カート放棄者限定\",\"weight\":\"bold\",\"color\":\"#991B1B\"},{\"type\":\"text\",\"text\":\"__CART_RECOVERY_DISCOUNT__\",\"size\":\"xl\",\"weight\":\"bold\",\"color\":\"#DC2626\",\"margin\":\"sm\"},{\"type\":\"text\",\"text\":\"コード: __CART_RECOVERY_CODE__\",\"size\":\"sm\",\"color\":\"#991B1B\",\"margin\":\"sm\"}]}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"今すぐ購入\",\"uri\":\"__CART_URL__\"},\"style\":\"primary\",\"color\":\"#DC2626\"}]}}",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_購入済__"
+        }
+      ]
+    },
+    {
+      "name": "購入後レビュー依頼",
+      "description": "購入済タグ付与後にお礼+レビュー依頼",
+      "triggerType": "tag_added",
+      "triggerTagId": "__TAG_ID_購入済__",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 30,
+          "messageType": "text",
+          "messageContent": "ご購入ありがとうございます!\n\n__SHOP_NAME__をご利用いただきありがとうございました。\n商品の発送準備を進めております。\n\n発送完了後にお知らせいたしますね!"
+        },
+        {
+          "stepOrder": 2,
+          "delayMinutes": 10080,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"商品はいかがですか?\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"お届けから1週間ほど経ちました。\\n使い心地はいかがでしょうか?\\n\\nレビューを投稿いただくと、次回使える500ポイントをプレゼント!\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"spacing\":\"sm\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"レビューを書く\",\"uri\":\"__REVIEW_URL__\"},\"style\":\"primary\",\"color\":\"#A855F7\"},{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"問い合わせ\",\"text\":\"問い合わせ\"},\"style\":\"secondary\"}]}}",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_レビュー投稿済__"
+        }
+      ]
+    },
+    {
+      "name": "リピート購入促進",
+      "description": "初回購入後30日でリピート促進。消耗品ECに最適",
+      "triggerType": "tag_added",
+      "triggerTagId": "__TAG_ID_初回購入__",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 43200,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"そろそろ買い足しの時期?\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"前回のご購入から約1ヶ月。\\nそろそろなくなる頃ではないでしょうか?\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true},{\"type\":\"box\",\"layout\":\"vertical\",\"margin\":\"lg\",\"backgroundColor\":\"#FEF3C7\",\"cornerRadius\":\"md\",\"paddingAll\":\"16px\",\"contents\":[{\"type\":\"text\",\"text\":\"リピーター特典\",\"weight\":\"bold\",\"color\":\"#92400E\"},{\"type\":\"text\",\"text\":\"__REPEAT_DISCOUNT__\",\"size\":\"lg\",\"weight\":\"bold\",\"color\":\"#D97706\",\"margin\":\"sm\"}]}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"リピート注文する\",\"uri\":\"__REORDER_URL__\"},\"style\":\"primary\",\"color\":\"#D97706\"}]}}",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_リピート購入__"
+        },
+        {
+          "stepOrder": 2,
+          "delayMinutes": 64800,
+          "messageType": "text",
+          "messageContent": "__SHOP_NAME__です。\n\n前回ご購入いただいた商品の在庫が残りわずかです。\n\nお早めにどうぞ!\n__SHOP_URL__",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_リピート購入__"
+        }
+      ]
+    }
+  ]
+}

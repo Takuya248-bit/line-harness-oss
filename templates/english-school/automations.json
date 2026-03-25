@@ -1,0 +1,38 @@
+[
+  {
+    "name": "相談メッセージ→タグ付け+通知",
+    "description": "「相談する」メッセージ受信時にタグ付与しオペレーターに通知",
+    "eventType": "message_received",
+    "conditions": {
+      "message_text": "相談する"
+    },
+    "actions": [
+      { "type": "add_tag", "tagId": "__TAG_ID_相談済み__" },
+      { "type": "notify", "channel": "webhook", "message": "新しい相談リクエストがありました" }
+    ],
+    "priority": 10
+  },
+  {
+    "name": "体験申込→タグ付け+CV記録",
+    "description": "「無料体験に申し込む」でタグ付与しCVポイント記録",
+    "eventType": "message_received",
+    "conditions": {
+      "message_text": "無料体験に申し込む"
+    },
+    "actions": [
+      { "type": "add_tag", "tagId": "__TAG_ID_体験レッスン希望__" },
+      { "type": "track_conversion", "conversionPointId": "__CV_POINT_ID_体験申込__" }
+    ],
+    "priority": 10
+  },
+  {
+    "name": "ABテスト振り分け（偶数/奇数）",
+    "description": "友だち追加時にランダムでABテストグループに振り分け",
+    "eventType": "friend_add",
+    "conditions": {},
+    "actions": [
+      { "type": "ab_test", "tagA": "__TAG_ID_ABテスト_パターンA__", "tagB": "__TAG_ID_ABテスト_パターンB__" }
+    ],
+    "priority": 5
+  }
+]

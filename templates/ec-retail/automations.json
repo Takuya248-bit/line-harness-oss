@@ -1,0 +1,44 @@
+[
+  {
+    "name": "セール通知希望→タグ付け",
+    "description": "「セール通知希望」メッセージでタグ付与",
+    "eventType": "message_received",
+    "conditions": { "message_text": "セール通知希望" },
+    "actions": [
+      { "type": "add_tag", "tagId": "__TAG_ID_セール通知希望__" }
+    ],
+    "priority": 10
+  },
+  {
+    "name": "問い合わせ→タグ付け+通知",
+    "description": "問い合わせメッセージでタグ付けしオペレーターに通知",
+    "eventType": "message_received",
+    "conditions": { "message_text": "問い合わせ" },
+    "actions": [
+      { "type": "add_tag", "tagId": "__TAG_ID_問い合わせ中__" },
+      { "type": "notify", "channel": "webhook", "message": "新しい問い合わせがあります" }
+    ],
+    "priority": 10
+  },
+  {
+    "name": "購入Webhook→タグ付け+CV記録",
+    "description": "EC側のWebhookで購入完了時にタグ+CV記録。incoming_webhookと連携",
+    "eventType": "webhook_received",
+    "conditions": { "event_name": "order.completed" },
+    "actions": [
+      { "type": "add_tag", "tagId": "__TAG_ID_購入済__" },
+      { "type": "track_conversion", "conversionPointId": "__CV_POINT_ID_購入完了__" }
+    ],
+    "priority": 10
+  },
+  {
+    "name": "カート放棄Webhook→タグ付け",
+    "description": "EC側のWebhookでカート放棄検知時にタグ付与",
+    "eventType": "webhook_received",
+    "conditions": { "event_name": "cart.abandoned" },
+    "actions": [
+      { "type": "add_tag", "tagId": "__TAG_ID_カート放棄__" }
+    ],
+    "priority": 10
+  }
+]

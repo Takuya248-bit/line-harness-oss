@@ -1,0 +1,8 @@
+[
+  { "name": "友だち追加", "eventType": "friend_add", "scoreValue": 10 },
+  { "name": "メッセージ受信", "eventType": "message_received", "scoreValue": 5 },
+  { "name": "体験レッスン申込", "eventType": "conversion", "scoreValue": 30 },
+  { "name": "アンケート回答", "eventType": "form_submit", "scoreValue": 20 },
+  { "name": "相談リクエスト", "eventType": "message_received", "scoreValue": 25 },
+  { "name": "リンククリック", "eventType": "link_click", "scoreValue": 5 }
+]

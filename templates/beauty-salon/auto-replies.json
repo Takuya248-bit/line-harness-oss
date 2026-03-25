@@ -1,0 +1,30 @@
+[
+  {
+    "keyword": "予約する",
+    "matchType": "exact",
+    "responseType": "flex",
+    "responseContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"ご予約\",\"weight\":\"bold\",\"size\":\"lg\"},{\"type\":\"text\",\"text\":\"ご希望の方法でご予約ください。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"spacing\":\"sm\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"Web予約\",\"uri\":\"__BOOKING_URL__\"},\"style\":\"primary\",\"color\":\"#DB2777\"},{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"Hot Pepper予約\",\"uri\":\"__HOTPEPPER_URL__\"},\"style\":\"secondary\"},{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"電話予約\",\"uri\":\"tel:__PHONE_NUMBER__\"},\"style\":\"secondary\"}]}}",
+    "isActive": true
+  },
+  {
+    "keyword": "メニューを見る",
+    "matchType": "exact",
+    "responseType": "flex",
+    "responseContent": "{\"type\":\"carousel\",\"contents\":[{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"カット\",\"weight\":\"bold\",\"size\":\"lg\"},{\"type\":\"text\",\"text\":\"__CUT_PRICE__円~\",\"size\":\"md\",\"color\":\"#DB2777\",\"margin\":\"sm\"},{\"type\":\"text\",\"text\":\"__CUT_DESCRIPTION__\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]}},{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"カラー\",\"weight\":\"bold\",\"size\":\"lg\"},{\"type\":\"text\",\"text\":\"__COLOR_PRICE__円~\",\"size\":\"md\",\"color\":\"#DB2777\",\"margin\":\"sm\"},{\"type\":\"text\",\"text\":\"__COLOR_DESCRIPTION__\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]}},{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"パーマ\",\"weight\":\"bold\",\"size\":\"lg\"},{\"type\":\"text\",\"text\":\"__PERM_PRICE__円~\",\"size\":\"md\",\"color\":\"#DB2777\",\"margin\":\"sm\"},{\"type\":\"text\",\"text\":\"__PERM_DESCRIPTION__\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]}}]}",
+    "isActive": true
+  },
+  {
+    "keyword": "また今度",
+    "matchType": "exact",
+    "responseType": "text",
+    "responseContent": "承知しました!\nまたお時間ができましたら、お気軽にご連絡くださいね。\n\nいつでも「予約する」でご予約いただけます!",
+    "isActive": true
+  },
+  {
+    "keyword": "スタイリスト",
+    "matchType": "contains",
+    "responseType": "text",
+    "responseContent": "スタッフ紹介はこちらからご覧ください:\n__STAFF_PAGE_URL__",
+    "isActive": true
+  }
+]

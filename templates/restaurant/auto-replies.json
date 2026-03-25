@@ -1,0 +1,37 @@
+[
+  {
+    "keyword": "予約する",
+    "matchType": "exact",
+    "responseType": "flex",
+    "responseContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"ご予約\",\"weight\":\"bold\",\"size\":\"lg\"},{\"type\":\"text\",\"text\":\"ご予約は以下からお願いします。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"spacing\":\"sm\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"Web予約\",\"uri\":\"__BOOKING_URL__\"},\"style\":\"primary\",\"color\":\"#EF4444\"},{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"電話で予約\",\"uri\":\"tel:__PHONE_NUMBER__\"},\"style\":\"secondary\"}]}}",
+    "isActive": true
+  },
+  {
+    "keyword": "メニューを見る",
+    "matchType": "exact",
+    "responseType": "flex",
+    "responseContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"メニュー\",\"weight\":\"bold\",\"size\":\"lg\"},{\"type\":\"text\",\"text\":\"最新のメニューはこちらからご覧ください。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"メニューを見る\",\"uri\":\"__MENU_URL__\"},\"style\":\"primary\",\"color\":\"#EF4444\"}]}}",
+    "isActive": true
+  },
+  {
+    "keyword": "予約変更",
+    "matchType": "exact",
+    "responseType": "text",
+    "responseContent": "予約の変更を承ります。\n\nお電話でご連絡ください:\n__PHONE_NUMBER__\n\n営業時間: __HOURS__",
+    "isActive": true
+  },
+  {
+    "keyword": "営業時間",
+    "matchType": "contains",
+    "responseType": "text",
+    "responseContent": "__RESTAURANT_NAME__\n\n営業時間:\n__HOURS__\n\n定休日: __CLOSED_DAY__\n\n住所: __ADDRESS__",
+    "isActive": true
+  },
+  {
+    "keyword": "クーポン",
+    "matchType": "contains",
+    "responseType": "text",
+    "responseContent": "現在ご利用いただけるクーポンはありません。\n\n新しいクーポンが届いたときはLINEでお知らせしますので、お楽しみに!",
+    "isActive": true
+  }
+]

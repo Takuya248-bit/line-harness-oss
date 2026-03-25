@@ -1,0 +1,28 @@
+{
+  "_comment": "Incoming webhooks for EC platform integration. Create via POST /api/webhooks (if available) or configure manually.",
+  "incoming_webhooks": [
+    {
+      "name": "EC購入完了Webhook",
+      "source_type": "shopify",
+      "_description": "Shopify/BASE/STORESなどから注文完了時にPOST。friendIdのマッピングはline_user_idかemailで紐付け。"
+    },
+    {
+      "name": "ECカート放棄Webhook",
+      "source_type": "custom",
+      "_description": "ECプラットフォームのカート放棄検知からPOST。1時間以上カート未決済で発火。"
+    },
+    {
+      "name": "EC発送完了Webhook",
+      "source_type": "custom",
+      "_description": "発送完了時にPOST。発送済タグ付与に使用。"
+    }
+  ],
+  "outgoing_webhooks": [
+    {
+      "name": "購入通知（Slack連携）",
+      "url": "__SLACK_WEBHOOK_URL__",
+      "event_types": ["conversion.tracked"],
+      "_description": "購入CVが記録されたらSlackに通知"
+    }
+  ]
+}

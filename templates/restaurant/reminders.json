@@ -1,0 +1,37 @@
+{
+  "_comment": "Reminders for reservations and birthdays. Enroll friends via POST /api/reminders/:id/enroll/:friendId with targetDate.",
+  "reminders": [
+    {
+      "name": "予約リマインド",
+      "description": "予約日の前日と当日にリマインドメッセージ配信",
+      "steps": [
+        {
+          "offsetMinutes": -1440,
+          "messageType": "text",
+          "messageContent": "【予約リマインド】\n\n__RESTAURANT_NAME__です。\n明日のご予約を確認いたします。\n\nお時間の変更やキャンセルは「予約変更」と送ってください。\n\nご来店をお待ちしております!"
+        },
+        {
+          "offsetMinutes": -180,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"本日のご予約\",\"weight\":\"bold\",\"size\":\"lg\"},{\"type\":\"separator\",\"margin\":\"md\"},{\"type\":\"text\",\"text\":\"まもなくお時間です。\\nお気をつけてお越しください。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true},{\"type\":\"text\",\"text\":\"住所: __ADDRESS__\",\"size\":\"xs\",\"color\":\"#999999\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"地図で確認\",\"uri\":\"__MAP_URL__\"},\"style\":\"primary\",\"color\":\"#EF4444\"}]}}"
+        }
+      ]
+    },
+    {
+      "name": "誕生日クーポン配信",
+      "description": "誕生日の3日前に特別クーポン配信",
+      "steps": [
+        {
+          "offsetMinutes": -4320,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"お誕生日おめでとうございます!\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"__RESTAURANT_NAME__から\\nバースデー特典をプレゼント!\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true},{\"type\":\"box\",\"layout\":\"vertical\",\"margin\":\"lg\",\"backgroundColor\":\"#FDE68A\",\"cornerRadius\":\"md\",\"paddingAll\":\"16px\",\"contents\":[{\"type\":\"text\",\"text\":\"Birthday Special\",\"weight\":\"bold\",\"size\":\"md\",\"color\":\"#92400E\"},{\"type\":\"text\",\"text\":\"__BIRTHDAY_COUPON_DETAIL__\",\"size\":\"lg\",\"weight\":\"bold\",\"color\":\"#B45309\",\"margin\":\"sm\"},{\"type\":\"text\",\"text\":\"誕生日月中有効\",\"size\":\"xs\",\"color\":\"#92400E\",\"margin\":\"sm\"}]}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"予約する\",\"text\":\"予約する\"},\"style\":\"primary\",\"color\":\"#EF4444\"}]}}"
+        },
+        {
+          "offsetMinutes": 0,
+          "messageType": "text",
+          "messageContent": "お誕生日おめでとうございます!\n\n__RESTAURANT_NAME__スタッフ一同よりお祝い申し上げます。\n\nバースデークーポンはお忘れなく!"
+        }
+      ]
+    }
+  ]
+}

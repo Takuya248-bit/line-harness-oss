@@ -1,0 +1,125 @@
+{
+  "_comment": "English school scenarios. Create tags first, then replace __TAG_ID_xxx__ with actual tag IDs.",
+  "scenarios": [
+    {
+      "name": "友だち追加シナリオ（相談導線）",
+      "description": "友だち追加後、体験レッスン/無料相談へ誘導するステップ配信",
+      "triggerType": "friend_add",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 0,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"hero\":{\"type\":\"image\",\"url\":\"__SCHOOL_IMAGE_URL__\",\"size\":\"full\",\"aspectRatio\":\"20:13\"},\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"友だち追加ありがとうございます!\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"__SCHOOL_NAME__へようこそ。\\n英会話の上達を全力でサポートします。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"spacing\":\"sm\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"無料体験に申し込む\",\"text\":\"無料体験に申し込む\"},\"style\":\"primary\",\"color\":\"#10B981\"},{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"料金を見る\",\"text\":\"料金を見る\"},\"style\":\"secondary\"}]}}"
+        },
+        {
+          "stepOrder": 2,
+          "delayMinutes": 1440,
+          "messageType": "text",
+          "messageContent": "昨日は友だち追加ありがとうございました!\n\n__SCHOOL_NAME__では、あなたの目標に合わせたレッスンプランをご提案しています。\n\nまずは無料カウンセリングで、あなたの英語力と目標をお聞かせください。\n\n「相談する」とメッセージを送ってくださいね。"
+        },
+        {
+          "stepOrder": 3,
+          "delayMinutes": 4320,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"英語力チェックしませんか?\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"簡単なアンケートに答えるだけで、あなたに最適なプランがわかります。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"英語力診断を受ける\",\"uri\":\"__LIFF_FORM_URL__\"},\"style\":\"primary\",\"color\":\"#6366F1\"}]}}",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_相談済み__"
+        },
+        {
+          "stepOrder": 4,
+          "delayMinutes": 10080,
+          "messageType": "text",
+          "messageContent": "こんにちは!\n\n__SCHOOL_NAME__からのご案内です。\n\n今月末まで体験レッスンが無料のキャンペーン実施中です。\n\nお気軽に「無料体験に申し込む」と送ってください!",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_入会済__"
+        }
+      ]
+    },
+    {
+      "name": "見積もりフォローシナリオ",
+      "description": "見積もり送付後のフォローアップ。タグ「見積もり送付済」でトリガー",
+      "triggerType": "tag_added",
+      "triggerTagId": "__TAG_ID_見積もり送付済__",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 1440,
+          "messageType": "text",
+          "messageContent": "昨日お送りした料金プランはご覧いただけましたか?\n\nご不明な点がございましたら、お気軽にメッセージをお送りください。"
+        },
+        {
+          "stepOrder": 2,
+          "delayMinutes": 4320,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"受講者の声\",\"weight\":\"bold\",\"size\":\"lg\"},{\"type\":\"text\",\"text\":\"「3ヶ月でTOEICスコアが200点アップしました!」\\n-- __TESTIMONIAL_NAME__ さん\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true},{\"type\":\"separator\",\"margin\":\"lg\"},{\"type\":\"text\",\"text\":\"「先生が丁寧で、毎回のレッスンが楽しみです」\\n-- __TESTIMONIAL_NAME_2__ さん\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"相談する\",\"text\":\"相談する\"},\"style\":\"primary\",\"color\":\"#10B981\"}]}}",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_入会済__"
+        },
+        {
+          "stepOrder": 3,
+          "delayMinutes": 10080,
+          "messageType": "text",
+          "messageContent": "最後のご案内です。\n\n見積もりの有効期限が近づいています。ご検討中でしたら、お早めにお申し込みください。\n\nご質問はいつでもお気軽にどうぞ!",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_入会済__"
+        }
+      ]
+    },
+    {
+      "name": "ABテスト - パターンAシナリオ",
+      "description": "ABテスト用パターンA（メリット訴求）。タグで振り分け",
+      "triggerType": "tag_added",
+      "triggerTagId": "__TAG_ID_ABテスト_パターンA__",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 0,
+          "messageType": "text",
+          "messageContent": "特別なご案内です!\n\n__SCHOOL_NAME__で英会話を始めると...\n\n- 3ヶ月でビジネス英語が話せるように\n- マンツーマンで効率的\n- 振替自由で続けやすい\n\n「無料体験に申し込む」と送ってください!"
+        }
+      ]
+    },
+    {
+      "name": "ABテスト - パターンBシナリオ",
+      "description": "ABテスト用パターンB（限定感訴求）。タグで振り分け",
+      "triggerType": "tag_added",
+      "triggerTagId": "__TAG_ID_ABテスト_パターンB__",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 0,
+          "messageType": "text",
+          "messageContent": "【限定5名】今月の無料体験枠\n\n先着5名様限定で、無料体験レッスン+カウンセリングをプレゼント中!\n\n残り枠わずかです。\n\n「無料体験に申し込む」と送って枠を確保してください!"
+        }
+      ]
+    },
+    {
+      "name": "アンケート後→相談誘導シナリオ",
+      "description": "アンケート回答後に相談へ誘導。タグ「アンケート回答済」で起動",
+      "triggerType": "tag_added",
+      "triggerTagId": "__TAG_ID_アンケート回答済__",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 5,
+          "messageType": "text",
+          "messageContent": "アンケートへのご回答ありがとうございました!\n\nあなたの目標に合わせたおすすめプランをご用意しました。\n\n詳しくは無料カウンセリングでお伝えします。\n\n「相談する」と送ってください!"
+        },
+        {
+          "stepOrder": 2,
+          "delayMinutes": 2880,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"あなたにおすすめのプラン\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"アンケートの結果から、あなたには以下のプランが最適です。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"spacing\":\"sm\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"相談する\",\"text\":\"相談する\"},\"style\":\"primary\",\"color\":\"#10B981\"},{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"料金を見る\",\"text\":\"料金を見る\"},\"style\":\"secondary\"}]}}",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_相談済み__"
+        }
+      ]
+    }
+  ]
+}

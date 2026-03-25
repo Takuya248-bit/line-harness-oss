@@ -1,0 +1,71 @@
+{
+  "_comment": "Restaurant scenarios. Replace __TAG_ID_xxx__ with actual tag IDs after creating tags.",
+  "scenarios": [
+    {
+      "name": "友だち追加シナリオ（初回クーポン）",
+      "description": "友だち追加直後にウェルカムメッセージとクーポン配信",
+      "triggerType": "friend_add",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 0,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"hero\":{\"type\":\"image\",\"url\":\"__RESTAURANT_IMAGE_URL__\",\"size\":\"full\",\"aspectRatio\":\"20:13\"},\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"友だち追加ありがとうございます!\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"__RESTAURANT_NAME__です。\\n初回限定クーポンをプレゼント!\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true},{\"type\":\"separator\",\"margin\":\"lg\"},{\"type\":\"box\",\"layout\":\"vertical\",\"margin\":\"lg\",\"backgroundColor\":\"#FEF3C7\",\"cornerRadius\":\"md\",\"paddingAll\":\"16px\",\"contents\":[{\"type\":\"text\",\"text\":\"初回限定クーポン\",\"weight\":\"bold\",\"size\":\"md\",\"color\":\"#B45309\"},{\"type\":\"text\",\"text\":\"__COUPON_DETAIL__\",\"size\":\"lg\",\"weight\":\"bold\",\"color\":\"#D97706\",\"margin\":\"sm\"},{\"type\":\"text\",\"text\":\"有効期限: __COUPON_EXPIRY__\",\"size\":\"xs\",\"color\":\"#92400E\",\"margin\":\"sm\"}]}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"spacing\":\"sm\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"予約する\",\"text\":\"予約する\"},\"style\":\"primary\",\"color\":\"#EF4444\"},{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"メニューを見る\",\"text\":\"メニューを見る\"},\"style\":\"secondary\"}]}}"
+        },
+        {
+          "stepOrder": 2,
+          "delayMinutes": 10080,
+          "messageType": "text",
+          "messageContent": "こんにちは、__RESTAURANT_NAME__です!\n\nクーポンはもうお使いいただけましたか?\n有効期限が近づいていますので、お早めにどうぞ!\n\n「予約する」と送っていただければ、ご予約をお取りします。",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_来店済__"
+        }
+      ]
+    },
+    {
+      "name": "来店後フォロー（リピート促進）",
+      "description": "来店タグ付与後にお礼+次回クーポン。リピーター育成",
+      "triggerType": "tag_added",
+      "triggerTagId": "__TAG_ID_来店済__",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 120,
+          "messageType": "text",
+          "messageContent": "本日はご来店ありがとうございました!\n\n__RESTAURANT_NAME__をお楽しみいただけましたでしょうか?\n\nまたのご来店をお待ちしております!"
+        },
+        {
+          "stepOrder": 2,
+          "delayMinutes": 10080,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"またお会いできるのを楽しみにしています!\",\"weight\":\"bold\",\"size\":\"md\",\"wrap\":true},{\"type\":\"text\",\"text\":\"次回ご来店時にお使いいただけるクーポンです。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true},{\"type\":\"box\",\"layout\":\"vertical\",\"margin\":\"lg\",\"backgroundColor\":\"#DBEAFE\",\"cornerRadius\":\"md\",\"paddingAll\":\"16px\",\"contents\":[{\"type\":\"text\",\"text\":\"リピーター特典\",\"weight\":\"bold\",\"size\":\"sm\",\"color\":\"#1E40AF\"},{\"type\":\"text\",\"text\":\"__REPEAT_COUPON_DETAIL__\",\"size\":\"lg\",\"weight\":\"bold\",\"color\":\"#2563EB\",\"margin\":\"sm\"}]}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"予約する\",\"text\":\"予約する\"},\"style\":\"primary\",\"color\":\"#EF4444\"}]}}"
+        },
+        {
+          "stepOrder": 3,
+          "delayMinutes": 43200,
+          "messageType": "text",
+          "messageContent": "__RESTAURANT_NAME__です。\n\nしばらくお会いできていませんね。\n\n季節限定メニューが登場しました!\nぜひまた遊びにいらしてください。\n\n「予約する」と送っていただければご予約をお取りします。",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_リピーター__"
+        }
+      ]
+    },
+    {
+      "name": "誕生日メッセージ",
+      "description": "誕生日登録済みタグの友だちに誕生日シナリオ起動。リマインダと併用推奨",
+      "triggerType": "tag_added",
+      "triggerTagId": "__TAG_ID_誕生日登録済__",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 0,
+          "messageType": "text",
+          "messageContent": "誕生日の登録ありがとうございます!\n誕生日が近づいたら、特別なプレゼントをお届けしますね!"
+        }
+      ]
+    }
+  ]
+}

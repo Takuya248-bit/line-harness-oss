@@ -1,0 +1,29 @@
+{
+  "_comment": "Tracked links for measuring click-through from LINE messages. Create via POST /api/tracked-links",
+  "links": [
+    {
+      "name": "ショップトップ（LINE経由）",
+      "originalUrl": "__SHOP_URL__",
+      "tagId": null,
+      "scenarioId": null
+    },
+    {
+      "name": "カート復帰リンク",
+      "originalUrl": "__CART_URL__",
+      "tagId": null,
+      "scenarioId": null
+    },
+    {
+      "name": "レビューページリンク",
+      "originalUrl": "__REVIEW_URL__",
+      "tagId": "__TAG_ID_レビュー投稿済__",
+      "scenarioId": null
+    },
+    {
+      "name": "人気商品ページ",
+      "originalUrl": "__POPULAR_PRODUCTS_URL__",
+      "tagId": null,
+      "scenarioId": null
+    }
+  ]
+}

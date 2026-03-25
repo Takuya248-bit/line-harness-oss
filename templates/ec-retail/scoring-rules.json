@@ -1,0 +1,9 @@
+[
+  { "name": "友だち追加", "eventType": "friend_add", "scoreValue": 10 },
+  { "name": "商品閲覧（リンククリック）", "eventType": "link_click", "scoreValue": 5 },
+  { "name": "カート放棄", "eventType": "tag_added", "scoreValue": 15 },
+  { "name": "購入完了", "eventType": "conversion", "scoreValue": 50 },
+  { "name": "リピート購入", "eventType": "conversion", "scoreValue": 70 },
+  { "name": "レビュー投稿", "eventType": "conversion", "scoreValue": 30 },
+  { "name": "メッセージ送信", "eventType": "message_received", "scoreValue": 3 }
+]

@@ -1,0 +1,7 @@
+[
+  { "name": "初回購入", "eventType": "first_purchase", "value": null },
+  { "name": "購入完了", "eventType": "purchase", "value": null },
+  { "name": "リピート購入", "eventType": "repeat_purchase", "value": null },
+  { "name": "レビュー投稿", "eventType": "review_posted", "value": 0 },
+  { "name": "カート復帰購入", "eventType": "cart_recovery_purchase", "value": null }
+]

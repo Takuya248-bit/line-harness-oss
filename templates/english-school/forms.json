@@ -1,0 +1,45 @@
+[
+  {
+    "name": "英語力診断アンケート",
+    "description": "友だちの英語レベルと目標を把握するアンケート",
+    "fields": [
+      {
+        "name": "english_level",
+        "label": "現在の英語レベル",
+        "type": "select",
+        "required": true,
+        "options": ["初心者（挨拶程度）", "初級（簡単な日常会話）", "中級（仕事で使える）", "上級（ネイティブに近い）"]
+      },
+      {
+        "name": "goal",
+        "label": "英語を学ぶ目的",
+        "type": "checkbox",
+        "required": true,
+        "options": ["ビジネス英語", "日常会話", "TOEIC/TOEFL対策", "留学準備", "趣味・旅行"]
+      },
+      {
+        "name": "frequency",
+        "label": "希望レッスン頻度",
+        "type": "select",
+        "required": true,
+        "options": ["週1回", "週2回", "週3回以上", "まだ決めていない"]
+      },
+      {
+        "name": "budget",
+        "label": "月あたりの予算",
+        "type": "select",
+        "required": false,
+        "options": ["1万円以下", "1-2万円", "2-3万円", "3万円以上"]
+      },
+      {
+        "name": "free_text",
+        "label": "その他ご要望",
+        "type": "textarea",
+        "required": false
+      }
+    ],
+    "onSubmitTagId": "__TAG_ID_アンケート回答済__",
+    "onSubmitScenarioId": "__SCENARIO_ID_アンケート後→相談誘導__",
+    "saveToMetadata": true
+  }
+]

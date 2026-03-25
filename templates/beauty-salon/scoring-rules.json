@@ -1,0 +1,7 @@
+[
+  { "name": "友だち追加", "eventType": "friend_add", "scoreValue": 10 },
+  { "name": "予約", "eventType": "message_received", "scoreValue": 15 },
+  { "name": "来店", "eventType": "tag_added", "scoreValue": 30 },
+  { "name": "口コミ投稿", "eventType": "conversion", "scoreValue": 50 },
+  { "name": "リンククリック", "eventType": "link_click", "scoreValue": 5 }
+]

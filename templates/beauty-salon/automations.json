@@ -1,0 +1,33 @@
+[
+  {
+    "name": "予約メッセージ→タグ付け",
+    "description": "「予約する」受信時に予約済タグ付与",
+    "eventType": "message_received",
+    "conditions": { "message_text": "予約する" },
+    "actions": [
+      { "type": "add_tag", "tagId": "__TAG_ID_予約済__" }
+    ],
+    "priority": 10
+  },
+  {
+    "name": "来店2回目→リピータータグ",
+    "description": "来店済タグ2回目以降の付与でリピータータグ追加",
+    "eventType": "tag_added",
+    "conditions": { "tag_name": "来店済", "min_count": 2 },
+    "actions": [
+      { "type": "add_tag", "tagId": "__TAG_ID_リピーター__" }
+    ],
+    "priority": 5
+  },
+  {
+    "name": "口コミ投稿→タグ+スコア",
+    "description": "口コミ投稿の報告に対しタグ+スコア付与",
+    "eventType": "message_received",
+    "conditions": { "message_text_contains": "口コミ書きました" },
+    "actions": [
+      { "type": "add_tag", "tagId": "__TAG_ID_口コミ投稿済__" },
+      { "type": "add_score", "value": 50, "reason": "口コミ投稿" }
+    ],
+    "priority": 10
+  }
+]

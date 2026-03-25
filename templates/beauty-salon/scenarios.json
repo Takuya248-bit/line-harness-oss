@@ -1,0 +1,83 @@
+{
+  "_comment": "Beauty salon scenarios. Replace __TAG_ID_xxx__ and __PLACEHOLDER__ values.",
+  "scenarios": [
+    {
+      "name": "友だち追加シナリオ（初回クーポン）",
+      "description": "友だち追加後にウェルカム+初回クーポン",
+      "triggerType": "friend_add",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 0,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"hero\":{\"type\":\"image\",\"url\":\"__SALON_IMAGE_URL__\",\"size\":\"full\",\"aspectRatio\":\"20:13\"},\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"友だち追加ありがとうございます!\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"__SALON_NAME__へようこそ。\\n初回限定の特典をご用意しました!\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true},{\"type\":\"box\",\"layout\":\"vertical\",\"margin\":\"lg\",\"backgroundColor\":\"#FDF2F8\",\"cornerRadius\":\"md\",\"paddingAll\":\"16px\",\"contents\":[{\"type\":\"text\",\"text\":\"初回限定クーポン\",\"weight\":\"bold\",\"color\":\"#BE185D\"},{\"type\":\"text\",\"text\":\"__FIRST_VISIT_COUPON__\",\"size\":\"lg\",\"weight\":\"bold\",\"color\":\"#DB2777\",\"margin\":\"sm\"},{\"type\":\"text\",\"text\":\"有効期限: __COUPON_EXPIRY__\",\"size\":\"xs\",\"color\":\"#9D174D\",\"margin\":\"sm\"}]}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"spacing\":\"sm\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"予約する\",\"text\":\"予約する\"},\"style\":\"primary\",\"color\":\"#DB2777\"},{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"メニューを見る\",\"text\":\"メニューを見る\"},\"style\":\"secondary\"}]}}"
+        },
+        {
+          "stepOrder": 2,
+          "delayMinutes": 4320,
+          "messageType": "text",
+          "messageContent": "こんにちは、__SALON_NAME__です!\n\n初回クーポンはもうお使いいただけましたか?\n\n当サロンでは、お客様一人ひとりの髪質に合わせた施術を心がけています。\n\nお気軽に「予約する」と送ってくださいね!",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_来店済__"
+        }
+      ]
+    },
+    {
+      "name": "来店後フォロー+次回予約促進",
+      "description": "来店後のお礼メッセージとヘアケアアドバイス、次回予約促進",
+      "triggerType": "tag_added",
+      "triggerTagId": "__TAG_ID_来店済__",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 60,
+          "messageType": "text",
+          "messageContent": "本日はご来店ありがとうございました!\n\n__SALON_NAME__の__STYLIST_NAME__です。\n\n仕上がりはいかがですか?\n気になる点がありましたら、お気軽にメッセージくださいね。"
+        },
+        {
+          "stepOrder": 2,
+          "delayMinutes": 1440,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"ホームケアのポイント\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"今日の施術を長持ちさせるために...\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true},{\"type\":\"box\",\"layout\":\"vertical\",\"margin\":\"lg\",\"spacing\":\"sm\",\"contents\":[{\"type\":\"text\",\"text\":\"1. __CARE_TIP_1__\",\"size\":\"sm\",\"wrap\":true},{\"type\":\"text\",\"text\":\"2. __CARE_TIP_2__\",\"size\":\"sm\",\"wrap\":true},{\"type\":\"text\",\"text\":\"3. __CARE_TIP_3__\",\"size\":\"sm\",\"wrap\":true}]}]}}",
+          "conditionType": null,
+          "conditionValue": null
+        },
+        {
+          "stepOrder": 3,
+          "delayMinutes": 30240,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"そろそろメンテナンスの時期です\",\"weight\":\"bold\",\"size\":\"lg\",\"wrap\":true},{\"type\":\"text\",\"text\":\"前回のご来店から約3週間。\\nスタイルのキープにはこの時期のメンテナンスがおすすめです。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"spacing\":\"sm\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"次回予約する\",\"text\":\"予約する\"},\"style\":\"primary\",\"color\":\"#DB2777\"},{\"type\":\"button\",\"action\":{\"type\":\"message\",\"label\":\"もう少し後で\",\"text\":\"また今度\"},\"style\":\"secondary\"}]}}",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_次回予約済__"
+        },
+        {
+          "stepOrder": 4,
+          "delayMinutes": 60480,
+          "messageType": "text",
+          "messageContent": "こんにちは、__SALON_NAME__です。\n\n前回のご来店から1ヶ月以上経ちました。\nカラーの退色やカットのバランスが気になる頃ではないでしょうか?\n\nリピーター様限定の特典もご用意しています。\n「予約する」と送ってください!",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_次回予約済__"
+        }
+      ]
+    },
+    {
+      "name": "口コミ依頼シナリオ",
+      "description": "来店2回目以降のお客様に口コミ依頼。タグで重複排除",
+      "triggerType": "tag_added",
+      "triggerTagId": "__TAG_ID_リピーター__",
+      "isActive": true,
+      "steps": [
+        {
+          "stepOrder": 1,
+          "delayMinutes": 1440,
+          "messageType": "flex",
+          "messageContent": "{\"type\":\"bubble\",\"body\":{\"type\":\"box\",\"layout\":\"vertical\",\"contents\":[{\"type\":\"text\",\"text\":\"口コミのお願い\",\"weight\":\"bold\",\"size\":\"lg\"},{\"type\":\"text\",\"text\":\"いつもご利用ありがとうございます!\\n\\nよろしければ、口コミを投稿していただけませんか?\\nお客様の声が私たちの励みになります。\",\"size\":\"sm\",\"color\":\"#666666\",\"margin\":\"md\",\"wrap\":true}]},\"footer\":{\"type\":\"box\",\"layout\":\"vertical\",\"spacing\":\"sm\",\"contents\":[{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"Googleで口コミを書く\",\"uri\":\"__GOOGLE_REVIEW_URL__\"},\"style\":\"primary\",\"color\":\"#DB2777\"},{\"type\":\"button\",\"action\":{\"type\":\"uri\",\"label\":\"Hot Pepperで口コミを書く\",\"uri\":\"__HOTPEPPER_REVIEW_URL__\"},\"style\":\"secondary\"}]}}",
+          "conditionType": "tag_not_exists",
+          "conditionValue": "__TAG_ID_口コミ依頼済__"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+[
+  {
+    "name": "予約メッセージ→タグ付け",
+    "description": "「予約する」受信時に予約済タグ付与",
+    "eventType": "message_received",
+    "conditions": {
+      "message_text": "予約する"
+    },
+    "actions": [
+      { "type": "add_tag", "tagId": "__TAG_ID_予約済__" }
+    ],
+    "priority": 10
+  },
+  {
+    "name": "来店3回以上→VIPタグ",
+    "description": "来店済タグが3回目の付与でVIPタグを追加",
+    "eventType": "tag_added",
+    "conditions": {
+      "tag_name": "来店済",
+      "min_visit_count": 3
+    },
+    "actions": [
+      { "type": "add_tag", "tagId": "__TAG_ID_VIP（3回以上）__" }
+    ],
+    "priority": 5
+  }
+]
