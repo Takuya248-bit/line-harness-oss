@@ -44,13 +44,18 @@ export type Env = {
     LINE_LOGIN_CHANNEL_ID: string;
     LINE_LOGIN_CHANNEL_SECRET: string;
     WORKER_URL: string;
+    ALLOWED_ORIGINS?: string;
   };
 };
 
 const app = new Hono<Env>();
 
-// CORS — allow all origins for MVP
-app.use('*', cors({ origin: '*' }));
+// CORS — configurable via ALLOWED_ORIGINS env var (comma-separated), defaults to '*'
+app.use('*', async (c, next) => {
+  const raw = c.env.ALLOWED_ORIGINS || '*';
+  const origin = raw === '*' ? '*' : raw.split(',').map((s) => s.trim());
+  return cors({ origin })(c, next);
+});
 
 // Auth middleware — skips /webhook and /docs automatically
 app.use('*', authMiddleware);

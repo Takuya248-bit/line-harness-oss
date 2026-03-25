@@ -11,6 +11,7 @@ import type { Message } from '@line-crm/line-sdk';
 import { calculateStaggerDelay, sleep, addMessageVariation } from './stealth.js';
 
 const MULTICAST_BATCH_SIZE = 500;
+const DB_BATCH_SIZE = 100;
 
 export async function processBroadcastSend(
   db: D1Database,
@@ -69,16 +70,18 @@ export async function processBroadcastSend(
           await lineClient.multicast(lineUserIds, [batchMessage]);
           successCount += batch.length;
 
-          // Log only successfully sent messages
-          for (const friend of batch) {
+          // Log successfully sent messages using batch INSERT (D1 batch API, 100 per batch)
+          const stmts = batch.map((friend) => {
             const logId = crypto.randomUUID();
-            await db
+            return db
               .prepare(
                 `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
                  VALUES (?, ?, 'outgoing', ?, ?, ?, NULL, ?)`,
               )
-              .bind(logId, friend.id, broadcast.message_type, broadcast.message_content, broadcastId, now)
-              .run();
+              .bind(logId, friend.id, broadcast.message_type, broadcast.message_content, broadcastId, now);
+          });
+          for (let j = 0; j < stmts.length; j += DB_BATCH_SIZE) {
+            await db.batch(stmts.slice(j, j + DB_BATCH_SIZE));
           }
         } catch (err) {
           console.error(`Multicast batch ${i / MULTICAST_BATCH_SIZE} failed:`, err);
