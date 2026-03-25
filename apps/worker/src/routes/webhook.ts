@@ -299,9 +299,11 @@ async function handleEvent(
       }
     }
 
-    // 自動返信チェック（このアカウントのルール + グローバルルールのみ）
+    // 自動返信チェック: auto_replies テーブル + automations テーブル両方を参照
     // NOTE: Auto-replies use replyMessage (free, no quota) instead of pushMessage
     // The replyToken is only valid for ~1 minute after the message event
+
+    // 1. auto_replies テーブル（レガシー）
     const autoReplyQuery = lineAccountId
       ? `SELECT * FROM auto_replies WHERE is_active = 1 AND (line_account_id IS NULL OR line_account_id = ?) ORDER BY created_at ASC`
       : `SELECT * FROM auto_replies WHERE is_active = 1 AND line_account_id IS NULL ORDER BY created_at ASC`;
@@ -319,7 +321,22 @@ async function handleEvent(
         created_at: string;
       }>();
 
+    // 2. automations テーブル（新: /api/automations で作成されたルール）
+    const automationsQuery = `SELECT * FROM automations WHERE is_active = 1 AND event_type = 'message_received' ORDER BY priority DESC, created_at ASC`;
+    const automationsResult = await db.prepare(automationsQuery)
+      .all<{
+        id: string;
+        name: string;
+        conditions: string;
+        actions: string;
+        is_active: number;
+        priority: number;
+        created_at: string;
+      }>();
+
     let matched = false;
+
+    // Check auto_replies first
     for (const rule of autoReplies.results) {
       const isMatch =
         rule.match_type === 'exact'
@@ -328,12 +345,10 @@ async function handleEvent(
 
       if (isMatch) {
         try {
-          // Expand template variables ({{name}}, {{uid}}, {{auth_url:CHANNEL_ID}})
           const expandedContent = expandVariables(rule.response_content, friend as { id: string; display_name: string | null; user_id: string | null }, workerUrl);
           const replyMsg = buildMessage(rule.response_type, expandedContent);
           await lineClient.replyMessage(event.replyToken, [replyMsg]);
 
-          // 送信ログ（replyMessage = 無料）
           const outLogId = crypto.randomUUID();
           await db
             .prepare(
@@ -345,9 +360,53 @@ async function handleEvent(
         } catch (err) {
           console.error('Failed to send auto-reply', err);
         }
-
         matched = true;
         break;
+      }
+    }
+
+    // Check automations table if no match in auto_replies
+    if (!matched) {
+      for (const automation of automationsResult.results) {
+        try {
+          const conditions = JSON.parse(automation.conditions);
+          const actions = JSON.parse(automation.actions);
+
+          if (!conditions.keyword) continue;
+
+          const isMatch =
+            conditions.matchType === 'exact'
+              ? incomingText === conditions.keyword
+              : incomingText.includes(conditions.keyword);
+
+          if (isMatch) {
+            for (const action of actions) {
+              if (action.type === 'reply') {
+                const expandedContent = expandVariables(action.content, friend as { id: string; display_name: string | null; user_id: string | null }, workerUrl);
+                const replyMsg = buildMessage(action.messageType || 'text', expandedContent);
+                await lineClient.replyMessage(event.replyToken, [replyMsg]);
+
+                const outLogId = crypto.randomUUID();
+                await db
+                  .prepare(
+                    `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, delivery_type, created_at)
+                     VALUES (?, ?, 'outgoing', ?, ?, NULL, NULL, 'reply', ?)`,
+                  )
+                  .bind(outLogId, friend.id, action.messageType || 'text', action.content, jstNow())
+                  .run();
+              } else if (action.type === 'add_tag' && action.tagId && action.tagId !== 'UNKNOWN') {
+                await db
+                  .prepare(`INSERT OR IGNORE INTO friend_tags (id, friend_id, tag_id, created_at) VALUES (?, ?, ?, ?)`)
+                  .bind(crypto.randomUUID(), friend.id, action.tagId, jstNow())
+                  .run();
+              }
+            }
+            matched = true;
+            break;
+          }
+        } catch (err) {
+          console.error('Failed to process automation rule', err);
+        }
       }
     }
 
