@@ -9,7 +9,7 @@ API_TOKEN="${API_TOKEN:?ERROR: API_TOKEN environment variable is required. Set i
 
 api() {
   local method=$1 path=$2 data=${3:-}
-  curl -s -X "$method" \
+  curl -s --retry 3 --retry-delay 2 --retry-all-errors --max-time 30 -X "$method" \
     -H "Authorization: Bearer $API_TOKEN" \
     -H "Content-Type: application/json" \
     ${data:+-d "$data"} \
@@ -48,7 +48,7 @@ TAG_COLORS=(
 for i in "${!TAG_NAMES[@]}"; do
   echo "  Creating tag: ${TAG_NAMES[$i]}"
   RESULT=$(api POST /api/tags "{\"name\":\"${TAG_NAMES[$i]}\",\"color\":\"${TAG_COLORS[$i]}\"}")
-  TAG_ID=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tag',{}).get('id',d.get('id','')))" 2>/dev/null || echo "")
+  TAG_ID=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('id',d.get('tag',{}).get('id',d.get('id',''))))" 2>/dev/null || echo "")
   if [ -z "$TAG_ID" ]; then
     echo "    WARN: Could not extract tag ID. Response: $RESULT"
     TAG_ID="UNKNOWN"
@@ -463,7 +463,7 @@ RESULT=$(api POST /api/scenarios "{
   \"triggerTagId\": \"$TAG_DIAG_STARTED\",
   \"isActive\": true
 }")
-SCENARIO_REMIND_ID=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('scenario',{}).get('id',d.get('id','')))" 2>/dev/null || echo "")
+SCENARIO_REMIND_ID=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('id',d.get('scenario',{}).get('id',d.get('id',''))))" 2>/dev/null || echo "")
 echo "  Scenario ID: $SCENARIO_REMIND_ID"
 
 # 30分後リマインド (diag_completed タグがない人のみ)
@@ -503,7 +503,7 @@ RESULT=$(api POST /api/scenarios "{
   \"triggerTagId\": \"$TAG_DIAG_COMPLETED\",
   \"isActive\": true
 }")
-SCENARIO_FOLLOW_ID=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('scenario',{}).get('id',d.get('id','')))" 2>/dev/null || echo "")
+SCENARIO_FOLLOW_ID=$(echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('id',d.get('scenario',{}).get('id',d.get('id',''))))" 2>/dev/null || echo "")
 echo "  Scenario ID: $SCENARIO_FOLLOW_ID"
 
 # 1日後: 美容室向け
