@@ -99,6 +99,15 @@ export async function updateNotificationStatus(db: D1Database, id: string, statu
   await db.prepare(`UPDATE notifications SET status = ? WHERE id = ?`).bind(status, id).run();
 }
 
+/** pending状態の通知を取得 (配信処理用) */
+export async function getPendingNotifications(db: D1Database, limit = 100): Promise<NotificationRow[]> {
+  const result = await db
+    .prepare(`SELECT * FROM notifications WHERE status = 'pending' ORDER BY created_at ASC LIMIT ?`)
+    .bind(limit)
+    .all<NotificationRow>();
+  return result.results;
+}
+
 /** イベントタイプに一致するアクティブな通知ルールを取得 */
 export async function getActiveNotificationRulesByEvent(db: D1Database, eventType: string): Promise<NotificationRuleRow[]> {
   const result = await db.prepare(`SELECT * FROM notification_rules WHERE event_type = ? AND is_active = 1`)

@@ -15,6 +15,7 @@ import {
   createAutomationLog,
   getActiveNotificationRulesByEvent,
   createNotification,
+  updateNotificationStatus,
   addTagToFriend,
   removeTagFromFriend,
   enrollFriendInScenario,
@@ -332,7 +333,7 @@ async function processNotifications(
       if (typeof channels === 'string') channels = JSON.parse(channels);
 
       for (const channel of channels) {
-        await createNotification(db, {
+        const notification = await createNotification(db, {
           ruleId: rule.id,
           eventType,
           title: `${rule.name}: ${eventType}`,
@@ -341,12 +342,11 @@ async function processNotifications(
           metadata: JSON.stringify(payload.eventData ?? {}),
         });
 
-        // Webhook通知チャネルの場合は即時配信
-        if (channel === 'webhook') {
-          // 送信Webhookと統合（既にfireOutgoingWebhooksで処理済み）
+        // dashboard通知はDB記録のみで完了 — 即座にsentにする
+        if (channel === 'dashboard') {
+          await updateNotificationStatus(db, notification.id, 'sent');
         }
-        // email チャネルの場合はSendGrid等で送信（将来実装）
-        // dashboard チャネルの場合はDB記録のみ（上記createNotificationで完了）
+        // line / webhook チャネルはcronの通知配信処理(processNotificationDeliveries)で配信
       }
     }
   } catch (err) {

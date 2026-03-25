@@ -7,6 +7,7 @@ import { processScheduledBroadcasts } from './services/broadcast.js';
 import { processReminderDeliveries } from './services/reminder-delivery.js';
 import { checkAccountHealth } from './services/ban-monitor.js';
 import { refreshLineAccessTokens } from './services/token-refresh.js';
+import { processNotificationDeliveries } from './services/notification-delivery.js';
 import { authMiddleware } from './middleware/auth.js';
 import { webhook } from './routes/webhook.js';
 import { friends } from './routes/friends.js';
@@ -33,6 +34,7 @@ import { automations } from './routes/automations.js';
 import { richMenus } from './routes/rich-menus.js';
 import { trackedLinks } from './routes/tracked-links.js';
 import { forms } from './routes/forms.js';
+import { analytics } from './routes/analytics.js';
 
 export type Env = {
   Bindings: {
@@ -123,6 +125,7 @@ app.route('/', automations);
 app.route('/', richMenus);
 app.route('/', trackedLinks);
 app.route('/', forms);
+app.route('/', analytics);
 
 // Short link: /r/:ref → landing page with LINE open button
 app.get('/r/:ref', (c) => {
@@ -192,6 +195,7 @@ async function scheduled(
       processStepDeliveries(env.DB, lineClient, env.WORKER_URL),
       processScheduledBroadcasts(env.DB, lineClient),
       processReminderDeliveries(env.DB, lineClient),
+      processNotificationDeliveries(env.DB, lineClient),
     );
   }
   jobs.push(checkAccountHealth(env.DB));
