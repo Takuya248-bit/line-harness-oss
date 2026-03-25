@@ -480,4 +480,53 @@ export const api = {
     getMigration: (migrationId: string) =>
       fetchApi<ApiResponse<AccountMigration>>(`/api/accounts/migrations/${migrationId}`),
   },
+  analytics: {
+    overview: (params?: { days?: number; accountId?: string }) => {
+      const query: Record<string, string> = {}
+      if (params?.days) query.days = String(params.days)
+      if (params?.accountId) query.lineAccountId = params.accountId
+      return fetchApi<ApiResponse<{
+        friendsTotal: number
+        friendsFollowing: number
+        messages: { total: number; incoming: number; outgoing: number }
+        broadcasts: { count: number; delivered: number }
+        friendTrend: { date: string; count: number }[]
+        days: number
+      }>>('/api/analytics/overview?' + new URLSearchParams(query))
+    },
+    messages: (params?: { days?: number }) => {
+      const query = params?.days ? '?days=' + params.days : ''
+      return fetchApi<ApiResponse<{ date: string; incoming: number; outgoing: number; total: number }[]>>(
+        '/api/analytics/messages' + query,
+      )
+    },
+    automations: (params?: { days?: number; limit?: number }) => {
+      const query: Record<string, string> = {}
+      if (params?.days) query.days = String(params.days)
+      if (params?.limit) query.limit = String(params.limit)
+      return fetchApi<ApiResponse<{
+        id: string
+        name: string
+        eventType: string
+        keyword: string | null
+        matchType: string | null
+        hitCount: number
+        successCount: number
+        failedCount: number
+      }[]>>('/api/analytics/automations?' + new URLSearchParams(query))
+    },
+    scenarios: (params?: { accountId?: string }) => {
+      const query = params?.accountId ? '?lineAccountId=' + params.accountId : ''
+      return fetchApi<ApiResponse<{
+        id: string
+        name: string
+        isActive: boolean
+        enrolledCount: number
+        completedCount: number
+        activeCount: number
+        pausedCount: number
+        completionRate: number
+      }[]>>('/api/analytics/scenarios' + query)
+    },
+  },
 }
