@@ -1,0 +1,21 @@
+name = "seo-writer"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+workers_dev = true
+
+# Secrets (set via `wrangler secret put`):
+# ANTHROPIC_API_KEY - Claude API key
+# WP_APP_PASSWORD  - WordPress application password
+# API_KEY          - Internal API key for manual triggers
+
+[vars]
+WP_URL = "https://YOUR_WORDPRESS_SITE.com"
+WP_USER = "admin"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "line-crm"
+database_id = "YOUR_D1_DATABASE_ID"
+
+[triggers]
+crons = ["0 0 * * *"]  # Daily at midnight JST (adjust as needed)
