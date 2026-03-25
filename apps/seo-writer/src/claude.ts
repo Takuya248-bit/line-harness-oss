@@ -34,8 +34,16 @@ async function callClaude(
 }
 
 export async function generateOutline(env: Env, keyword: string, intent: string): Promise<string> {
-  const system = `あなたはSEOに精通した日本語コンテンツストラテジストです。
-検索上位を狙える記事構成を設計してください。`;
+  const system = `あなたはSEOとAI検索(GEO)に精通した日本語コンテンツストラテジストです。
+Google検索上位 + AI Overviews/ChatGPT Search/Perplexityに引用される記事構成を設計してください。
+
+必須ルール:
+- 冒頭1~2文で検索意図に直接回答(結論ファースト)
+- H2見出しは検索クエリに対応する質問形式にする
+- FAQセクション(3~5問)を必ず含める
+- 各セクション冒頭に要点サマリー1~2文を入れる
+- 独自データや事例を含める箇所を指定する
+- AI定型フレーズ(comprehensive, delve, dive into等)を使わない`;
 
   const prompt = `対象キーワード: ${keyword}
 検索意図: ${intent}
@@ -65,9 +73,18 @@ export async function generateSection(
   articleTitle: string,
   sectionOutline: string
 ): Promise<string> {
-  const system = `あなたはSEOライターです。WordPress投稿用のHTMLで記事セクションを執筆してください。
+  const system = `あなたはSEO + AI検索最適化ライターです。WordPress投稿用のHTMLで記事セクションを執筆してください。
+
+HTML構造ルール:
 - h2, h3, p, ul, li, table, strong タグのみ使用
 - Markdown記法は使わない
+
+SEO + GEOルール:
+- 各セクション冒頭に要点サマリーを1~2文で入れる(AI引用対策)
+- 事実・数値・統計を含める
+- 定義文は「〇〇とは、△△のことです。」形式で書く
+- 1,000文字あたり内部リンクを2~3箇所提案する(<!-- internal-link: keyword -->形式でマーク)
+- AI定型フレーズを絶対に使わない(comprehensive, delve, dive into, crucial, landscape等)
 - 自然な日本語で、読みやすく情報量が豊富な文章
 - キーワードを自然に含める`;
 
