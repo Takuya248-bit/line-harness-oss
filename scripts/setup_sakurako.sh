@@ -87,7 +87,7 @@ api POST "/api/scenarios/$SCENARIO1_ID/steps" "{
   \"stepOrder\": 1,
   \"delayMinutes\": 0,
   \"messageType\": \"text\",
-  \"messageContent\": \"友だち追加ありがとう!\n\\\"酒と旅ゆく櫻子チャン\\\"の公式LINEへようこそ🍺\n\nここでは、YouTubeでは話せない\nリアルなショート動画の裏側を配信してるよ!\n\nまずはお礼に、今すぐ使えるプレゼントを用意しました。\n\n▼ショート動画で最初の1万再生を取るチェックリスト（PDF）\n→ 受け取りはこちら: __PDF_URL__\"
+  \"messageContent\": \"友だち追加ありがとう!\n\\\"酒と旅ゆく櫻子チャン\\\"の公式LINEへようこそ🍺\n\nここでは、YouTubeでは話せない\nリアルなショート動画の裏側を配信してるよ!\n\nまずはお礼に、今すぐ使えるプレゼントを用意しました。\n\n▼ショート動画で最初の1万再生を取るチェックリスト（PDF）\n→ 受け取りはこちら: https://drive.google.com/file/d/1APFibZJDmt5ZWnINTzS0gZhgipLJsA4G/view?usp=drivesdk\"
 }" > /dev/null
 echo "    OK"
 
@@ -107,7 +107,7 @@ api POST "/api/scenarios/$SCENARIO1_ID/steps" "{
   \"stepOrder\": 3,
   \"delayMinutes\": 4320,
   \"messageType\": \"text\",
-  \"messageContent\": \"伸びない人がやりがちなこと、知ってる?\n\n1. 冒頭3秒に全力を入れてない\n2. 「良い動画」を作ろうとしてる（止まる動画じゃなくて）\n3. データを見ずに感覚で投稿してる\n\nこれ、昔の私もやってたやつ。\n\nYouTubeは運ゲーじゃなくて構造ゲー。\n構造がわかれば、再現性が生まれるよ。\n\nもっと詳しく知りたい人は\nnoteに全部書いたから読んでみてね。\n\n▼約1年半で登録者32万人に伸ばしたショート動画戦略\n→ __NOTE_URL__\"
+  \"messageContent\": \"伸びない人がやりがちなこと、知ってる?\n\n1. 冒頭3秒に全力を入れてない\n2. 「良い動画」を作ろうとしてる（止まる動画じゃなくて）\n3. データを見ずに感覚で投稿してる\n\nこれ、昔の私もやってたやつ。\n\nYouTubeは運ゲーじゃなくて構造ゲー。\n構造がわかれば、再現性が生まれるよ。\n\nもっと詳しく知りたい人は\nnoteに全部書いたから読んでみてね。\n\n▼約1年半で登録者32万人に伸ばしたショート動画戦略\n→ https://note.com/sakurako_tabi/n/nd8165736b2c4\"
 }" > /dev/null
 echo "    OK"
 
@@ -117,7 +117,7 @@ api POST "/api/scenarios/$SCENARIO1_ID/steps" "{
   \"stepOrder\": 4,
   \"delayMinutes\": 7200,
   \"messageType\": \"text\",
-  \"messageContent\": \"ここまで読んでくれてありがとう!\n\nちょっと聞いてもいい?\n\n今こんなことで悩んでない?\n\n・毎日投稿してるのに伸びない\n・編集に時間かけてるのに再生されない\n・収益化したいけど何から手をつければ...\n・にじさんじのオーディション受けたいけど不安\n\nもし当てはまるなら、\n私のコンサルで一緒に解決できるかも。\n\n30分のスポットコンサルで\nあなたのチャンネルを見て、具体的にアドバイスするよ。\n\n気になったら「コンサル」って送ってね!\"
+  \"messageContent\": \"ここまで読んでくれてありがとう!\n\nちょっと聞いてもいい?\n\n今こんなことで悩んでない?\n\n・毎日投稿してるのに伸びない\n・編集に時間かけてるのに再生されない\n・収益化したいけど何から手をつければ...\n・にじさんじなどのオーディション受けたいけど不安\n\nもし当てはまるなら、\n私のコンサルで一緒に解決できるかも。\n\n30分のスポットコンサルで\nあなたのチャンネルを見て、具体的にアドバイスするよ。\n\n気になったら「コンサル」って送ってね!\"
 }" > /dev/null
 echo "    OK"
 
@@ -127,7 +127,7 @@ api POST "/api/scenarios/$SCENARIO1_ID/steps" "{
   \"stepOrder\": 5,
   \"delayMinutes\": 10080,
   \"messageType\": \"text\",
-  \"messageContent\": \"最後にひとつだけ。\n\nこのLINEに登録してくれたってことは\nYouTubeを本気でやりたい人だと思う。\n\n私は200件以上のアカウント運用を支援してきて\nひとつだけ確信してることがある。\n\n「伸びないのは努力不足じゃなくて、努力の方向のズレ」\n\n方向さえ合えば、あとは積み上げるだけ。\n\n今月は限定でスポットコンサルの枠を開けてるので\n気になったら「コンサル」って送ってね。\n\nそれじゃ、また配信で!🍺\"
+  \"messageContent\": \"最後にひとつだけ。\n\nこのLINEに登録してくれたってことは\nYouTubeを本気でやりたい人だと思う。\n\n私は200件以上のアカウント運用を支援してきて\nひとつだけ確信してることがある。\n\n「伸びないのは努力不足じゃなくて、努力の方向のズレ」\n\n方向さえ合えば、あとは積み上げるだけ。\n\n今月は限定でスポットコンサルの枠を開けてるので\n気になったら「コンサル」って送ってね。\n\nそれじゃ、また動画で!🍺\"
 }" > /dev/null
 echo "    OK"
 echo ""
@@ -163,7 +163,7 @@ api POST "/api/scenarios/$SCENARIO2_ID/steps" "{
   \"stepOrder\": 2,
   \"delayMinutes\": 4320,
   \"messageType\": \"text\",
-  \"messageContent\": \"コンサルの件、検討中かな?\n\nちなみにnoteの有料記事を読んでくれた人は\n「note読者割」が使えるよ!\n\nまだ読んでない人は先にこっちを見てみてね。\n2,980円で全部の戦略が読めるから。\n\n▼約1年半で登録者32万人に伸ばしたショート動画戦略\n→ __NOTE_URL__\"
+  \"messageContent\": \"コンサルの件、検討中かな?\n\nちなみにnoteの有料記事を読んでくれた人は\n「note読者割」が使えるよ!\n\nまだ読んでない人は先にこっちを見てみてね。\n2,980円で全部の戦略が読めるから。\n\n▼約1年半で登録者32万人に伸ばしたショート動画戦略\n→ https://note.com/sakurako_tabi/n/nd8165736b2c4\"
 }" > /dev/null
 echo "    OK"
 echo ""
@@ -230,7 +230,7 @@ api POST /api/automations "{
   \"eventType\": \"message_received\",
   \"conditions\": {\"keyword\": \"料金\", \"matchType\": \"exact\"},
   \"actions\": [
-    {\"type\": \"reply\", \"messageType\": \"text\", \"content\": \"各プランの料金はこちら!\n\n1. 30分スポットコンサル: __PRICE_SPOT__\n2. コンサルレポート制作: __PRICE_REPORT__\n3. オーディション対策レポート: __PRICE_AUDITION__\n\nnote読者は特別割引あり!\n\n気になるプランがあれば番号で教えてね!\"}
+    {\"type\": \"reply\", \"messageType\": \"text\", \"content\": \"各プランの料金はこちら!\n\n1. 30分スポットコンサル: 10,000円（税込）\n2. コンサルレポート制作: 100,000円（税込）\n3. オーディション対策レポート: 79,800円（税込）\n4. アカウント開設サービス: 40,000円（税込）\n\nnote読者は特別割引あり!\n\n気になるプランがあれば番号で教えてね!\"}
   ],
   \"priority\": 10
 }" > /dev/null
@@ -243,7 +243,7 @@ api POST /api/automations "{
   \"eventType\": \"message_received\",
   \"conditions\": {\"keyword\": \"note\", \"matchType\": \"exact\"},
   \"actions\": [
-    {\"type\": \"reply\", \"messageType\": \"text\", \"content\": \"noteの有料記事はこちら!\n\n▼約1年半で登録者32万人に伸ばしたショート動画戦略\n→ __NOTE_URL__\n\n2,980円で、私がやってきた全戦略を公開してるよ。\n\n・冒頭3秒の設計テクニック\n・データ分析の方法\n・収益化ルートの作り方\n\n読んだ人はコンサルの割引もあるよ!\"}
+    {\"type\": \"reply\", \"messageType\": \"text\", \"content\": \"noteの有料記事はこちら!\n\n▼約1年半で登録者32万人に伸ばしたショート動画戦略\n→ https://note.com/sakurako_tabi/n/nd8165736b2c4\n\n2,980円で、私がやってきた全戦略を公開してるよ。\n\n・冒頭3秒の設計テクニック\n・データ分析の方法\n・収益化ルートの作り方\n\n読んだ人はコンサルの割引もあるよ!\"}
   ],
   \"priority\": 10
 }" > /dev/null
@@ -358,9 +358,9 @@ echo "    3. note購入者フォロー (ID: $SCENARIO3_ID) - 2ステップ"
 echo "  自動応答: 10キーワード"
 echo ""
 echo "プレースホルダー（後で更新が必要）:"
-echo "  __PDF_URL__     - 無料特典PDFのダウンロードURL"
-echo "  __NOTE_URL__    - noteの有料記事URL"
-echo "  __PRICE_SPOT__  - スポットコンサル料金"
-echo "  __PRICE_REPORT__ - レポート制作料金"
-echo "  __PRICE_AUDITION__ - オーディション対策料金"
+echo "  https://drive.google.com/file/d/1APFibZJDmt5ZWnINTzS0gZhgipLJsA4G/view?usp=drivesdk     - 無料特典PDFのダウンロードURL"
+echo "  https://note.com/sakurako_tabi/n/nd8165736b2c4    - noteの有料記事URL"
+echo "  30分 10,000円（税込）  - スポットコンサル料金"
+echo "  100,000円（税込） - レポート制作料金"
+echo "  79,800円（税込） - オーディション対策料金"
 echo ""

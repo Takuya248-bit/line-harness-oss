@@ -55,6 +55,41 @@ app.use('*', cors({ origin: '*' }));
 // Auth middleware — skips /webhook and /docs automatically
 app.use('*', authMiddleware);
 
+// Debug: test automation matching
+app.post('/api/debug/test-autoreply', async (c) => {
+  const db = c.env.DB;
+  const { text } = await c.req.json<{ text: string }>();
+  const results: string[] = [];
+
+  // Check auto_replies
+  const ar = await db.prepare('SELECT id, keyword, match_type FROM auto_replies WHERE is_active = 1').all();
+  results.push(`auto_replies count: ${ar.results.length}`);
+
+  // Check automations
+  const am = await db.prepare("SELECT id, name, conditions, substr(actions,1,100) as actions_preview FROM automations WHERE is_active = 1 AND event_type = 'message_received'").all();
+  results.push(`automations count: ${am.results.length}`);
+
+  for (const a of am.results as any[]) {
+    const cond = JSON.parse(a.conditions);
+    const isMatch = cond.matchType === 'exact' ? text === cond.keyword : text.includes(cond.keyword);
+    results.push(`  ${a.name}: keyword="${cond.keyword}" matchType=${cond.matchType} match=${isMatch}`);
+  }
+
+  // Try sending via LINE push
+  try {
+    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    await lineClient.pushMessage('Uc938c4a98e320d02c15744b950a25b6f', [{
+      type: 'text',
+      text: `Debug: automations matched for "${text}"\n${results.join('\n')}`,
+    }]);
+    results.push('pushMessage: OK');
+  } catch (err: any) {
+    results.push(`pushMessage error: ${err.message}`);
+  }
+
+  return c.json({ success: true, results });
+});
+
 // Mount route groups — MVP & Round 2
 app.route('/', webhook);
 app.route('/', friends);

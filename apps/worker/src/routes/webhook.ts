@@ -304,13 +304,8 @@ async function handleEvent(
     // The replyToken is only valid for ~1 minute after the message event
 
     // 1. auto_replies テーブル（レガシー）
-    const autoReplyQuery = lineAccountId
-      ? `SELECT * FROM auto_replies WHERE is_active = 1 AND (line_account_id IS NULL OR line_account_id = ?) ORDER BY created_at ASC`
-      : `SELECT * FROM auto_replies WHERE is_active = 1 AND line_account_id IS NULL ORDER BY created_at ASC`;
-    const autoReplyStmt = lineAccountId
-      ? db.prepare(autoReplyQuery).bind(lineAccountId)
-      : db.prepare(autoReplyQuery);
-    const autoReplies = await autoReplyStmt
+    const autoReplyQuery = `SELECT * FROM auto_replies WHERE is_active = 1 ORDER BY created_at ASC`;
+    const autoReplies = await db.prepare(autoReplyQuery)
       .all<{
         id: string;
         keyword: string;
@@ -384,7 +379,13 @@ async function handleEvent(
               if (action.type === 'reply') {
                 const expandedContent = expandVariables(action.content, friend as { id: string; display_name: string | null; user_id: string | null }, workerUrl);
                 const replyMsg = buildMessage(action.messageType || 'text', expandedContent);
-                await lineClient.replyMessage(event.replyToken, [replyMsg]);
+                // Try replyMessage first, fall back to pushMessage if replyToken expired
+                try {
+                  await lineClient.replyMessage(event.replyToken, [replyMsg]);
+                } catch (replyErr) {
+                  console.error('replyMessage failed, trying pushMessage:', replyErr);
+                  await lineClient.pushMessage(event.source.userId!, [replyMsg]);
+                }
 
                 const outLogId = crypto.randomUUID();
                 await db
