@@ -1,6 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
+  safelist: [
+    'from-cyan-500', 'to-cyan-600',
+    'from-emerald-500', 'to-emerald-600',
+    'from-violet-500', 'to-violet-600',
+  ],
   theme: {
     extend: {
       colors: {

@@ -17,11 +17,22 @@ const { title, description } = Astro.props;
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{title}</title>
 
+    <!-- Canonical -->
+    <link rel="canonical" href="__SITE_URL__" />
+
     <!-- OGP -->
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="ja_JP" />
+    <meta property="og:image" content="__OG_IMAGE_URL__" />
+    <meta property="og:url" content="__SITE_URL__" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content="__OG_IMAGE_URL__" />
 
     <!-- JSON-LD -->
     <script type="application/ld+json" set:html={JSON.stringify({
@@ -32,6 +43,12 @@ const { title, description } = Astro.props;
           "name": "LINE Harness",
           "description": "LINE公式アカウント自動化の構築代行サービス",
           "url": "https://line-harness.pages.dev",
+          "telephone": "__PHONE__",
+          "image": "__OG_IMAGE_URL__",
+          "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "JP"
+          },
           "priceRange": "$$",
           "areaServed": {
             "@type": "Country",
@@ -76,7 +93,7 @@ const { title, description } = Astro.props;
     <header class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
       <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         <a href="/" class="flex items-center gap-2 text-lg font-bold text-gray-800">
-          <img src="/favicon.svg" alt="" width="28" height="28" />
+          <img src="/favicon.svg" alt="LINE Harness" width="28" height="28" />
           LINE Harness
         </a>
         <a href="#contact" class="text-sm font-semibold text-white bg-cyan-500 hover:bg-cyan-600 px-4 py-2 rounded-full transition-colors">
@@ -99,6 +116,10 @@ const { title, description } = Astro.props;
           <a href="#pricing" class="hover:text-white transition-colors">料金プラン</a>
           <a href="#faq" class="hover:text-white transition-colors">よくある質問</a>
           <a href="#contact" class="hover:text-white transition-colors">お問い合わせ</a>
+        </div>
+        <div class="flex justify-center gap-6 text-xs mb-8">
+          <a href="__TOKUSHOHO_URL__" class="hover:text-white transition-colors">特商法に基づく表記</a>
+          <a href="__PRIVACY_URL__" class="hover:text-white transition-colors">プライバシーポリシー</a>
         </div>
         <p class="text-xs text-gray-600">&copy; 2026 LINE Harness. All rights reserved.</p>
       </div>

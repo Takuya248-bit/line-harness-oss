@@ -23,6 +23,20 @@ const faqs = [
 ];
 ---
 
+<!-- FAQ JSON-LD structured data -->
+<script type="application/ld+json" set:html={JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": faqs.map((faq) => ({
+    "@type": "Question",
+    "name": faq.question,
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": faq.answer,
+    },
+  })),
+})} />
+
 <section id="faq" class="py-20">
   <div class="max-w-3xl mx-auto px-4">
     <p class="text-cyan-600 font-semibold text-center mb-2">FAQ</p>
