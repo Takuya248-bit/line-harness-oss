@@ -40,3 +40,16 @@ export interface WPPostResponse {
   link: string;
   status: string;
 }
+
+export interface CaseStudy {
+  id: number;
+  business_name: string;
+  industry: string;
+  challenge: string;
+  solution: string;
+  result: string;
+  quote: string | null;
+  metrics_json: string | null;
+  is_anonymized: number;
+  created_at: string;
+}

@@ -1,6 +1,7 @@
 import type { Env, Keyword } from './types';
-import { generateOutline, generateSection } from './claude';
-import { createDraftPost } from './wordpress';
+import { generateOutline, generateSection, polishArticle } from './claude';
+import { createDraftPost, publishPost } from './wordpress';
+import { fetchCaseStudies, buildCaseStudyPrompt } from './case-studies';
 
 interface Outline {
   title: string;
@@ -10,6 +11,7 @@ interface Outline {
     h2: string;
     h3s: string[];
     key_points: string[];
+    experience_note?: string;
   }>;
 }
 
@@ -26,26 +28,50 @@ export async function processKeyword(env: Env, keyword: Keyword): Promise<{ succ
     try {
       outline = JSON.parse(outlineRaw);
     } catch {
-      // Try extracting JSON from response
       const match = outlineRaw.match(/\{[\s\S]*\}/);
       if (!match) throw new Error('Failed to parse outline JSON');
       outline = JSON.parse(match[0]);
     }
 
-    // 3. Generate content section by section
-    const contentParts: string[] = [];
-    for (const section of outline.sections) {
-      const sectionOutline = JSON.stringify(section);
-      const sectionHtml = await generateSection(env, keyword.keyword, outline.title, sectionOutline);
-      contentParts.push(sectionHtml);
-    }
-    const fullContent = contentParts.join('\n\n');
+    // 2.5. Fetch case studies for this keyword
+    const caseStudies = await fetchCaseStudies(env, keyword.keyword);
+    const caseStudyPrompt = buildCaseStudyPrompt(caseStudies);
 
-    // 4. Count words (Japanese: count characters excluding HTML tags)
-    const textOnly = fullContent.replace(/<[^>]*>/g, '');
+    // Determine which section index to inject case studies (mid-to-late: ~60-70% through)
+    const totalSections = outline.sections.length;
+    const injectionIndex = Math.max(0, Math.floor(totalSections * 0.6));
+
+    // 3. Generate content section by section (with context passing)
+    const contentParts: string[] = [];
+    let previousSections = '';
+    for (let i = 0; i < outline.sections.length; i++) {
+      const section = outline.sections[i];
+      const sectionOutline = JSON.stringify(section);
+      // Inject case study prompt at the target section
+      const csPrompt = i === injectionIndex ? caseStudyPrompt : undefined;
+      const sectionHtml = await generateSection(
+        env,
+        keyword.keyword,
+        outline.title,
+        sectionOutline,
+        previousSections,
+        csPrompt
+      );
+      contentParts.push(sectionHtml);
+      // Pass summary of previous sections to avoid repetition
+      const textOnly = sectionHtml.replace(/<[^>]*>/g, '').substring(0, 300);
+      previousSections += `\n[${section.h2}]: ${textOnly}...`;
+    }
+    const rawContent = contentParts.join('\n\n');
+
+    // 4. Polish: AI review pass (intro, CTA, anti-AI cleanup)
+    const polishedContent = await polishArticle(env, keyword.keyword, outline.title, rawContent);
+
+    // 5. Count characters (excluding HTML tags)
+    const textOnly = polishedContent.replace(/<[^>]*>/g, '');
     const wordCount = textOnly.length;
 
-    // 5. Save article to DB
+    // 6. Save article to DB
     const result = await env.DB.prepare(`
       INSERT INTO seo_articles (keyword_id, title, slug, meta_description, content, status, word_count, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, 'draft', ?, datetime(), datetime())
@@ -54,37 +80,38 @@ export async function processKeyword(env: Env, keyword: Keyword): Promise<{ succ
       outline.title,
       outline.slug,
       outline.meta_description,
-      fullContent,
+      polishedContent,
       wordCount
     ).run();
 
     const articleId = result.meta.last_row_id;
 
-    // 6. Post to WordPress as draft
+    // 7. Post to WordPress and auto-publish
     const wpResult = await createDraftPost(
       env,
       outline.title,
-      fullContent,
+      polishedContent,
       outline.slug,
       outline.meta_description
     );
 
-    // 7. Update article with WP post ID
+    await publishPost(env, wpResult.id);
+
+    // 8. Update article with WP post ID
     await env.DB.prepare('UPDATE seo_articles SET wp_post_id = ?, status = ?, updated_at = datetime() WHERE id = ?')
-      .bind(wpResult.id, 'posted', articleId)
+      .bind(wpResult.id, 'published', articleId)
       .run();
 
-    // 8. Update keyword status
+    // 9. Update keyword status
     await env.DB.prepare('UPDATE seo_keywords SET status = ?, updated_at = datetime() WHERE id = ?')
-      .bind('posted', keyword.id)
+      .bind('published', keyword.id)
       .run();
 
     return {
       success: true,
-      message: `Article "${outline.title}" created (${wordCount} chars) → WP draft #${wpResult.id}`,
+      message: `Article "${outline.title}" published (${wordCount} chars) → WP #${wpResult.id} (${wpResult.link})`,
     };
   } catch (error) {
-    // Mark as failed
     await env.DB.prepare('UPDATE seo_keywords SET status = ?, updated_at = datetime() WHERE id = ?')
       .bind('failed', keyword.id)
       .run();

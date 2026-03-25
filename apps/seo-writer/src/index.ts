@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
-import type { Env, Keyword } from './types';
+import type { Env, Keyword, CaseStudy } from './types';
 import { runPipeline } from './pipeline';
+import { insertCaseStudy } from './case-studies';
 
 type HonoEnv = { Bindings: Env };
 
@@ -60,6 +61,43 @@ app.get('/api/keywords', async (c) => {
   const stmt = c.env.DB.prepare(query);
   const { results } = params.length ? await stmt.bind(...params).all<Keyword>() : await stmt.all<Keyword>();
   return c.json({ success: true, keywords: results });
+});
+
+// Add case study
+app.post('/api/case-studies', async (c) => {
+  const body = await c.req.json<{
+    business_name: string;
+    industry: string;
+    challenge: string;
+    solution: string;
+    result: string;
+    quote?: string;
+    metrics_json?: string;
+    is_anonymized?: boolean;
+  }>();
+
+  if (!body.business_name || !body.industry || !body.challenge || !body.solution || !body.result) {
+    return c.json({ success: false, error: 'Missing required fields: business_name, industry, challenge, solution, result' }, 400);
+  }
+
+  const id = await insertCaseStudy(c.env, body);
+  return c.json({ success: true, id });
+});
+
+// List case studies
+app.get('/api/case-studies', async (c) => {
+  const industry = c.req.query('industry');
+  let query = 'SELECT * FROM case_studies';
+  const params: string[] = [];
+  if (industry) {
+    query += ' WHERE industry = ?';
+    params.push(industry);
+  }
+  query += ' ORDER BY created_at DESC';
+
+  const stmt = c.env.DB.prepare(query);
+  const { results } = params.length ? await stmt.bind(...params).all<CaseStudy>() : await stmt.all<CaseStudy>();
+  return c.json({ success: true, case_studies: results });
 });
 
 // List articles
