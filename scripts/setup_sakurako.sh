@@ -28,8 +28,8 @@ echo ""
 echo ">>> Step 1: タグ作成"
 
 TAG_IDS=()
-TAG_NAMES=("友だち追加" "コンサル興味" "note購入者" "コンサル申込済" "配信停止")
-TAG_COLORS=("#3B82F6" "#10B981" "#F59E0B" "#EF4444" "#64748B")
+TAG_NAMES=("友だち追加" "コンサル興味" "note購入者" "コンサル申込済" "配信停止" "オーディション対策興味" "台本テンプレ興味" "サービス詳細閲覧")
+TAG_COLORS=("#3B82F6" "#10B981" "#F59E0B" "#EF4444" "#64748B" "#8B5CF6" "#EC4899" "#06B6D4")
 
 for i in "${!TAG_NAMES[@]}"; do
   echo "  Creating tag: ${TAG_NAMES[$i]}"
@@ -49,6 +49,9 @@ TAG_CONSUL_INTEREST=${TAG_IDS[1]}
 TAG_NOTE_BUYER=${TAG_IDS[2]}
 TAG_CONSUL_APPLIED=${TAG_IDS[3]}
 TAG_STOP=${TAG_IDS[4]}
+TAG_AUDITION_INTEREST=${TAG_IDS[5]}
+TAG_SCRIPT_INTEREST=${TAG_IDS[6]}
+TAG_DETAIL_VIEW=${TAG_IDS[7]}
 
 echo ""
 echo "Tag IDs:"
@@ -57,6 +60,9 @@ echo "  コンサル興味: $TAG_CONSUL_INTEREST"
 echo "  note購入者: $TAG_NOTE_BUYER"
 echo "  コンサル申込済: $TAG_CONSUL_APPLIED"
 echo "  配信停止: $TAG_STOP"
+echo "  オーディション対策興味: $TAG_AUDITION_INTEREST"
+echo "  台本テンプレ興味: $TAG_SCRIPT_INTEREST"
+echo "  サービス詳細閲覧: $TAG_DETAIL_VIEW"
 echo ""
 
 # ============================================
@@ -280,18 +286,60 @@ api POST /api/automations "{
 }" > /dev/null
 echo "    OK"
 
+# オーディションテンプレ
+echo "  Creating auto-reply: オーディションテンプレ"
+api POST /api/automations "{
+  \"name\": \"キーワード応答: オーディションテンプレ\",
+  \"eventType\": \"message_received\",
+  \"conditions\": {\"keyword\": \"オーディションテンプレ\", \"matchType\": \"exact\"},
+  \"actions\": [
+    {\"type\": \"reply\", \"messageType\": \"text\", \"content\": \"オーディション対策テンプレートに興味を持ってくれたんだね!\n\nにじさんじをはじめとするVTuberオーディションに向けて、私が実際に使えるテンプレートをまとめたよ。\n\nセットで受け取れる内容はこちら:\n\n1. 自己PR文テンプレート\n→ 事務所が見てるポイントに沿った構成で、穴埋めするだけで説得力のあるPR文が完成するよ\n\n2. 応募フォームの書き方見本\n→ 実際の記入例つき。「何を書けばいいかわからない」がなくなる\n\n3. 面接対策チェックリスト\n→ よく聞かれる質問と回答の考え方をまとめてる。本番前にこれを見直すだけでOK\n\nテンプレートはコンサルレポートの一部として提供してるよ。\n単体で欲しい場合はオーディション対策レポートがおすすめ。\n\n詳しい料金は「料金」って送ってね!\"},
+    {\"type\": \"add_tag\", \"tagId\": \"$TAG_AUDITION_INTEREST\"}
+  ],
+  \"priority\": 10
+}" > /dev/null
+echo "    OK"
+
+# 台本希望
+echo "  Creating auto-reply: 台本希望"
+api POST /api/automations "{
+  \"name\": \"キーワード応答: 台本希望\",
+  \"eventType\": \"message_received\",
+  \"conditions\": {\"keyword\": \"台本希望\", \"matchType\": \"exact\"},
+  \"actions\": [
+    {\"type\": \"reply\", \"messageType\": \"text\", \"content\": \"ショート動画の台本テンプレ、用意してるよ!\n\nバズるショート動画って実は構成にパターンがあるの。\n\n私が使ってるテンプレはこの3パート構成:\n\n1. 冒頭3秒のフック\n→ 視聴者の指を止める一言。疑問形・衝撃・共感の3パターンから選ぶだけ\n\n2. 展開(10-20秒)\n→ テンポよく情報を出す構成。「結論→理由→具体例」の型に当てはめればOK\n\n3. オチ(ラスト3秒)\n→ 保存・シェアされる締め方のパターン集\n\nこのテンプレはnoteの有料記事にも載せてるけど、コンサルではあなたのジャンルに合わせてカスタマイズもできるよ。\n\nnoteで学ぶなら → 「note」と送ってね\nコンサルで相談するなら → 「コンサル」と送ってね\"},
+    {\"type\": \"add_tag\", \"tagId\": \"$TAG_SCRIPT_INTEREST\"}
+  ],
+  \"priority\": 10
+}" > /dev/null
+echo "    OK"
+
+# 詳細ください
+echo "  Creating auto-reply: 詳細ください"
+api POST /api/automations "{
+  \"name\": \"キーワード応答: 詳細ください\",
+  \"eventType\": \"message_received\",
+  \"conditions\": {\"keyword\": \"詳細ください\", \"matchType\": \"contains\"},
+  \"actions\": [
+    {\"type\": \"reply\", \"messageType\": \"text\", \"content\": \"サービスの詳細をまとめて紹介するね!\n\n--- コンサル(3プラン) ---\n\n1. 30分スポットコンサル\n→ チャンネルの課題分析+具体的な改善策を出すよ\n\n2. コンサルレポート制作\n→ 徹底分析して、改善点・企画案・収益化ルートを書面で納品\n\n3. オーディション対策レポート\n→ にじさんじ等の事務所別ノウハウ+応募フォーム添削つき\n\n--- note(有料記事) ---\n\n約1年半で登録者30万人に伸ばしたショート動画戦略を全公開(2,980円)\nnote読者はコンサル割引あり!\n\n--- オーディション対策テンプレート ---\n\n自己PR文テンプレ・応募フォーム書き方見本・面接チェックリストのセット\n\n気になるものがあれば、該当キーワードを送ってね:\n・コンサル → 「コンサル」\n・料金を知りたい → 「料金」\n・noteを見たい → 「note」\n・オーディション対策テンプレ → 「オーディションテンプレ」\n・台本テンプレ → 「台本希望」\"},
+    {\"type\": \"add_tag\", \"tagId\": \"$TAG_DETAIL_VIEW\"}
+  ],
+  \"priority\": 8
+}" > /dev/null
+echo "    OK"
+
 echo ""
 echo "============================================"
 echo " セットアップ完了!"
 echo "============================================"
 echo ""
 echo "作成したリソース:"
-echo "  タグ: 5個"
+echo "  タグ: 8個"
 echo "  シナリオ: 3本"
 echo "    1. 友だち追加シナリオ (ID: $SCENARIO1_ID) - 5ステップ"
 echo "    2. コンサル申込フォロー (ID: $SCENARIO2_ID) - 2ステップ"
 echo "    3. note購入者フォロー (ID: $SCENARIO3_ID) - 2ステップ"
-echo "  自動応答: 6キーワード"
+echo "  自動応答: 9キーワード"
 echo ""
 echo "プレースホルダー（後で更新が必要）:"
 echo "  __PDF_URL__     - 無料特典PDFのダウンロードURL"
