@@ -9,6 +9,7 @@ export interface LineAccount {
   name: string;
   channel_access_token: string;
   channel_secret: string;
+  token_expires_at: string | null;
   login_channel_id: string | null;
   login_channel_secret: string | null;
   liff_id: string | null;
@@ -70,7 +71,7 @@ export async function getLineAccountByChannelId(
 }
 
 export type UpdateLineAccountInput = Partial<
-  Pick<LineAccount, 'name' | 'channel_access_token' | 'channel_secret' | 'is_active'>
+  Pick<LineAccount, 'name' | 'channel_access_token' | 'channel_secret' | 'token_expires_at' | 'is_active'>
 >;
 
 export async function updateLineAccount(
@@ -92,6 +93,10 @@ export async function updateLineAccount(
   if (updates.channel_secret !== undefined) {
     fields.push('channel_secret = ?');
     values.push(updates.channel_secret);
+  }
+  if (updates.token_expires_at !== undefined) {
+    fields.push('token_expires_at = ?');
+    values.push(updates.token_expires_at);
   }
   if (updates.is_active !== undefined) {
     fields.push('is_active = ?');
