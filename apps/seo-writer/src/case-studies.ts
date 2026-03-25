@@ -70,6 +70,45 @@ ${blocks.join('\n\n')}
 事業者名・個人名は絶対に出さず、業種+地域+匿名（A様、B様等）で記載してください。`;
 }
 
+export function buildSplitCaseStudyPrompts(caseStudies: CaseStudy[]): [string, string] {
+  // First prompt: challenge + solution focus (injected at ~40%)
+  const challengeBlocks = caseStudies.map((cs) => {
+    return `[事例] ${cs.business_name}（${cs.industry}）
+課題: ${cs.challenge}
+施策: ${cs.solution}`;
+  });
+
+  const promptA = `
+
+以下の導入事例の「課題と施策」を記事内に自然に組み込んでください:
+
+${challengeBlocks.join('\n\n')}
+
+読者が「自分も同じ課題を抱えている」と共感できる形で記述してください。
+事業者名・個人名は絶対に出さず、業種+地域+匿名（A様、B様等）で記載してください。`;
+
+  // Second prompt: results + metrics focus (injected at ~70%)
+  const resultBlocks = caseStudies.map((cs) => {
+    let block = `[事例成果] ${cs.business_name}（${cs.industry}）
+成果: ${cs.result}`;
+    if (cs.quote) {
+      block += `\nお客様の声: ${cs.quote}`;
+    }
+    return block;
+  });
+
+  const promptB = `
+
+以下の導入事例の「成果と数値」を記事内に自然に組み込んでください:
+
+${resultBlocks.join('\n\n')}
+
+具体的な数値を正確に引用し、読者の検討段階で信頼性を補強する形で使ってください。
+事業者名・個人名は絶対に出さず、業種+地域+匿名（A様、B様等）で記載してください。`;
+
+  return [promptA, promptB];
+}
+
 export async function insertCaseStudy(
   env: Env,
   data: {
