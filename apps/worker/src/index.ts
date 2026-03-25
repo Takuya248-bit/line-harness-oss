@@ -117,6 +117,9 @@ h1{font-size:28px;font-weight:800;margin-bottom:8px}
 </html>`);
 });
 
+// Simple health check (no auth required — path is in auth middleware skip list)
+app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
+
 // 404 fallback
 app.notFound((c) => c.json({ success: false, error: 'Not found' }, 404));
 
