@@ -233,4 +233,87 @@ analytics.get('/api/analytics/scenarios', async (c) => {
   }
 });
 
+// ========== GET /api/analytics/funnel ==========
+// フェーズ別ファネル分析（phase_*タグベース）
+analytics.get('/api/analytics/funnel', async (c) => {
+  try {
+    const db = c.env.DB;
+    const lineAccountId = c.req.query('lineAccountId');
+
+    // フェーズ順序定義（休眠は別枠）
+    const phaseOrder = [
+      'phase_未相談',
+      'phase_相談済',
+      'phase_見積送付済',
+      'phase_入金待ち',
+      'phase_入金済',
+      'phase_休眠',
+    ];
+
+    // 各フェーズの現在人数
+    const accountJoin = lineAccountId
+      ? 'JOIN friends f ON f.id = ft.friend_id AND f.line_account_id = ?'
+      : '';
+    const phaseBinds = lineAccountId ? [lineAccountId] : [];
+
+    const phaseRows = await db
+      .prepare(
+        `SELECT t.id as tag_id, t.name, COUNT(DISTINCT ft.friend_id) as count
+         FROM friend_tags ft
+         JOIN tags t ON t.id = ft.tag_id
+         ${accountJoin}
+         WHERE t.name LIKE 'phase_%'
+         GROUP BY t.id, t.name
+         ORDER BY t.name`,
+      )
+      .bind(...phaseBinds)
+      .all<{ tag_id: string; name: string; count: number }>();
+
+    // フェーズデータをマップに変換
+    const phaseMap = new Map<string, { name: string; count: number; tag_id: string }>();
+    for (const row of phaseRows.results) {
+      phaseMap.set(row.name, { name: row.name, count: row.count, tag_id: row.tag_id });
+    }
+
+    // 順序通りにフェーズ配列を構成（データがないフェーズは0人で表示）
+    const phases = phaseOrder.map((name) => phaseMap.get(name) ?? { name, count: 0, tag_id: '' });
+
+    // コンバージョン率の算出（休眠を除くメインファネル）
+    const mainPhases = phaseOrder.filter((p) => p !== 'phase_休眠');
+    const conversions: Array<{ from: string; to: string; rate: number; count: number }> = [];
+    for (let i = 0; i < mainPhases.length - 1; i++) {
+      const fromPhase = phaseMap.get(mainPhases[i]);
+      const toPhase = phaseMap.get(mainPhases[i + 1]);
+      const fromCount = fromPhase?.count ?? 0;
+      const toCount = toPhase?.count ?? 0;
+      conversions.push({
+        from: mainPhases[i],
+        to: mainPhases[i + 1],
+        rate: fromCount > 0 ? Math.round((toCount / fromCount) * 1000) / 10 : 0,
+        count: toCount,
+      });
+    }
+
+    // 友だち総数
+    const friendWhere = lineAccountId ? 'WHERE line_account_id = ?' : '';
+    const friendBinds = lineAccountId ? [lineAccountId] : [];
+    const totalRow = await db
+      .prepare(`SELECT COUNT(*) as count FROM friends ${friendWhere}`)
+      .bind(...friendBinds)
+      .first<{ count: number }>();
+
+    return c.json({
+      success: true,
+      data: {
+        phases,
+        conversions,
+        total_friends: totalRow?.count ?? 0,
+      },
+    });
+  } catch (err) {
+    console.error('GET /api/analytics/funnel error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
 export { analytics };

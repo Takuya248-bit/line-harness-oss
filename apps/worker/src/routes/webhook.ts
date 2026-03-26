@@ -396,6 +396,16 @@ async function handleEvent(
                   .bind(outLogId, friend.id, action.messageType || 'text', action.content, jstNow())
                   .run();
               } else if (action.type === 'add_tag' && action.tagId && action.tagId !== 'UNKNOWN') {
+                // phase_*タグの排他制御: 新フェーズ付与時に旧フェーズを自動除去
+                const tagRow = await db.prepare('SELECT name FROM tags WHERE id = ?').bind(action.tagId).first<{name: string}>();
+                if (tagRow?.name?.startsWith('phase_')) {
+                  await db
+                    .prepare(`DELETE FROM friend_tags WHERE friend_id = ? AND tag_id IN (
+                      SELECT id FROM tags WHERE name LIKE 'phase_%' AND id != ?
+                    )`)
+                    .bind(friend.id, action.tagId)
+                    .run();
+                }
                 await db
                   .prepare(`INSERT OR IGNORE INTO friend_tags (id, friend_id, tag_id, created_at) VALUES (?, ?, ?, ?)`)
                   .bind(crypto.randomUUID(), friend.id, action.tagId, jstNow())
