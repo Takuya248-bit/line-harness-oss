@@ -37,6 +37,7 @@ import { forms } from './routes/forms.js';
 import { analytics } from './routes/analytics.js';
 import { xPosts } from './routes/x-posts.js';
 import { processXPosting } from './services/x-posting.js';
+import { processPhaseTransitions } from './services/phase-cron.js';
 
 export type Env = {
   Bindings: {
@@ -210,6 +211,13 @@ async function scheduled(
       processNotificationDeliveries(env.DB, lineClient),
     );
   }
+  // Phase auto-transition for each active account
+  for (const account of dbAccounts) {
+    if (account.is_active) {
+      jobs.push(processPhaseTransitions(env.DB, account.id));
+    }
+  }
+
   jobs.push(checkAccountHealth(env.DB));
   jobs.push(refreshLineAccessTokens(env.DB));
 
