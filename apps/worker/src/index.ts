@@ -57,6 +57,8 @@ export type Env = {
     X_ACCESS_SECRET: string;
     // AI content generation
     ANTHROPIC_API_KEY?: string;
+    // X posting config
+    X_MAX_DAILY_POSTS?: string;
   };
 };
 
@@ -219,6 +221,8 @@ async function scheduled(
         apiSecret: env.X_API_SECRET,
         accessToken: env.X_ACCESS_TOKEN,
         accessSecret: env.X_ACCESS_SECRET,
+      }, {
+        maxDailyPosts: env.X_MAX_DAILY_POSTS ? parseInt(env.X_MAX_DAILY_POSTS, 10) : undefined,
       }),
     );
   }
