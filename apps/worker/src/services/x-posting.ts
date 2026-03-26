@@ -15,11 +15,28 @@ import type { XApiConfig } from '../lib/x-api.js';
 // Ban対策定数
 // ---------------------------------------------------------------------------
 
-/** 1日の最大投稿数（X Free tier安全圏: 5-7投稿/日） */
-const MAX_DAILY_POSTS = 5;
+/**
+ * フェーズ制の日次投稿上限（アカウント年齢で自動切替）
+ * - 新規(1-14日): 3投稿/日（ウォームアップ）
+ * - 慣らし(15-28日): 8投稿/日
+ * - 通常(29-56日): 15投稿/日
+ * - フル稼働(57日〜): 20投稿/日
+ *
+ * X Free tier上限: 月1,500投稿（1日50投稿）
+ * 海外マーケター推奨: 既存アカウント15-20投稿/日が安全圏
+ */
+const DAILY_LIMITS_BY_PHASE = [
+  { minDays: 57, maxPosts: 20 },
+  { minDays: 29, maxPosts: 15 },
+  { minDays: 15, maxPosts: 8 },
+  { minDays: 0, maxPosts: 3 },
+];
+
+/** アカウント開設日（環境変数で上書き可能、デフォルトは今日） */
+const DEFAULT_ACCOUNT_CREATED = '2026-03-26';
 
 /** 1回のcron実行で処理する最大投稿数 */
-const MAX_POSTS_PER_RUN = 2;
+const MAX_POSTS_PER_RUN = 3;
 
 /** 連続投稿間の最小ウェイト（ms） - Bot検出回避 */
 const MIN_INTER_POST_DELAY = 30_000; // 30秒
@@ -60,14 +77,15 @@ export async function processXPosting(
     errors: [],
   };
 
-  // --- Ban対策1: 日次投稿上限チェック ---
+  // --- Ban対策1: フェーズ制の日次投稿上限チェック ---
+  const maxDailyPosts = getDailyLimit();
   const dailyCount = await getDailyPostCount(db);
-  if (dailyCount >= MAX_DAILY_POSTS) {
-    console.log(`[x-posting] Daily limit reached (${dailyCount}/${MAX_DAILY_POSTS}). Skipping.`);
+  if (dailyCount >= maxDailyPosts) {
+    console.log(`[x-posting] Daily limit reached (${dailyCount}/${maxDailyPosts}). Skipping.`);
     return result;
   }
 
-  const remainingToday = MAX_DAILY_POSTS - dailyCount;
+  const remainingToday = maxDailyPosts - dailyCount;
 
   // 1. 投稿予定を取得（scheduled_at <= 現在時刻 のもの）
   const scheduledPosts = await getScheduledXPosts(db);
@@ -244,6 +262,20 @@ function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
   }
   const union = a.size + b.size - intersection;
   return union === 0 ? 0 : intersection / union;
+}
+
+/** アカウント年齢に応じた日次投稿上限を返す */
+function getDailyLimit(): number {
+  const created = new Date(DEFAULT_ACCOUNT_CREATED);
+  const now = new Date();
+  const daysSinceCreation = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+
+  for (const phase of DAILY_LIMITS_BY_PHASE) {
+    if (daysSinceCreation >= phase.minDays) {
+      return phase.maxPosts;
+    }
+  }
+  return 3; // fallback
 }
 
 /** ランダム遅延（min-max ms） */

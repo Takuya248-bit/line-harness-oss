@@ -10,11 +10,21 @@ import type { XPostCategory, XPostCtaType } from '@line-crm/db';
 // CTA文言
 // ---------------------------------------------------------------------------
 
-const CTA_TEXTS: Record<string, string> = {
-  line: '\n\n▼ 無料相談はLINEから\nhttps://line.me/R/ti/p/@601wuvmw',
-  coconala: '\n\n▼ 構築代行はこちら（9,500円）\nhttps://coconala.com/services/4140764',
-  both: '\n\n▼ まず相談したい方\nhttps://line.me/R/ti/p/@601wuvmw\n▼ すぐ構築したい方\nhttps://coconala.com/services/4140764',
+// リンクは本文に入れない。セルフリプライ（ツリー2投目）に分離する
+// → シャドウバン回避 + 本文のインプレッション確保
+const CTA_REPLY_TEXTS: Record<string, string> = {
+  line: '▼ 無料相談はLINEから\nhttps://line.me/R/ti/p/@601wuvmw',
+  coconala: '▼ 構築代行はこちら（9,500円）\nhttps://coconala.com/services/4140764',
+  both: '▼ まず相談したい方\nhttps://line.me/R/ti/p/@601wuvmw\n\n▼ すぐ構築したい方\nhttps://coconala.com/services/4140764',
 };
+
+// 本文末尾に付ける誘導文（リンクなし、バリエーション）
+const CTA_TEASERS = [
+  '\n\n詳しくはリプ欄↓',
+  '\n\nリンクはリプに置いておきます↓',
+  '\n\n気になる方はリプ欄へ↓',
+  '\n\n↓詳細はリプ欄',
+];
 
 // ---------------------------------------------------------------------------
 // カテゴリ別デフォルトテンプレート（DB未登録時のフォールバック）
@@ -111,7 +121,7 @@ const CATEGORY_CTA_MAP: Record<XPostCategory, XPostCtaType> = {
 export async function generateXPostContent(
   db: D1Database,
   options?: { category?: XPostCategory; withCta?: XPostCtaType },
-): Promise<{ content: string; category: XPostCategory; ctaType: XPostCtaType }> {
+): Promise<{ content: string; category: XPostCategory; ctaType: XPostCtaType; ctaReplyText: string | null }> {
   const categories: XPostCategory[] = [
     'tips',
     'case_study',
@@ -144,16 +154,20 @@ export async function generateXPostContent(
     content = templates[Math.floor(Math.random() * templates.length)];
   }
 
-  // CTA付与
+  // CTA: リンクは本文に入れず、セルフリプライ用テキストとして分離
   const ctaType = options?.withCta ?? CATEGORY_CTA_MAP[category];
+  let ctaReplyText: string | null = null;
+
   if (ctaType !== 'none') {
-    const ctaText = CTA_TEXTS[ctaType];
-    if (ctaText) {
-      content += ctaText;
+    ctaReplyText = CTA_REPLY_TEXTS[ctaType] ?? null;
+    if (ctaReplyText) {
+      // 本文にはリンクなしの誘導文だけ追加
+      const teaser = CTA_TEASERS[Math.floor(Math.random() * CTA_TEASERS.length)];
+      content += teaser;
     }
   }
 
-  return { content, category, ctaType };
+  return { content, category, ctaType, ctaReplyText };
 }
 
 // ---------------------------------------------------------------------------
@@ -319,13 +333,19 @@ export async function scheduleWeeklyPosts(
       // Ban対策: CTA付きは1日最大1投稿（リンクスパム回避）
       const ctaType = slot === 0 ? CATEGORY_CTA_MAP[category] : 'none' as XPostCtaType;
 
-      const { content } = await generateXPostContent(db, {
+      const { content, ctaReplyText } = await generateXPostContent(db, {
         category,
         withCta: ctaType,
       });
 
+      // CTA付き → スレッド形式（本文---CTAリプライ）でシャドウバン回避
+      const postContent = ctaReplyText
+        ? `${content}\n---\n${ctaReplyText}`
+        : content;
+
       await createXPost(db, {
-        content,
+        content: postContent,
+        postType: ctaReplyText ? 'thread' : 'single',
         scheduledAt,
         category,
         ctaType,
