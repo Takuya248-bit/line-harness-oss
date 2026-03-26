@@ -11,6 +11,7 @@ import { LineClient } from '@line-crm/line-sdk';
 import { processBroadcastSend } from '../services/broadcast.js';
 import { processSegmentSend } from '../services/segment-send.js';
 import type { SegmentCondition } from '../services/segment-query.js';
+import { buildTagCondition } from '../services/segment-query.js';
 import type { Env } from '../index.js';
 
 const broadcasts = new Hono<Env>();
@@ -232,6 +233,85 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
     return c.json({ success: true, data: result ? serializeBroadcast(result) : null });
   } catch (err) {
     console.error('POST /api/broadcasts/:id/send-segment error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
+// POST /api/broadcasts/:id/send-tags - send to friends matching tag conditions
+// Simplified API for multi-tag segment sends.
+// Body: { tags: string[], tagMode: "and"|"or", excludeTags?: string[], lineAccountId: string }
+//
+// Examples:
+//   AND: { tags: ["tagA", "tagB"], tagMode: "and", lineAccountId: "acc1" }
+//         -> friends who have BOTH tagA AND tagB
+//   OR:  { tags: ["tagA", "tagB"], tagMode: "or", lineAccountId: "acc1" }
+//         -> friends who have tagA OR tagB
+//   Exclude: { tags: ["tagA"], tagMode: "and", excludeTags: ["tagC"], lineAccountId: "acc1" }
+//         -> friends who have tagA but NOT tagC
+broadcasts.post('/api/broadcasts/:id/send-tags', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const existing = await getBroadcastById(c.env.DB, id);
+
+    if (!existing) {
+      return c.json({ success: false, error: 'Broadcast not found' }, 404);
+    }
+
+    if (existing.status === 'sending' || existing.status === 'sent') {
+      return c.json({ success: false, error: 'Broadcast is already sent or sending' }, 400);
+    }
+
+    const body = await c.req.json<{
+      tags: string[];
+      tagMode: 'and' | 'or';
+      excludeTags?: string[];
+      lineAccountId: string;
+    }>();
+
+    // Validation
+    if (!body.lineAccountId) {
+      return c.json(
+        { success: false, error: 'lineAccountId is required' },
+        400,
+      );
+    }
+
+    if (!Array.isArray(body.tags) || body.tags.length === 0) {
+      return c.json(
+        { success: false, error: 'tags must be a non-empty array of tag IDs' },
+        400,
+      );
+    }
+
+    if (body.tagMode !== 'and' && body.tagMode !== 'or') {
+      return c.json(
+        { success: false, error: 'tagMode must be "and" or "or"' },
+        400,
+      );
+    }
+
+    if (body.excludeTags !== undefined && !Array.isArray(body.excludeTags)) {
+      return c.json(
+        { success: false, error: 'excludeTags must be an array of tag IDs' },
+        400,
+      );
+    }
+
+    // Build segment condition from tag parameters
+    const condition = buildTagCondition({
+      tags: body.tags,
+      tagMode: body.tagMode,
+      excludeTags: body.excludeTags,
+      lineAccountId: body.lineAccountId,
+    });
+
+    const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+    await processSegmentSend(c.env.DB, lineClient, id, condition);
+
+    const result = await getBroadcastById(c.env.DB, id);
+    return c.json({ success: true, data: result ? serializeBroadcast(result) : null });
+  } catch (err) {
+    console.error('POST /api/broadcasts/:id/send-tags error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });
