@@ -478,17 +478,31 @@ friends.post('/api/friends/:id/messages', async (c) => {
 interface ImportRequestBody {
   friends: ImportFriendRow[];
   csv?: string; // raw CSV text (Lステップ export format)
+  lineAccountId?: string; // required for multi-account
+  addLegacyTag?: boolean; // auto-add "data_旧" tag (default: true)
 }
 
 const BATCH_SIZE = 100;
+
+/** Normalize date string from Lステップ format to ISO-like format */
+function normalizeDate(dateStr: string): string {
+  // Handle "2025-01-01 10:00" or "2025/01/01 10:00:00" formats
+  const cleaned = dateStr.replace(/\//g, '-').trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(cleaned)) {
+    return cleaned;
+  }
+  return jstNow(); // fallback
+}
 
 async function processBatch(
   db: D1Database,
   batch: ImportFriendRow[],
   tagCache: Map<string, string>,
-): Promise<{ created: number; updated: number; errors: string[] }> {
+  lineAccountId: string | null,
+  legacyTagId: string | null,
+): Promise<{ created: number; skipped: number; errors: string[] }> {
   let created = 0;
-  let updated = 0;
+  let skipped = 0;
   const errors: string[] = [];
 
   for (const row of batch) {
@@ -498,29 +512,48 @@ async function processBatch(
         continue;
       }
 
-      // Check if friend already exists to distinguish create vs update
+      // Check if friend already exists - skip if so (don't overwrite live data)
       const existing = await getFriendByLineUserId(db, row.line_user_id);
-
-      // Upsert friend
-      const friend = await upsertFriend(db, {
-        lineUserId: row.line_user_id,
-        displayName: row.display_name || null,
-      });
-
       if (existing) {
-        updated++;
-      } else {
-        created++;
+        skipped++;
+        continue;
       }
 
-      // Merge metadata if provided
-      if (row.metadata && Object.keys(row.metadata).length > 0) {
-        const existingMeta = JSON.parse(friend.metadata || '{}');
-        const merged = { ...existingMeta, ...row.metadata };
-        await db
-          .prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
-          .bind(JSON.stringify(merged), jstNow(), friend.id)
-          .run();
+      // Create new friend
+      const now = jstNow();
+      const friendId = crypto.randomUUID();
+
+      // Use registration_date from CSV if available, otherwise now
+      const createdAt = row.registration_date
+        ? normalizeDate(row.registration_date)
+        : now;
+
+      // Build metadata
+      const metadata = row.metadata && Object.keys(row.metadata).length > 0
+        ? JSON.stringify(row.metadata)
+        : '{}';
+
+      await db
+        .prepare(
+          `INSERT INTO friends (id, line_user_id, display_name, picture_url, status_message, is_following, line_account_id, metadata, created_at, updated_at)
+           VALUES (?, ?, ?, NULL, NULL, 0, ?, ?, ?, ?)`,
+        )
+        .bind(
+          friendId,
+          row.line_user_id,
+          row.display_name || null,
+          lineAccountId,
+          metadata,
+          createdAt,
+          now,
+        )
+        .run();
+
+      created++;
+
+      // Add "data_旧" tag for imported legacy data
+      if (legacyTagId) {
+        await addTagToFriend(db, friendId, legacyTagId);
       }
 
       // Process tags
@@ -547,7 +580,7 @@ async function processBatch(
             tagCache.set(trimmed, tagId);
           }
 
-          await addTagToFriend(db, friend.id, tagId);
+          await addTagToFriend(db, friendId, tagId);
         }
       }
     } catch (err) {
@@ -556,12 +589,15 @@ async function processBatch(
     }
   }
 
-  return { created, updated, errors };
+  return { created, skipped, errors };
 }
 
 friends.post('/api/friends/import', async (c) => {
   try {
     const body = await c.req.json<ImportRequestBody>();
+
+    // lineAccountId for multi-account support
+    const lineAccountId = body.lineAccountId || null;
 
     // Support both JSON array and raw CSV
     let rows: ImportFriendRow[];
@@ -575,7 +611,7 @@ friends.post('/api/friends/import', async (c) => {
     }
 
     if (rows.length === 0) {
-      return c.json({ success: true, data: { created: 0, updated: 0, errors: [] } });
+      return c.json({ success: true, data: { created: 0, skipped: 0, errors: [] } });
     }
 
     const db = c.env.DB;
@@ -587,8 +623,30 @@ friends.post('/api/friends/import', async (c) => {
       tagCache.set(t.name, t.id);
     }
 
+    // Ensure "data_旧" legacy tag exists (per data generation separation decision)
+    const addLegacyTag = body.addLegacyTag !== false; // default true
+    let legacyTagId: string | null = null;
+    if (addLegacyTag) {
+      const legacyTagName = 'data_旧';
+      let existingId = tagCache.get(legacyTagName);
+      if (!existingId) {
+        const existingTag = await db
+          .prepare('SELECT id FROM tags WHERE name = ?')
+          .bind(legacyTagName)
+          .first<{ id: string }>();
+        if (existingTag) {
+          existingId = existingTag.id;
+        } else {
+          const newTag = await createTag(db, { name: legacyTagName, color: '#6B7280' });
+          existingId = newTag.id;
+        }
+        tagCache.set(legacyTagName, existingId);
+      }
+      legacyTagId = existingId;
+    }
+
     let totalCreated = 0;
-    let totalUpdated = 0;
+    let totalSkipped = 0;
     const allErrors: string[] = [];
 
     // Process in batches of BATCH_SIZE
@@ -599,13 +657,13 @@ friends.post('/api/friends/import', async (c) => {
 
       console.log(`[import] Processing batch ${batchNum}/${totalBatches} (${batch.length} records)`);
 
-      const result = await processBatch(db, batch, tagCache);
+      const result = await processBatch(db, batch, tagCache, lineAccountId, legacyTagId);
       totalCreated += result.created;
-      totalUpdated += result.updated;
+      totalSkipped += result.skipped;
       allErrors.push(...result.errors);
 
       console.log(
-        `[import] Batch ${batchNum} done: created=${result.created}, updated=${result.updated}, errors=${result.errors.length}`,
+        `[import] Batch ${batchNum} done: created=${result.created}, skipped=${result.skipped}, errors=${result.errors.length}`,
       );
     }
 
@@ -613,7 +671,7 @@ friends.post('/api/friends/import', async (c) => {
       success: true,
       data: {
         created: totalCreated,
-        updated: totalUpdated,
+        skipped: totalSkipped,
         total: rows.length,
         errors: allErrors,
       },
