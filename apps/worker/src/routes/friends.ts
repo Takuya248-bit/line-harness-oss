@@ -2,10 +2,14 @@ import { Hono } from 'hono';
 import {
   getFriends,
   getFriendById,
+  getFriendByLineUserId,
   getFriendCount,
+  upsertFriend,
   addTagToFriend,
   removeTagFromFriend,
   getFriendTags,
+  getTags,
+  createTag,
   getScenarios,
   enrollFriendInScenario,
   jstNow,
@@ -13,6 +17,8 @@ import {
 import type { Friend as DbFriend, Tag as DbTag } from '@line-crm/db';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage } from '../services/step-delivery.js';
+import { parseLstepCsv } from '../utils/csv-parser.js';
+import type { ImportFriendRow } from '../utils/csv-parser.js';
 import type { Env } from '../index.js';
 
 const friends = new Hono<Env>();
@@ -324,6 +330,159 @@ friends.post('/api/friends/:id/messages', async (c) => {
     return c.json({ success: true, data: { messageId: logId } });
   } catch (err) {
     console.error('POST /api/friends/:id/messages error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
+// ============================================================
+// POST /api/friends/import - batch import friends with tags & metadata
+// ============================================================
+
+interface ImportRequestBody {
+  friends: ImportFriendRow[];
+  csv?: string; // raw CSV text (Lステップ export format)
+}
+
+const BATCH_SIZE = 100;
+
+async function processBatch(
+  db: D1Database,
+  batch: ImportFriendRow[],
+  tagCache: Map<string, string>,
+): Promise<{ created: number; updated: number; errors: string[] }> {
+  let created = 0;
+  let updated = 0;
+  const errors: string[] = [];
+
+  for (const row of batch) {
+    try {
+      if (!row.line_user_id) {
+        errors.push(`Missing line_user_id for entry: ${row.display_name || '(unknown)'}`);
+        continue;
+      }
+
+      // Check if friend already exists to distinguish create vs update
+      const existing = await getFriendByLineUserId(db, row.line_user_id);
+
+      // Upsert friend
+      const friend = await upsertFriend(db, {
+        lineUserId: row.line_user_id,
+        displayName: row.display_name || null,
+      });
+
+      if (existing) {
+        updated++;
+      } else {
+        created++;
+      }
+
+      // Merge metadata if provided
+      if (row.metadata && Object.keys(row.metadata).length > 0) {
+        const existingMeta = JSON.parse(friend.metadata || '{}');
+        const merged = { ...existingMeta, ...row.metadata };
+        await db
+          .prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+          .bind(JSON.stringify(merged), jstNow(), friend.id)
+          .run();
+      }
+
+      // Process tags
+      if (row.tags && row.tags.length > 0) {
+        for (const tagName of row.tags) {
+          const trimmed = tagName.trim();
+          if (!trimmed) continue;
+
+          let tagId = tagCache.get(trimmed);
+          if (!tagId) {
+            // Check if tag exists in DB
+            const existingTag = await db
+              .prepare('SELECT id FROM tags WHERE name = ?')
+              .bind(trimmed)
+              .first<{ id: string }>();
+
+            if (existingTag) {
+              tagId = existingTag.id;
+            } else {
+              // Auto-create tag
+              const newTag = await createTag(db, { name: trimmed });
+              tagId = newTag.id;
+            }
+            tagCache.set(trimmed, tagId);
+          }
+
+          await addTagToFriend(db, friend.id, tagId);
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`Error processing ${row.line_user_id}: ${msg}`);
+    }
+  }
+
+  return { created, updated, errors };
+}
+
+friends.post('/api/friends/import', async (c) => {
+  try {
+    const body = await c.req.json<ImportRequestBody>();
+
+    // Support both JSON array and raw CSV
+    let rows: ImportFriendRow[];
+    if (body.csv) {
+      const parsed = parseLstepCsv(body.csv);
+      rows = parsed.friends;
+    } else if (body.friends && Array.isArray(body.friends)) {
+      rows = body.friends;
+    } else {
+      return c.json({ success: false, error: 'Request must include "friends" array or "csv" string' }, 400);
+    }
+
+    if (rows.length === 0) {
+      return c.json({ success: true, data: { created: 0, updated: 0, errors: [] } });
+    }
+
+    const db = c.env.DB;
+
+    // Pre-load all existing tags into cache to reduce DB queries
+    const allTags = await getTags(db);
+    const tagCache = new Map<string, string>();
+    for (const t of allTags) {
+      tagCache.set(t.name, t.id);
+    }
+
+    let totalCreated = 0;
+    let totalUpdated = 0;
+    const allErrors: string[] = [];
+
+    // Process in batches of BATCH_SIZE
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE);
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(rows.length / BATCH_SIZE);
+
+      console.log(`[import] Processing batch ${batchNum}/${totalBatches} (${batch.length} records)`);
+
+      const result = await processBatch(db, batch, tagCache);
+      totalCreated += result.created;
+      totalUpdated += result.updated;
+      allErrors.push(...result.errors);
+
+      console.log(
+        `[import] Batch ${batchNum} done: created=${result.created}, updated=${result.updated}, errors=${result.errors.length}`,
+      );
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        created: totalCreated,
+        updated: totalUpdated,
+        total: rows.length,
+        errors: allErrors,
+      },
+    });
+  } catch (err) {
+    console.error('POST /api/friends/import error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });

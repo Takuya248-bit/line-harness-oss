@@ -13,7 +13,7 @@ ALLOWED_ORIGINS = "*"
 [[d1_databases]]
 binding = "DB"
 database_name = "line-crm"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "e626281f-33ee-4128-a583-6bd367ba8340"
 
 [triggers]
 crons = ["*/5 * * * *"]
