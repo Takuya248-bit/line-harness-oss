@@ -425,3 +425,47 @@ export async function completeFriendScenario(
     .bind(now, id)
     .run();
 }
+
+/**
+ * 特定シナリオを停止（statusをcompletedに、未配信ステップをキャンセル）
+ */
+export async function stopFriendScenario(
+  db: D1Database,
+  friendId: string,
+  scenarioId: string,
+): Promise<void> {
+  const now = jstNow();
+  await db
+    .prepare(
+      `UPDATE friend_scenarios
+       SET status = 'completed',
+           next_delivery_at = NULL,
+           updated_at = ?
+       WHERE friend_id = ?
+         AND scenario_id = ?
+         AND status = 'active'`,
+    )
+    .bind(now, friendId, scenarioId)
+    .run();
+}
+
+/**
+ * 友だちの全アクティブシナリオを停止
+ */
+export async function stopAllFriendScenarios(
+  db: D1Database,
+  friendId: string,
+): Promise<void> {
+  const now = jstNow();
+  await db
+    .prepare(
+      `UPDATE friend_scenarios
+       SET status = 'completed',
+           next_delivery_at = NULL,
+           updated_at = ?
+       WHERE friend_id = ?
+         AND status = 'active'`,
+    )
+    .bind(now, friendId)
+    .run();
+}

@@ -19,6 +19,8 @@ import {
   addTagToFriend,
   removeTagFromFriend,
   enrollFriendInScenario,
+  stopFriendScenario,
+  stopAllFriendScenarios,
   jstNow,
 } from '@line-crm/db';
 import { LineClient } from '@line-crm/line-sdk';
@@ -208,6 +210,14 @@ async function executeAction(
 
     case 'start_scenario':
       await enrollFriendInScenario(db, friendId!, action.params.scenarioId);
+      break;
+
+    case 'stop_scenario':
+      await stopFriendScenario(db, friendId!, action.params.scenarioId);
+      break;
+
+    case 'stop_all_scenarios':
+      await stopAllFriendScenarios(db, friendId!);
       break;
 
     case 'send_message': {
