@@ -12,6 +12,8 @@ import {
   completeFriendScenario,
   upsertChatOnMessage,
   getLineAccounts,
+  getFriendTags,
+  addTagToFriend,
   jstNow,
 } from '@line-crm/db';
 import { fireEvent } from '../services/event-bus.js';
@@ -110,6 +112,33 @@ async function handleEvent(
     if (lineAccountId) {
       await db.prepare('UPDATE friends SET line_account_id = ? WHERE id = ? AND line_account_id IS NULL')
         .bind(lineAccountId, friend.id).run();
+    }
+
+    // AB振り分け: 友だち追加時にランダムでAB_A or AB_Bタグを付与
+    try {
+      const existingTags = await getFriendTags(db, friend.id);
+      const hasABTag = existingTags.some((t) => t.name === 'AB_A' || t.name === 'AB_B');
+      if (!hasABTag) {
+        const abTagName = Math.random() < 0.5 ? 'AB_A' : 'AB_B';
+        // タグがなければ自動作成（name UNIQUE制約あり）
+        let abTag = await db
+          .prepare(`SELECT id FROM tags WHERE name = ?`)
+          .bind(abTagName)
+          .first<{ id: string }>();
+        if (!abTag) {
+          const tagId = crypto.randomUUID();
+          const now = jstNow();
+          await db
+            .prepare(`INSERT INTO tags (id, name, color, created_at) VALUES (?, ?, ?, ?)`)
+            .bind(tagId, abTagName, abTagName === 'AB_A' ? '#3B82F6' : '#F59E0B', now)
+            .run();
+          abTag = { id: tagId };
+        }
+        await addTagToFriend(db, friend.id, abTag.id);
+        console.log(`AB assignment: ${userId} → ${abTagName}`);
+      }
+    } catch (err) {
+      console.error('AB tag assignment failed:', err);
     }
 
     // friend_add シナリオに登録（このアカウントのシナリオのみ）
