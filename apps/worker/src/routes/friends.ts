@@ -153,6 +153,143 @@ friends.get('/api/friends/ref-stats', async (c) => {
   }
 });
 
+// ============================================================
+// GET /api/friends/export - CSV export with BOM for Excel
+// ============================================================
+
+const EXPORT_BATCH = 500;
+
+/** Escape a value for CSV: wrap in double-quotes if it contains comma, quote, or newline */
+function csvEscape(value: string): string {
+  if (value.includes('"') || value.includes(',') || value.includes('\n') || value.includes('\r')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+friends.get('/api/friends/export', async (c) => {
+  try {
+    const lineAccountId = c.req.query('lineAccountId');
+    const format = c.req.query('format') ?? 'csv';
+    const filterTagId = c.req.query('tagId');
+    const filterPhase = c.req.query('phase');
+
+    if (!lineAccountId) {
+      return c.json({ success: false, error: 'lineAccountId is required' }, 400);
+    }
+
+    if (format !== 'csv') {
+      return c.json({ success: false, error: 'Unsupported format. Use format=csv' }, 400);
+    }
+
+    const db = c.env.DB;
+
+    // Build query conditions
+    const conditions: string[] = ['f.line_account_id = ?'];
+    const binds: unknown[] = [lineAccountId];
+
+    if (filterTagId) {
+      conditions.push('EXISTS (SELECT 1 FROM friend_tags ft2 WHERE ft2.friend_id = f.id AND ft2.tag_id = ?)');
+      binds.push(filterTagId);
+    }
+
+    const where = `WHERE ${conditions.join(' AND ')}`;
+
+    // Get total count first
+    const countRow = await db
+      .prepare(`SELECT COUNT(*) as count FROM friends f ${where}`)
+      .bind(...binds)
+      .first<{ count: number }>();
+    const total = countRow?.count ?? 0;
+
+    if (total === 0) {
+      // Return empty CSV with headers only
+      const headers = ['LINE表示名', 'ユーザーID', '登録日時', 'タグ一覧', 'フェーズ', '最終メッセージ日時', 'ブロック状態'];
+      const bom = '\uFEFF';
+      const csv = bom + headers.map(csvEscape).join(',') + '\r\n';
+      return new Response(csv, {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="friends_export_${new Date().toISOString().slice(0, 10)}.csv"`,
+        },
+      });
+    }
+
+    // CSV header row
+    const headerRow = ['LINE表示名', 'ユーザーID', '登録日時', 'タグ一覧', 'フェーズ', '最終メッセージ日時', 'ブロック状態'];
+    const csvRows: string[] = [];
+    // BOM for Excel UTF-8 detection
+    csvRows.push('\uFEFF' + headerRow.map(csvEscape).join(','));
+
+    // Fetch friends in batches to handle large datasets
+    let offset = 0;
+    while (offset < total) {
+      const batchBinds = [...binds, EXPORT_BATCH, offset];
+      const batchResult = await db
+        .prepare(`SELECT f.* FROM friends f ${where} ORDER BY f.created_at DESC LIMIT ? OFFSET ?`)
+        .bind(...batchBinds)
+        .all<DbFriend>();
+      const friendsBatch = batchResult.results;
+
+      if (friendsBatch.length === 0) break;
+
+      // Fetch tags and last message for each friend
+      for (const friend of friendsBatch) {
+        const friendTags = await getFriendTags(db, friend.id);
+        const tagNames = friendTags.map((t) => t.name);
+
+        // Extract phase from phase_* tags
+        const phaseTag = tagNames.find((name) => name.startsWith('phase_'));
+        const phase = phaseTag ? phaseTag.replace('phase_', '') : '';
+
+        // Apply phase filter if specified
+        if (filterPhase) {
+          const normalizedFilter = filterPhase.startsWith('phase_') ? filterPhase : `phase_${filterPhase}`;
+          if (!phaseTag || phaseTag !== normalizedFilter) {
+            continue; // Skip - doesn't match phase filter
+          }
+        }
+
+        // Get last message datetime
+        const lastMsg = await db
+          .prepare(
+            `SELECT created_at FROM messages_log WHERE friend_id = ? ORDER BY created_at DESC LIMIT 1`,
+          )
+          .bind(friend.id)
+          .first<{ created_at: string }>();
+
+        // Non-phase tags for the tag list
+        const nonPhaseTags = tagNames.filter((name) => !name.startsWith('phase_'));
+
+        const row = [
+          friend.display_name || '',
+          friend.line_user_id,
+          friend.created_at || '',
+          nonPhaseTags.join(', '),
+          phase,
+          lastMsg?.created_at || '',
+          friend.is_following ? 'アクティブ' : 'ブロック',
+        ];
+
+        csvRows.push(row.map(csvEscape).join(','));
+      }
+
+      offset += EXPORT_BATCH;
+    }
+
+    const csvContent = csvRows.join('\r\n') + '\r\n';
+    return new Response(csvContent, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="friends_export_${new Date().toISOString().slice(0, 10)}.csv"`,
+      },
+    });
+  } catch (err) {
+    console.error('GET /api/friends/export error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
 // GET /api/friends/:id - get single friend with tags
 friends.get('/api/friends/:id', async (c) => {
   try {
