@@ -206,7 +206,7 @@ async function scheduled(
     const lineClient = new LineClient(token);
     jobs.push(
       processStepDeliveries(env.DB, lineClient, env.WORKER_URL),
-      processScheduledBroadcasts(env.DB, lineClient),
+      processScheduledBroadcasts(env.DB, lineClient, env.WORKER_URL),
       processReminderDeliveries(env.DB, lineClient),
       processNotificationDeliveries(env.DB, lineClient),
     );

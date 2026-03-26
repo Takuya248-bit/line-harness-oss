@@ -122,7 +122,7 @@ liffRoutes.get('/auth/line', async (c) => {
 </head>
 <body>
   <div class="card">
-    <h1>LINE Harness を体験</h1>
+    <h1>全機能を使う（0円）</h1>
     <p class="sub">スマートフォンで QR コードを読み取ってください</p>
     <div class="qr">
       <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrUrl)}" alt="QR Code">
