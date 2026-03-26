@@ -66,6 +66,19 @@ function enforceDeliveryWindow(date: Date, preferredHour?: number): Date {
   return result;
 }
 
+/**
+ * Apply delivery_hour to a date calculated from delay_minutes.
+ * If delivery_hour is set, the "date" portion from delay_minutes is kept
+ * but the time is overridden to delivery_hour:00 JST.
+ * The date parameter is already in JST epoch (+9h applied).
+ */
+function applyDeliveryHour(date: Date, deliveryHour: number | null | undefined): Date {
+  if (deliveryHour === null || deliveryHour === undefined) return date;
+  const result = new Date(date);
+  result.setUTCHours(deliveryHour, 0, 0, 0);
+  return result;
+}
+
 export async function processStepDeliveries(
   db: D1Database,
   lineClient: LineClient,
@@ -140,7 +153,8 @@ async function processSingleDelivery(
         if (jumpStep) {
           const nextDate = new Date(Date.now() + 9 * 60 * 60_000);
           nextDate.setMinutes(nextDate.getMinutes() + jumpStep.delay_minutes);
-          const windowedDate = enforceDeliveryWindow(nextDate, preferredHour);
+          const hourApplied = applyDeliveryHour(nextDate, jumpStep.delivery_hour);
+          const windowedDate = jumpStep.delivery_hour != null ? hourApplied : enforceDeliveryWindow(hourApplied, preferredHour);
           const jitteredDate = jitterDeliveryTime(windowedDate);
           await advanceFriendScenario(db, fs.id, currentStep.step_order, jitteredDate.toISOString().slice(0, -1) + '+09:00');
           return;
@@ -151,7 +165,8 @@ async function processSingleDelivery(
         const nextStep = steps[nextIndex];
         const nextDate = new Date(Date.now() + 9 * 60 * 60_000);
         nextDate.setMinutes(nextDate.getMinutes() + nextStep.delay_minutes);
-        const windowedDate = enforceDeliveryWindow(nextDate, preferredHour);
+        const hourApplied = applyDeliveryHour(nextDate, nextStep.delivery_hour);
+        const windowedDate = nextStep.delivery_hour != null ? hourApplied : enforceDeliveryWindow(hourApplied, preferredHour);
         const jitteredDate = jitterDeliveryTime(windowedDate);
         await advanceFriendScenario(db, fs.id, currentStep.step_order, jitteredDate.toISOString().slice(0, -1) + '+09:00');
       } else {
@@ -184,7 +199,9 @@ async function processSingleDelivery(
     // Schedule next delivery with stealth jitter + delivery window enforcement
     const nextDeliveryDate = new Date(Date.now() + 9 * 60 * 60_000);
     nextDeliveryDate.setMinutes(nextDeliveryDate.getMinutes() + nextStep.delay_minutes);
-    const windowedDate = enforceDeliveryWindow(nextDeliveryDate, preferredHour);
+    const hourApplied = applyDeliveryHour(nextDeliveryDate, nextStep.delivery_hour);
+    // When delivery_hour is explicitly set, skip the general delivery window enforcement
+    const windowedDate = nextStep.delivery_hour != null ? hourApplied : enforceDeliveryWindow(hourApplied, preferredHour);
     const jitteredDate = jitterDeliveryTime(windowedDate);
     await advanceFriendScenario(db, fs.id, currentStep.step_order, jitteredDate.toISOString().slice(0, -1) + '+09:00');
   } else {

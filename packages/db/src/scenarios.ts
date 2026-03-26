@@ -20,6 +20,7 @@ export interface ScenarioStep {
   scenario_id: string;
   step_order: number;
   delay_minutes: number;
+  delivery_hour: number | null;
   message_type: MessageType;
   message_content: string;
   condition_type: string | null;
@@ -187,6 +188,7 @@ export interface CreateScenarioStepInput {
   scenarioId: string;
   stepOrder: number;
   delayMinutes?: number;
+  deliveryHour?: number | null;
   messageType: MessageType;
   messageContent: string;
   conditionType?: string | null;
@@ -203,14 +205,15 @@ export async function createScenarioStep(
 
   await db
     .prepare(
-      `INSERT INTO scenario_steps (id, scenario_id, step_order, delay_minutes, message_type, message_content, condition_type, condition_value, next_step_on_false, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO scenario_steps (id, scenario_id, step_order, delay_minutes, delivery_hour, message_type, message_content, condition_type, condition_value, next_step_on_false, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
       input.scenarioId,
       input.stepOrder,
       input.delayMinutes ?? 0,
+      input.deliveryHour ?? null,
       input.messageType,
       input.messageContent,
       input.conditionType ?? null,
@@ -227,7 +230,7 @@ export async function createScenarioStep(
 }
 
 export type UpdateScenarioStepInput = Partial<
-  Pick<ScenarioStep, 'step_order' | 'delay_minutes' | 'message_type' | 'message_content' | 'condition_type' | 'condition_value' | 'next_step_on_false'>
+  Pick<ScenarioStep, 'step_order' | 'delay_minutes' | 'delivery_hour' | 'message_type' | 'message_content' | 'condition_type' | 'condition_value' | 'next_step_on_false'>
 >;
 
 export async function updateScenarioStep(
@@ -245,6 +248,10 @@ export async function updateScenarioStep(
   if (updates.delay_minutes !== undefined) {
     fields.push('delay_minutes = ?');
     values.push(updates.delay_minutes);
+  }
+  if (updates.delivery_hour !== undefined) {
+    fields.push('delivery_hour = ?');
+    values.push(updates.delivery_hour);
   }
   if (updates.message_type !== undefined) {
     fields.push('message_type = ?');
@@ -316,7 +323,7 @@ export async function enrollFriendInScenario(
       `SELECT * FROM scenario_steps WHERE scenario_id = ? ORDER BY step_order ASC LIMIT 1`,
     )
     .bind(scenarioId)
-    .first<{ step_order: number; delay_minutes: number }>();
+    .first<{ step_order: number; delay_minutes: number; delivery_hour: number | null }>();
 
   // A scenario with no steps is immediately completed — no stuck active enrollment.
   if (!firstStep) {
@@ -335,11 +342,18 @@ export async function enrollFriendInScenario(
   }
 
   const rawDate = new Date(Date.now() + 9 * 60 * 60_000 + firstStep.delay_minutes * 60_000);
-  // Enforce 9:00-21:00 JST delivery window
-  const hours = rawDate.getUTCHours();
-  if (hours < 9 || hours >= 21) {
-    if (hours >= 21) rawDate.setUTCDate(rawDate.getUTCDate() + 1);
-    rawDate.setUTCHours(9, 0, 0, 0);
+
+  if (firstStep.delivery_hour !== null && firstStep.delivery_hour !== undefined) {
+    // delivery_hour specified: use the date from delay_minutes calculation, but set time to delivery_hour JST
+    // rawDate is already in JST epoch (UTC+9 offset applied), so getUTCHours() = JST hours
+    rawDate.setUTCHours(firstStep.delivery_hour, 0, 0, 0);
+  } else {
+    // No delivery_hour: enforce 9:00-21:00 JST delivery window (legacy behavior)
+    const hours = rawDate.getUTCHours();
+    if (hours < 9 || hours >= 21) {
+      if (hours >= 21) rawDate.setUTCDate(rawDate.getUTCDate() + 1);
+      rawDate.setUTCHours(9, 0, 0, 0);
+    }
   }
   const nextDeliveryAt = rawDate.toISOString().slice(0, -1) + '+09:00';
 

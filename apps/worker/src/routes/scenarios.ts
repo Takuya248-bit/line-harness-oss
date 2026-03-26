@@ -44,6 +44,7 @@ function serializeStep(row: DbScenarioStep) {
     scenarioId: row.scenario_id,
     stepOrder: row.step_order,
     delayMinutes: row.delay_minutes,
+    deliveryHour: row.delivery_hour ?? null,
     messageType: row.message_type,
     messageContent: row.message_content,
     conditionType: row.condition_type ?? null,
@@ -216,6 +217,7 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
     const body = await c.req.json<{
       stepOrder: number;
       delayMinutes?: number;
+      deliveryHour?: number | null;
       messageType: MessageType;
       messageContent: string;
       conditionType?: string | null;
@@ -230,10 +232,21 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
       );
     }
 
+    // Validate delivery_hour range (0-23)
+    if (body.deliveryHour !== undefined && body.deliveryHour !== null) {
+      if (!Number.isInteger(body.deliveryHour) || body.deliveryHour < 0 || body.deliveryHour > 23) {
+        return c.json(
+          { success: false, error: 'deliveryHour must be an integer between 0 and 23' },
+          400,
+        );
+      }
+    }
+
     const step = await createScenarioStep(c.env.DB, {
       scenarioId,
       stepOrder: body.stepOrder,
       delayMinutes: body.delayMinutes ?? 0,
+      deliveryHour: body.deliveryHour ?? null,
       messageType: body.messageType,
       messageContent: body.messageContent,
       conditionType: body.conditionType ?? null,
@@ -255,6 +268,7 @@ scenarios.put('/api/scenarios/:id/steps/:stepId', async (c) => {
     const body = await c.req.json<{
       stepOrder?: number;
       delayMinutes?: number;
+      deliveryHour?: number | null;
       messageType?: MessageType;
       messageContent?: string;
       conditionType?: string | null;
@@ -262,9 +276,20 @@ scenarios.put('/api/scenarios/:id/steps/:stepId', async (c) => {
       nextStepOnFalse?: number | null;
     }>();
 
+    // Validate delivery_hour range (0-23) if provided
+    if (body.deliveryHour !== undefined && body.deliveryHour !== null) {
+      if (!Number.isInteger(body.deliveryHour) || body.deliveryHour < 0 || body.deliveryHour > 23) {
+        return c.json(
+          { success: false, error: 'deliveryHour must be an integer between 0 and 23' },
+          400,
+        );
+      }
+    }
+
     const updated = await updateScenarioStep(c.env.DB, stepId, {
       step_order: body.stepOrder,
       delay_minutes: body.delayMinutes,
+      delivery_hour: body.deliveryHour,
       message_type: body.messageType,
       message_content: body.messageContent,
       condition_type: body.conditionType,
