@@ -246,7 +246,8 @@ export async function scheduleWeeklyPosts(
     endHour?: number;
   },
 ): Promise<{ scheduled: number }> {
-  const postsPerDay = options?.postsPerDay ?? 2;
+  // Ban対策: 1日最大3投稿（日次上限5のうち手動投稿分を残す）
+  const postsPerDay = Math.min(options?.postsPerDay ?? 2, 3);
   const startHour = options?.startHour ?? 9;
   const endHour = options?.endHour ?? 21;
 
@@ -282,19 +283,21 @@ export async function scheduleWeeklyPosts(
     date.setDate(date.getDate() + day);
     const dateStr = date.toISOString().slice(0, 10); // "YYYY-MM-DD"
 
-    // 投稿時間を等間隔で配分
+    // 投稿時間を等間隔+ランダムジッターで配分（Bot検出回避）
     const interval = (endHour - startHour) / postsPerDay;
 
     for (let slot = 0; slot < postsPerDay; slot++) {
-      const hour = Math.floor(startHour + interval * slot + Math.random() * interval * 0.5);
+      // 基本時間 + ランダムオフセット（間隔の20-80%の範囲）
+      const jitterRatio = 0.2 + Math.random() * 0.6;
+      const hour = Math.floor(startHour + interval * slot + interval * jitterRatio);
       const minute = Math.floor(Math.random() * 60);
-      const scheduledAt = `${dateStr} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+      const scheduledAt = `${dateStr} ${String(Math.min(hour, endHour - 1)).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
 
       const categoryIndex = day * postsPerDay + slot;
       const category = categorySchedule[categoryIndex];
 
-      // CTA付与: case_studyとcost_comparisonにはCTAを付ける、他はなし
-      const ctaType = CATEGORY_CTA_MAP[category];
+      // Ban対策: CTA付きは1日最大1投稿（リンクスパム回避）
+      const ctaType = slot === 0 ? CATEGORY_CTA_MAP[category] : 'none' as XPostCtaType;
 
       const { content } = await generateXPostContent(db, {
         category,

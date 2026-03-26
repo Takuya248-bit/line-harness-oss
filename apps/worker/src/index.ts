@@ -35,6 +35,8 @@ import { richMenus } from './routes/rich-menus.js';
 import { trackedLinks } from './routes/tracked-links.js';
 import { forms } from './routes/forms.js';
 import { analytics } from './routes/analytics.js';
+import { xPosts } from './routes/x-posts.js';
+import { processXPosting } from './services/x-posting.js';
 
 export type Env = {
   Bindings: {
@@ -48,6 +50,13 @@ export type Env = {
     LINE_LOGIN_CHANNEL_SECRET: string;
     WORKER_URL: string;
     ALLOWED_ORIGINS?: string;
+    // X (Twitter) API credentials
+    X_API_KEY: string;
+    X_API_SECRET: string;
+    X_ACCESS_TOKEN: string;
+    X_ACCESS_SECRET: string;
+    // AI content generation
+    ANTHROPIC_API_KEY?: string;
   };
 };
 
@@ -126,6 +135,7 @@ app.route('/', richMenus);
 app.route('/', trackedLinks);
 app.route('/', forms);
 app.route('/', analytics);
+app.route('/', xPosts);
 
 // Short link: /r/:ref → landing page with LINE open button
 app.get('/r/:ref', (c) => {
@@ -200,6 +210,18 @@ async function scheduled(
   }
   jobs.push(checkAccountHealth(env.DB));
   jobs.push(refreshLineAccessTokens(env.DB));
+
+  // X auto-posting (runs independently of LINE accounts)
+  if (env.X_API_KEY && env.X_ACCESS_TOKEN) {
+    jobs.push(
+      processXPosting(env.DB, {
+        apiKey: env.X_API_KEY,
+        apiSecret: env.X_API_SECRET,
+        accessToken: env.X_ACCESS_TOKEN,
+        accessSecret: env.X_ACCESS_SECRET,
+      }),
+    );
+  }
 
   await Promise.allSettled(jobs);
 }
