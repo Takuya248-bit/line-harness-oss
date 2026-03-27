@@ -313,7 +313,27 @@ export async function enrollFriendInScenario(
   db: D1Database,
   friendId: string,
   scenarioId: string,
+  options?: { exclusive?: boolean },
 ): Promise<FriendScenario> {
+  // 1. 同一シナリオへの二重登録防止: 既にactiveなら既存のFriendScenarioを返す
+  const existing = await db
+    .prepare(
+      `SELECT * FROM friend_scenarios
+       WHERE friend_id = ? AND scenario_id = ? AND status = 'active'
+       LIMIT 1`,
+    )
+    .bind(friendId, scenarioId)
+    .first<FriendScenario>();
+
+  if (existing) {
+    return existing;
+  }
+
+  // 2. exclusive制御: デフォルトtrue。他の全アクティブシナリオを停止
+  if (options?.exclusive !== false) {
+    await stopAllFriendScenarios(db, friendId);
+  }
+
   const id = crypto.randomUUID();
   const now = jstNow();
 
