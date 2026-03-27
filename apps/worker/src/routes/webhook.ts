@@ -277,6 +277,78 @@ async function handleEvent(
     const now = jstNow();
     const logId = crypto.randomUUID();
 
+    // Survey response via message action (survey:{surveyId}:{questionId}:{choiceId})
+    if (incomingText.startsWith('survey:')) {
+      const parts = incomingText.split(':');
+      if (parts.length === 4) {
+        const [, surveyId, questionId, choiceId] = parts;
+        console.log('Survey via message:', { surveyId, questionId, choiceId, friendId: friend.id });
+        try {
+          let friendSurvey = await getActiveFriendSurvey(db, friend.id);
+          if (!friendSurvey || friendSurvey.survey_id !== surveyId) {
+            friendSurvey = await startFriendSurvey(db, friend.id, surveyId);
+          }
+          const choicesForQuestion = await getSurveyChoices(db, questionId);
+          const selectedChoice = choicesForQuestion.find((c: SurveyChoice) => c.id === choiceId);
+          if (selectedChoice) {
+            if (selectedChoice.metadata_key) {
+              const existing = await db.prepare('SELECT metadata FROM friends WHERE id = ?').bind(friend.id).first<{ metadata: string }>();
+              const meta = JSON.parse(existing?.metadata || '{}');
+              meta[selectedChoice.metadata_key] = selectedChoice.label;
+              await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+                .bind(JSON.stringify(meta), now, friend.id).run();
+            }
+            if (selectedChoice.tag_id) {
+              await addTagToFriend(db, friend.id, selectedChoice.tag_id);
+            }
+            const answers: Record<string, string> = JSON.parse(friendSurvey.answers || '{}');
+            answers[questionId] = selectedChoice.label;
+            const allQuestions = await getSurveyQuestions(db, surveyId);
+            const currentQuestion = allQuestions.find(q => q.id === questionId);
+            if (currentQuestion) {
+              const currentOrder = currentQuestion.question_order;
+              const nextQuestion = allQuestions.find(q => q.question_order > currentOrder);
+              const isFirstQuestion = allQuestions.length > 0 && currentOrder === allQuestions[0].question_order;
+              if (isFirstQuestion) {
+                try { await recordActionDate(db, friend.id, 'アンケート回答開始日時'); } catch {}
+              }
+              if (nextQuestion) {
+                await advanceFriendSurvey(db, friendSurvey.id, nextQuestion.question_order, answers);
+                const nextChoices = await getSurveyChoices(db, nextQuestion.id);
+                const flexBubble = buildSurveyQuestionFlex(surveyId, nextQuestion, nextChoices);
+                await lineClient.pushMessage(userId, [buildMessage('flex', JSON.stringify(flexBubble))]);
+              } else {
+                await completeFriendSurveyDb(db, friendSurvey.id, answers);
+                try { await recordActionDate(db, friend.id, 'アンケート完了日時'); } catch {}
+                const survey = await getSurveyById(db, surveyId);
+                if (survey?.on_complete_tag_id) {
+                  await addTagToFriend(db, friend.id, survey.on_complete_tag_id);
+                }
+                if (survey?.on_complete_scenario_id) {
+                  await enrollFriendInScenario(db, friend.id, survey.on_complete_scenario_id);
+                }
+                // Fire tag_added event for on_complete_tag
+                if (survey?.on_complete_tag_id) {
+                  await fireEvent(db, 'tag_added', { friendId: friend.id, tagId: survey.on_complete_tag_id }, lineAccessToken, lineAccountId);
+                }
+                const completionFlex = {
+                  type: 'bubble',
+                  body: { type: 'box', layout: 'vertical', contents: [
+                    { type: 'text', text: 'ありがとうございました!', weight: 'bold', size: 'lg', color: '#F59E0B', align: 'center' },
+                    { type: 'text', text: '回答を受け付けました。', size: 'sm', color: '#64748b', align: 'center', margin: 'md', wrap: true },
+                  ], paddingAll: '20px' },
+                };
+                await lineClient.pushMessage(userId, [buildMessage('flex', JSON.stringify(completionFlex))]);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Failed to process survey via message:', err);
+        }
+      }
+      return;
+    }
+
     // 受信メッセージをログに記録
     await db
       .prepare(

@@ -37,14 +37,13 @@ export function buildSurveyQuestionFlex(
     });
   }
 
-  // Buttons
+  // Buttons — use message action instead of postback for better compatibility
   const buttons = choices.map((c) => ({
     type: 'button',
     action: {
-      type: 'postback',
+      type: 'message',
       label: c.label.slice(0, 20), // LINE limit: 20 chars for label
-      data: `survey:${surveyId}:${question.id}:${c.id}`,
-      displayText: c.label,
+      text: `survey:${surveyId}:${question.id}:${c.id}`,
     },
     style: 'primary',
     color: '#F59E0B',

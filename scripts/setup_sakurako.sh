@@ -97,7 +97,7 @@ api POST "/api/scenarios/$SCENARIO1_ID/steps" "{
   \"stepOrder\": 2,
   \"delayMinutes\": 1440,
   \"messageType\": \"text\",
-  \"messageContent\": \"昨日は登録ありがとう!\n\nちょっと自己紹介させてね。\n\n私はショート動画に特化して\n約1年半で登録者32万人まで伸ばしました。\n\nでも最初から順調だったわけじゃなくて\n投稿しても全然回らない時期もあった。\n\nそこから何を変えたのか、\nこのLINEで少しずつ話していくね。\n\n2日後に「伸びない人がやりがちなNG3選」を送るね!\"
+  \"messageContent\": \"昨日は登録ありがとう!\n\nちょっと自己紹介させてね。\n\n私はショート動画に特化して\n約2年で登録者30万人まで伸ばしました。\n\nでも最初から順調だったわけじゃなくて\n投稿しても全然回らない時期もあった。\n\nそこから何を変えたのか、\nこのLINEで少しずつ話していくね。\n\n2日後に「伸びない人がやりがちなNG3選」を送るね!\"
 }" > /dev/null
 echo "    OK"
 
@@ -107,7 +107,7 @@ api POST "/api/scenarios/$SCENARIO1_ID/steps" "{
   \"stepOrder\": 3,
   \"delayMinutes\": 4320,
   \"messageType\": \"text\",
-  \"messageContent\": \"伸びない人がやりがちなこと、知ってる?\n\n1. 冒頭3秒に全力を入れてない\n2. 「良い動画」を作ろうとしてる（止まる動画じゃなくて）\n3. データを見ずに感覚で投稿してる\n\nこれ、昔の私もやってたやつ。\n\nYouTubeは運ゲーじゃなくて構造ゲー。\n構造がわかれば、再現性が生まれるよ。\n\nもっと詳しく知りたい人は\nnoteに全部書いたから読んでみてね。\n\n▼約1年半で登録者32万人に伸ばしたショート動画戦略\n→ https://note.com/sakurako_tabi/n/nd8165736b2c4\"
+  \"messageContent\": \"伸びない人がやりがちなこと、知ってる?\n\n1. 冒頭3秒に全力を入れてない\n2. 「良い動画」を作ろうとしてる（止まる動画じゃなくて）\n3. データを見ずに感覚で投稿してる\n\nこれ、昔の私もやってたやつ。\n\nYouTubeは運ゲーじゃなくて構造ゲー。\n構造がわかれば、再現性が生まれるよ。\n\nもっと詳しく知りたい人は\nnoteに全部書いたから読んでみてね。\n\n▼約2年で登録者30万人に伸ばしたショート動画戦略\n→ https://note.com/sakurako_tabi/n/nd8165736b2c4\"
 }" > /dev/null
 echo "    OK"
 
@@ -163,7 +163,7 @@ api POST "/api/scenarios/$SCENARIO2_ID/steps" "{
   \"stepOrder\": 2,
   \"delayMinutes\": 4320,
   \"messageType\": \"text\",
-  \"messageContent\": \"コンサルの件、検討中かな?\n\nちなみにnoteの有料記事を読んでくれた人は\n「note読者割」が使えるよ!\n\nまだ読んでない人は先にこっちを見てみてね。\n2,980円で全部の戦略が読めるから。\n\n▼約1年半で登録者32万人に伸ばしたショート動画戦略\n→ https://note.com/sakurako_tabi/n/nd8165736b2c4\"
+  \"messageContent\": \"コンサルの件、検討中かな?\n\nちなみにnoteの有料記事を読んでくれた人は\n「note読者割」が使えるよ!\n\nまだ読んでない人は先にこっちを見てみてね。\n2,980円で全部の戦略が読めるから。\n\n▼約2年で登録者30万人に伸ばしたショート動画戦略\n→ https://note.com/sakurako_tabi/n/nd8165736b2c4\"
 }" > /dev/null
 echo "    OK"
 echo ""
@@ -243,7 +243,7 @@ api POST /api/automations "{
   \"eventType\": \"message_received\",
   \"conditions\": {\"keyword\": \"note\", \"matchType\": \"exact\"},
   \"actions\": [
-    {\"type\": \"reply\", \"messageType\": \"text\", \"content\": \"noteの有料記事はこちら!\n\n▼約1年半で登録者32万人に伸ばしたショート動画戦略\n→ https://note.com/sakurako_tabi/n/nd8165736b2c4\n\n2,980円で、私がやってきた全戦略を公開してるよ。\n\n・冒頭3秒の設計テクニック\n・データ分析の方法\n・収益化ルートの作り方\n\n読んだ人はコンサルの割引もあるよ!\"}
+    {\"type\": \"reply\", \"messageType\": \"text\", \"content\": \"noteの有料記事はこちら!\n\n▼約2年で登録者30万人に伸ばしたショート動画戦略\n→ https://note.com/sakurako_tabi/n/nd8165736b2c4\n\n2,980円で、私がやってきた全戦略を公開してるよ。\n\n・冒頭3秒の設計テクニック\n・データ分析の方法\n・収益化ルートの作り方\n\n読んだ人はコンサルの割引もあるよ!\"}
   ],
   \"priority\": 10
 }" > /dev/null
@@ -282,7 +282,7 @@ api POST /api/automations "{
   \"eventType\": \"message_received\",
   \"conditions\": {\"keyword\": \"実績\", \"matchType\": \"exact\"},
   \"actions\": [
-    {\"type\": \"reply\", \"messageType\": \"text\", \"content\": \"私の実績を紹介するね!\n\nチャンネル「酒と旅ゆく櫻子チャン」\n・登録者: 約32万人\n・総再生回数: 5億回以上\n・ショート動画に特化して約1年半で達成\n\nコンサル実績:\n・200件以上のアカウント運用支援\n・ジャンル問わず再生数改善\n・にじさんじ等のオーディション対策も\n\n気になったら「コンサル」って送ってね!\"}
+    {\"type\": \"reply\", \"messageType\": \"text\", \"content\": \"私の実績を紹介するね!\n\nチャンネル「酒と旅ゆく櫻子チャン」\n・登録者: 約30万人\n・総再生回数: 5億回以上\n・ショート動画に特化して約2年で達成\n\nコンサル実績:\n・200件以上のアカウント運用支援\n・ジャンル問わず再生数改善\n・にじさんじ等のオーディション対策も\n\n気になったら「コンサル」って送ってね!\"}
   ],
   \"priority\": 10
 }" > /dev/null
