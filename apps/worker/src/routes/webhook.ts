@@ -26,6 +26,8 @@ import {
   getBookingById,
   cancelBooking,
   updateBookingGoogleEventId,
+  recordActions,
+  recordActionDate,
 } from '@line-crm/db';
 import type { SurveyChoice } from '@line-crm/db';
 import { fireEvent } from '../services/event-bus.js';
@@ -155,6 +157,16 @@ async function handleEvent(
       }
     } catch (err) {
       console.error('AB tag assignment failed:', err);
+    }
+
+    // アクション日時・回数を記録
+    try {
+      await recordActions(db, friend.id, [
+        { type: 'date', key: '友だち登録日' },
+        { type: 'count', key: '友だち登録' },
+      ]);
+    } catch (err) {
+      console.error('Failed to record follow action:', err);
     }
 
     // friend_add シナリオに登録（このアカウントのシナリオのみ）
@@ -537,6 +549,16 @@ async function handleEvent(
         const currentOrder = currentQuestion.question_order;
         const nextQuestion = allQuestions.find(q => q.question_order > currentOrder);
 
+        // アクション日時記録: 最初の質問回答時
+        const isFirstQuestion = allQuestions.length > 0 && currentOrder === allQuestions[0].question_order;
+        if (isFirstQuestion) {
+          try {
+            await recordActionDate(db, friend.id, 'アンケート回答開始日時');
+          } catch (err) {
+            console.error('Failed to record survey start action:', err);
+          }
+        }
+
         if (nextQuestion) {
           // Advance to next question
           await advanceFriendSurvey(db, friendSurvey.id, nextQuestion.question_order, answers);
@@ -557,6 +579,13 @@ async function handleEvent(
         } else {
           // Last question - complete the survey
           await completeFriendSurveyDb(db, friendSurvey.id, answers);
+
+          // アクション日時記録: アンケート完了
+          try {
+            await recordActionDate(db, friend.id, 'アンケート完了日時');
+          } catch (err) {
+            console.error('Failed to record survey complete action:', err);
+          }
 
           // Apply on_complete_tag_id
           const survey = await getSurveyById(db, surveyId);
@@ -713,6 +742,16 @@ async function handleEvent(
           await updateBookingGoogleEventId(db, booking.id, googleEventId);
         }
 
+        // アクション日時・回数を記録: カウンセリング予約
+        try {
+          await recordActions(db, friend.id, [
+            { type: 'date', key: 'カウンセリング予約完了日時' },
+            { type: 'count', key: 'カウンセリング予約' },
+          ]);
+        } catch (err) {
+          console.error('Failed to record booking action:', err);
+        }
+
         // Send confirmation
         const flex = buildBookingConfirmFlex(booking.id, date, startTime, endTime);
         try {
@@ -756,6 +795,16 @@ async function handleEvent(
         }
 
         await cancelBooking(db, bookingId);
+
+        // アクション日時記録: キャンセル
+        try {
+          const friend = await getFriendByLineUserId(db, userId);
+          if (friend) {
+            await recordActionDate(db, friend.id, 'カウンセリングキャンセル日時');
+          }
+        } catch (err) {
+          console.error('Failed to record booking cancel action:', err);
+        }
 
         const flex = buildBookingCancelledFlex();
         try {

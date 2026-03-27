@@ -13,6 +13,9 @@ import {
   getScenarios,
   enrollFriendInScenario,
   jstNow,
+  recordActions,
+  recordActionDate,
+  incrementActionCount,
 } from '@line-crm/db';
 import type { Friend as DbFriend, Tag as DbTag } from '@line-crm/db';
 import { fireEvent } from '../services/event-bus.js';
@@ -692,6 +695,70 @@ friends.post('/api/friends/import', async (c) => {
     });
   } catch (err) {
     console.error('POST /api/friends/import error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
+// GET /api/friends/:id/actions — アクション日時と回数をmetadataから抽出
+friends.get('/api/friends/:id/actions', async (c) => {
+  try {
+    const friendId = c.req.param('id');
+    const db = c.env.DB;
+    const friend = await getFriendById(db, friendId);
+    if (!friend) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+
+    const metadata = JSON.parse(friend.metadata || '{}') as Record<string, unknown>;
+    const actions: Record<string, unknown> = {};
+
+    // Extract action fields: *_作成, *_更新, *_回数
+    for (const [key, value] of Object.entries(metadata)) {
+      if (key.endsWith('_作成') || key.endsWith('_更新') || key.endsWith('_回数')) {
+        actions[key] = value;
+      }
+    }
+
+    return c.json({ success: true, data: actions });
+  } catch (err) {
+    console.error('GET /api/friends/:id/actions error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
+// POST /api/friends/:id/actions — 手動でアクション日時/回数を設定
+friends.post('/api/friends/:id/actions', async (c) => {
+  try {
+    const friendId = c.req.param('id');
+    const db = c.env.DB;
+    const friend = await getFriendById(db, friendId);
+    if (!friend) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+
+    const body = await c.req.json<{
+      actions: Array<{ type: 'date' | 'count'; key: string }>;
+    }>();
+
+    if (!body.actions || !Array.isArray(body.actions) || body.actions.length === 0) {
+      return c.json({ success: false, error: 'actions array is required' }, 400);
+    }
+
+    // Validate each action
+    for (const action of body.actions) {
+      if (!action.type || !action.key) {
+        return c.json({ success: false, error: 'Each action must have type and key' }, 400);
+      }
+      if (action.type !== 'date' && action.type !== 'count') {
+        return c.json({ success: false, error: 'action.type must be "date" or "count"' }, 400);
+      }
+    }
+
+    await recordActions(db, friendId, body.actions);
+
+    return c.json({ success: true });
+  } catch (err) {
+    console.error('POST /api/friends/:id/actions error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });

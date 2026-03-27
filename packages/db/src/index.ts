@@ -23,6 +23,7 @@ export * from './forms';
 export * from './x-posts';
 export * from './surveys';
 export * from './bookings';
+export * from './friend-actions';
 
 /**
  * Thin wrapper around D1Database.

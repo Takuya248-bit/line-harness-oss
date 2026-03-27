@@ -22,6 +22,8 @@ import {
   stopFriendScenario,
   stopAllFriendScenarios,
   jstNow,
+  recordActionDate,
+  incrementActionCount,
 } from '@line-crm/db';
 import { LineClient } from '@line-crm/line-sdk';
 
@@ -292,6 +294,18 @@ async function executeAction(
         .prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
         .bind(JSON.stringify(merged), jstNow(), friendId)
         .run();
+      break;
+    }
+
+    case 'set_action_date': {
+      const key = action.params.value || action.params.key;
+      if (key && friendId) await recordActionDate(db, friendId, key as string);
+      break;
+    }
+
+    case 'increment_counter': {
+      const key = action.params.value || action.params.key;
+      if (key && friendId) await incrementActionCount(db, friendId, key as string);
       break;
     }
 

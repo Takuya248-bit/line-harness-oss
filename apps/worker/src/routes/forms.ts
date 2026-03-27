@@ -10,7 +10,7 @@ import {
   jstNow,
 } from '@line-crm/db';
 import { getFriendByLineUserId, getFriendById } from '@line-crm/db';
-import { addTagToFriend, enrollFriendInScenario } from '@line-crm/db';
+import { addTagToFriend, enrollFriendInScenario, recordActions } from '@line-crm/db';
 import type { Form as DbForm, FormSubmission as DbFormSubmission } from '@line-crm/db';
 import type { Env } from '../index.js';
 
@@ -256,6 +256,14 @@ forms.post('/api/forms/:id/submit', async (c) => {
       if (form.on_submit_scenario_id) {
         sideEffects.push(enrollFriendInScenario(db, friendId, form.on_submit_scenario_id));
       }
+
+      // アクション日時・回数を記録: 見積もり作成依頼
+      sideEffects.push(
+        recordActions(db, friendId, [
+          { type: 'date', key: '見積もり作成依頼日時' },
+          { type: 'count', key: '見積もり作成希望' },
+        ]),
+      );
 
       // Send confirmation message with submitted data back to user
       sideEffects.push(
