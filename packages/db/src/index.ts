@@ -26,6 +26,8 @@ export * from './bookings';
 export * from './friend-actions';
 export * from './tag-folders';
 export * from './cross-analysis';
+export * from './friend-fields';
+export * from './saved-filters';
 
 /**
  * Thin wrapper around D1Database.
