@@ -14,6 +14,8 @@
     "wrangler": "^3.30.0"
   },
   "dependencies": {
-    "@cf-wasm/resvg": "^0.3.3"
+    "@anthropic-ai/sdk": "^0.80.0",
+    "@cf-wasm/resvg": "^0.3.3",
+    "satori": "^0.26.0"
   }
 }
