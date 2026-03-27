@@ -36,6 +36,7 @@ import { trackedLinks } from './routes/tracked-links.js';
 import { forms } from './routes/forms.js';
 import { analytics } from './routes/analytics.js';
 import { xPosts } from './routes/x-posts.js';
+import { surveys } from './routes/surveys.js';
 import { processXPosting } from './services/x-posting.js';
 import { processPhaseTransitions } from './services/phase-cron.js';
 
@@ -139,6 +140,7 @@ app.route('/', trackedLinks);
 app.route('/', forms);
 app.route('/', analytics);
 app.route('/', xPosts);
+app.route('/', surveys);
 
 // Short link: /r/:ref → landing page with LINE open button
 app.get('/r/:ref', (c) => {

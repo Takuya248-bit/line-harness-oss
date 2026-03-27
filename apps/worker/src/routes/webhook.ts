@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { verifySignature, LineClient } from '@line-crm/line-sdk';
-import type { WebhookRequestBody, WebhookEvent, TextEventMessage } from '@line-crm/line-sdk';
+import type { WebhookRequestBody, WebhookEvent, TextEventMessage, PostbackEvent } from '@line-crm/line-sdk';
 import {
   upsertFriend,
   updateFriendFollowStatus,
@@ -15,9 +15,18 @@ import {
   getFriendTags,
   addTagToFriend,
   jstNow,
+  getActiveFriendSurvey,
+  getSurveyQuestions,
+  getSurveyChoices,
+  getSurveyById,
+  advanceFriendSurvey,
+  completeFriendSurvey as completeFriendSurveyDb,
+  startFriendSurvey,
 } from '@line-crm/db';
+import type { SurveyChoice } from '@line-crm/db';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
+import { buildSurveyQuestionFlex } from '../services/survey-flex.js';
 import type { Env } from '../index.js';
 
 const webhook = new Hono<Env>();
@@ -461,6 +470,136 @@ async function handleEvent(
       friendId: friend.id,
       eventData: { text: incomingText, matched },
     }, lineAccessToken, lineAccountId);
+
+    return;
+  }
+
+  // Postback handler (survey responses etc.)
+  if (event.type === 'postback') {
+    const postbackEvent = event as PostbackEvent;
+    const postbackData = postbackEvent.postback.data;
+
+    // Survey postback: survey:{surveyId}:{questionId}:{choiceId}
+    if (postbackData.startsWith('survey:')) {
+      const userId = event.source.type === 'user' ? event.source.userId : undefined;
+      if (!userId) return;
+
+      const friend = await getFriendByLineUserId(db, userId);
+      if (!friend) return;
+
+      const parts = postbackData.split(':');
+      if (parts.length !== 4) return;
+      const [, surveyId, questionId, choiceId] = parts;
+
+      try {
+        // Get active friend survey
+        let friendSurvey = await getActiveFriendSurvey(db, friend.id);
+        if (!friendSurvey || friendSurvey.survey_id !== surveyId) {
+          // Start a new one if not active for this survey
+          friendSurvey = await startFriendSurvey(db, friend.id, surveyId);
+        }
+
+        // Get the selected choice
+        const choicesForQuestion = await getSurveyChoices(db, questionId);
+        const selectedChoice = choicesForQuestion.find((c: SurveyChoice) => c.id === choiceId);
+        if (!selectedChoice) return;
+
+        // Save metadata if metadata_key exists
+        if (selectedChoice.metadata_key) {
+          const existing = await db.prepare('SELECT metadata FROM friends WHERE id = ?').bind(friend.id).first<{ metadata: string }>();
+          const meta = JSON.parse(existing?.metadata || '{}');
+          meta[selectedChoice.metadata_key] = selectedChoice.label;
+          await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+            .bind(JSON.stringify(meta), jstNow(), friend.id).run();
+        }
+
+        // Add tag if tag_id exists
+        if (selectedChoice.tag_id) {
+          await addTagToFriend(db, friend.id, selectedChoice.tag_id);
+        }
+
+        // Update answers
+        const answers: Record<string, string> = JSON.parse(friendSurvey.answers || '{}');
+        answers[questionId] = selectedChoice.label;
+
+        // Get all questions to determine next
+        const allQuestions = await getSurveyQuestions(db, surveyId);
+        const currentQuestion = allQuestions.find(q => q.id === questionId);
+        if (!currentQuestion) return;
+
+        const currentOrder = currentQuestion.question_order;
+        const nextQuestion = allQuestions.find(q => q.question_order > currentOrder);
+
+        if (nextQuestion) {
+          // Advance to next question
+          await advanceFriendSurvey(db, friendSurvey.id, nextQuestion.question_order, answers);
+
+          const nextChoices = await getSurveyChoices(db, nextQuestion.id);
+          const flexBubble = buildSurveyQuestionFlex(surveyId, nextQuestion, nextChoices);
+
+          try {
+            await lineClient.replyMessage(postbackEvent.replyToken, [
+              buildMessage('flex', JSON.stringify(flexBubble)),
+            ]);
+          } catch {
+            // replyToken may have expired, try pushMessage
+            await lineClient.pushMessage(userId, [
+              buildMessage('flex', JSON.stringify(flexBubble)),
+            ]);
+          }
+        } else {
+          // Last question - complete the survey
+          await completeFriendSurveyDb(db, friendSurvey.id, answers);
+
+          // Apply on_complete_tag_id
+          const survey = await getSurveyById(db, surveyId);
+          if (survey?.on_complete_tag_id) {
+            await addTagToFriend(db, friend.id, survey.on_complete_tag_id);
+          }
+
+          // Start on_complete_scenario_id
+          if (survey?.on_complete_scenario_id) {
+            await enrollFriendInScenario(db, friend.id, survey.on_complete_scenario_id);
+
+            // Send first step of the scenario
+            const steps = await getScenarioSteps(db, survey.on_complete_scenario_id);
+            if (steps.length > 0) {
+              const firstStep = steps[0];
+              const expandedContent = expandVariables(firstStep.message_content, friend as { id: string; display_name: string | null; user_id: string | null });
+              const message = buildMessage(firstStep.message_type, expandedContent);
+              try {
+                await lineClient.pushMessage(userId, [message]);
+              } catch (err) {
+                console.error('Failed to send scenario first step after survey completion', err);
+              }
+            }
+          }
+
+          // Send completion message
+          try {
+            const completionFlex = {
+              type: 'bubble',
+              body: {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  { type: 'text', text: 'ありがとうございました!', weight: 'bold', size: 'lg', color: '#F59E0B', align: 'center' },
+                  { type: 'text', text: '回答を受け付けました。', size: 'sm', color: '#64748b', align: 'center', margin: 'md', wrap: true },
+                ],
+                paddingAll: '20px',
+              },
+            };
+            await lineClient.replyMessage(postbackEvent.replyToken, [
+              buildMessage('flex', JSON.stringify(completionFlex)),
+            ]);
+          } catch {
+            // replyToken may have expired — completion message is optional
+          }
+        }
+      } catch (err) {
+        console.error('Failed to process survey postback', err);
+      }
+    }
 
     return;
   }

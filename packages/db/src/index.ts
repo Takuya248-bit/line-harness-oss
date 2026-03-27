@@ -21,6 +21,7 @@ export * from './entry-routes';
 export * from './tracked-links';
 export * from './forms';
 export * from './x-posts';
+export * from './surveys';
 
 /**
  * Thin wrapper around D1Database.
