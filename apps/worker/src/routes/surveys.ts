@@ -16,7 +16,7 @@ import {
   startFriendSurvey,
   getFriendByLineUserId,
 } from '@line-crm/db';
-import type { SurveyQuestion, SurveyChoice } from '@line-crm/db';
+import type { SurveyQuestion, SurveyChoice, FriendSurvey } from '@line-crm/db';
 import { LineClient } from '@line-crm/line-sdk';
 import { buildSurveyQuestionFlex } from '../services/survey-flex.js';
 import { buildMessage } from '../services/step-delivery.js';
@@ -238,6 +238,94 @@ surveys.post('/api/surveys/:id/start', async (c) => {
   ]);
 
   return c.json({ success: true, data: friendSurvey });
+});
+
+// ── CSV Export ───────────────────────────────────────────────────────────────
+
+function csvEscape(value: string): string {
+  if (value.includes('"') || value.includes(',') || value.includes('\n') || value.includes('\r')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+surveys.get('/api/surveys/:id/responses/export', async (c) => {
+  try {
+    const surveyId = c.req.param('id');
+    const format = c.req.query('format') ?? 'csv';
+
+    if (format !== 'csv') {
+      return c.json({ success: false, error: 'Unsupported format. Use format=csv' }, 400);
+    }
+
+    const db = c.env.DB;
+
+    const survey = await getSurveyById(db, surveyId);
+    if (!survey) {
+      return c.json({ success: false, error: 'Survey not found' }, 404);
+    }
+
+    // Get questions with choices for dynamic headers and label resolution
+    const questions = await getSurveyQuestions(db, surveyId);
+    const choicesByQuestion: Record<string, SurveyChoice[]> = {};
+    for (const q of questions) {
+      choicesByQuestion[q.id] = await getSurveyChoices(db, q.id);
+    }
+
+    // Get all friend_surveys for this survey
+    const friendSurveys = await db
+      .prepare(
+        `SELECT fs.*, f.display_name AS friend_name
+         FROM friend_surveys fs
+         LEFT JOIN friends f ON f.id = fs.friend_id
+         WHERE fs.survey_id = ?
+         ORDER BY fs.started_at DESC`,
+      )
+      .bind(surveyId)
+      .all<FriendSurvey & { friend_name: string | null }>();
+
+    // Build dynamic headers: 友だち名, [question titles...], 回答日時, 完了ステータス
+    const headerRow = [
+      '友だち名',
+      ...questions.map((q) => q.title),
+      '回答日時',
+      '完了ステータス',
+    ];
+    const csvRows: string[] = [];
+    csvRows.push('\uFEFF' + headerRow.map(csvEscape).join(','));
+
+    for (const fs of friendSurveys.results) {
+      const answers = JSON.parse(fs.answers || '{}') as Record<string, string>;
+
+      // Resolve each answer to its choice label
+      const answerValues = questions.map((q) => {
+        const answeredChoiceId = answers[q.id];
+        if (!answeredChoiceId) return '';
+        const choices = choicesByQuestion[q.id] || [];
+        const choice = choices.find((ch) => ch.id === answeredChoiceId);
+        return choice ? choice.label : answeredChoiceId;
+      });
+
+      const csvRow = [
+        fs.friend_name || '',
+        ...answerValues,
+        fs.completed_at || fs.started_at || '',
+        fs.status === 'completed' ? '完了' : '未完了',
+      ];
+      csvRows.push(csvRow.map(csvEscape).join(','));
+    }
+
+    const csvContent = csvRows.join('\r\n') + '\r\n';
+    return new Response(csvContent, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="survey_responses_${surveyId}_${new Date().toISOString().slice(0, 10)}.csv"`,
+      },
+    });
+  } catch (err) {
+    console.error('GET /api/surveys/:id/responses/export error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
 });
 
 export { surveys };

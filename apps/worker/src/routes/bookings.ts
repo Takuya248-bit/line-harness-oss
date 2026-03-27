@@ -218,4 +218,76 @@ bookings.post('/api/bookings/send-slots', async (c) => {
   }
 });
 
+// ── CSV Export ───────────────────────────────────────────────────────────────
+
+function csvEscape(value: string): string {
+  if (value.includes('"') || value.includes(',') || value.includes('\n') || value.includes('\r')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+bookings.get('/api/bookings/export', async (c) => {
+  try {
+    const lineAccountId = c.req.query('lineAccountId');
+    const format = c.req.query('format') ?? 'csv';
+
+    if (!lineAccountId) {
+      return c.json({ success: false, error: 'lineAccountId is required' }, 400);
+    }
+    if (format !== 'csv') {
+      return c.json({ success: false, error: 'Unsupported format. Use format=csv' }, 400);
+    }
+
+    const db = c.env.DB;
+
+    const result = await db
+      .prepare(
+        `SELECT b.id, b.start_time, b.end_time, b.status, b.created_at,
+                f.display_name AS friend_display_name, f.line_user_id AS friend_line_name
+         FROM bookings b
+         LEFT JOIN friends f ON f.id = b.friend_id
+         WHERE b.line_account_id = ?
+         ORDER BY b.start_time DESC`,
+      )
+      .bind(lineAccountId)
+      .all<{
+        id: string;
+        start_time: string;
+        end_time: string;
+        status: string;
+        created_at: string;
+        friend_display_name: string | null;
+        friend_line_name: string | null;
+      }>();
+
+    const headerRow = ['予約ID', '友だち名', 'LINE名', '予約日時', 'ステータス', '作成日'];
+    const csvRows: string[] = [];
+    csvRows.push('\uFEFF' + headerRow.map(csvEscape).join(','));
+
+    for (const row of result.results) {
+      const csvRow = [
+        row.id,
+        row.friend_display_name || '',
+        row.friend_line_name || '',
+        `${row.start_time} - ${row.end_time}`,
+        row.status,
+        row.created_at || '',
+      ];
+      csvRows.push(csvRow.map(csvEscape).join(','));
+    }
+
+    const csvContent = csvRows.join('\r\n') + '\r\n';
+    return new Response(csvContent, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="bookings_export_${new Date().toISOString().slice(0, 10)}.csv"`,
+      },
+    });
+  } catch (err) {
+    console.error('GET /api/bookings/export error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
 export { bookings };

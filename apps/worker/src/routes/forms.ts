@@ -348,4 +348,72 @@ forms.post('/api/forms/:id/submit', async (c) => {
   }
 });
 
+// ── CSV Export ───────────────────────────────────────────────────────────────
+
+function csvEscape(value: string): string {
+  if (value.includes('"') || value.includes(',') || value.includes('\n') || value.includes('\r')) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+forms.get('/api/forms/:id/submissions/export', async (c) => {
+  try {
+    const formId = c.req.param('id');
+    const format = c.req.query('format') ?? 'csv';
+
+    if (format !== 'csv') {
+      return c.json({ success: false, error: 'Unsupported format. Use format=csv' }, 400);
+    }
+
+    const db = c.env.DB;
+
+    const form = await getFormById(db, formId);
+    if (!form) {
+      return c.json({ success: false, error: 'Form not found' }, 404);
+    }
+
+    // Parse field definitions for dynamic headers
+    const fields = JSON.parse(form.fields || '[]') as Array<{ name: string; label: string }>;
+
+    const submissions = await getFormSubmissions(db, formId);
+
+    // Build dynamic headers: 提出ID, 友だち名, [field labels...], 提出日時
+    const headerRow = ['提出ID', '友だち名', ...fields.map((f) => f.label), '提出日時'];
+    const csvRows: string[] = [];
+    csvRows.push('\uFEFF' + headerRow.map(csvEscape).join(','));
+
+    for (const sub of submissions) {
+      const data = JSON.parse(sub.data || '{}') as Record<string, unknown>;
+      const friendName = (sub as unknown as { friend_name?: string }).friend_name || '';
+
+      const fieldValues = fields.map((f) => {
+        const val = data[f.name];
+        if (val === undefined || val === null) return '';
+        if (Array.isArray(val)) return val.join(', ');
+        return String(val);
+      });
+
+      const csvRow = [
+        sub.id,
+        friendName,
+        ...fieldValues,
+        sub.created_at || '',
+      ];
+      csvRows.push(csvRow.map(csvEscape).join(','));
+    }
+
+    const csvContent = csvRows.join('\r\n') + '\r\n';
+    return new Response(csvContent, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="form_submissions_${formId}_${new Date().toISOString().slice(0, 10)}.csv"`,
+      },
+    });
+  } catch (err) {
+    console.error('GET /api/forms/:id/submissions/export error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
 export { forms };
