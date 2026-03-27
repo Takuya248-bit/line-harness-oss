@@ -297,6 +297,40 @@ async function executeAction(
       break;
     }
 
+    case 'start_survey': {
+      const surveyId = action.params.surveyId || action.params.value;
+      if (surveyId && friendId && lineAccessToken) {
+        const { startFriendSurvey, getSurveyQuestions, getSurveyChoices } = await import('@line-crm/db');
+        const { buildSurveyQuestionFlex } = await import('./survey-flex.js');
+
+        // Start survey state
+        await startFriendSurvey(db, friendId, surveyId as string);
+
+        // Get first question
+        const questions = await getSurveyQuestions(db, surveyId as string);
+        if (questions.length > 0) {
+          const firstQ = questions[0];
+          const choices = await getSurveyChoices(db, firstQ.id);
+          const flex = buildSurveyQuestionFlex(surveyId as string, firstQ, choices);
+
+          // Get friend's LINE user ID
+          const friend = await db
+            .prepare('SELECT line_user_id FROM friends WHERE id = ?')
+            .bind(friendId)
+            .first<{ line_user_id: string }>();
+          if (friend) {
+            const lineClient = new LineClient(lineAccessToken);
+            await lineClient.pushMessage(friend.line_user_id, [{
+              type: 'flex',
+              altText: firstQ.title,
+              contents: flex as any,
+            }]);
+          }
+        }
+      }
+      break;
+    }
+
     case 'set_action_date': {
       const key = action.params.value || action.params.key;
       if (key && friendId) await recordActionDate(db, friendId, key as string);
