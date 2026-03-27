@@ -14,7 +14,6 @@
     "wrangler": "^3.30.0"
   },
   "dependencies": {
-    "@resvg/resvg-wasm": "^2.6.2",
-    "satori": "^0.26.0"
+    "@cf-wasm/resvg": "^0.3.3"
   }
 }
