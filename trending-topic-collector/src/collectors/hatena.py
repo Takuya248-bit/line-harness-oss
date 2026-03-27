@@ -5,7 +5,7 @@ import requests
 
 from src.collectors.base import BaseCollector, CollectedItem
 
-_ANOND_HOTENTRY_RSS = "https://b.hatena.ne.jp/entrylist/anond.hatelabo.jp?mode=rss&sort=hot"
+_ANOND_HOTENTRY_RSS = "https://b.hatena.ne.jp/site/anond.hatelabo.jp?mode=rss&sort=count"
 
 
 def _parse_hotentry_rss(rss_text: str, min_bookmarks: int = 100) -> list[CollectedItem]:
