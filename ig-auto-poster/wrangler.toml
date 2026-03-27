@@ -1,7 +1,7 @@
 name = "ig-auto-poster"
 main = "src/index.ts"
 compatibility_date = "2024-03-01"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat_v2"]
 
 # Cron disabled until auto-post is confirmed
 # [triggers]

@@ -52,8 +52,28 @@ function escapeXml(s: string): string {
 }
 
 // Wrap text into lines that fit within a given width (approximate)
+// For English (contains spaces): wraps at word boundaries
+// For Japanese (no spaces): wraps at character count
 function wrapText(text: string, maxCharsPerLine: number): string[] {
   if (text.length <= maxCharsPerLine) return [text];
+  // If text contains spaces, wrap at word boundaries
+  if (text.includes(" ")) {
+    const words = text.split(" ");
+    const lines: string[] = [];
+    let current = "";
+    for (const word of words) {
+      const test = current ? `${current} ${word}` : word;
+      if (test.length > maxCharsPerLine && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = test;
+      }
+    }
+    if (current) lines.push(current);
+    return lines;
+  }
+  // Japanese: wrap at character count
   const lines: string[] = [];
   let remaining = text;
   while (remaining.length > 0) {
@@ -153,32 +173,37 @@ function buildCTASvg(_leadMagnet: string): string {
   </defs>
   <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#ctaGrad)"/>
   <!-- Organic shapes -->
-  <ellipse cx="950" cy="180" rx="280" ry="160" fill="rgba(255,255,255,0.04)" transform="rotate(-15 950 180)"/>
+  <ellipse cx="950" cy="150" rx="280" ry="160" fill="rgba(255,255,255,0.04)" transform="rotate(-15 950 150)"/>
   <ellipse cx="100" cy="1100" rx="300" ry="180" fill="rgba(255,255,255,0.04)" transform="rotate(20 100 1100)"/>
-  <circle cx="880" cy="400" r="50" fill="rgba(255,255,255,0.06)"/>
-  <circle cx="200" cy="850" r="40" fill="rgba(255,255,255,0.06)"/>
+  <circle cx="880" cy="350" r="50" fill="rgba(255,255,255,0.06)"/>
+  <circle cx="200" cy="900" r="40" fill="rgba(255,255,255,0.06)"/>
   <!-- Decorative dots -->
-  <circle cx="160" cy="250" r="10" fill="rgba(255,255,255,0.2)"/>
-  <circle cx="200" cy="290" r="6" fill="rgba(255,255,255,0.15)"/>
-  <circle cx="920" cy="950" r="10" fill="rgba(255,255,255,0.2)"/>
-  <circle cx="880" cy="990" r="6" fill="rgba(255,255,255,0.15)"/>
+  <circle cx="160" cy="220" r="10" fill="rgba(255,255,255,0.2)"/>
+  <circle cx="200" cy="260" r="6" fill="rgba(255,255,255,0.15)"/>
+  <circle cx="920" cy="1000" r="10" fill="rgba(255,255,255,0.2)"/>
+  <circle cx="880" cy="1040" r="6" fill="rgba(255,255,255,0.15)"/>
   <!-- Wave pattern -->
   <path d="M0 1180 Q270 1130 540 1180 Q810 1230 1080 1180 L1080 1350 L0 1350Z" fill="rgba(255,255,255,0.06)"/>
   <path d="M0 1220 Q270 1170 540 1220 Q810 1270 1080 1220 L1080 1350 L0 1350Z" fill="rgba(255,255,255,0.04)"/>
-  <!-- Heading -->
-  <text x="540" y="300" text-anchor="middle" font-size="56" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">もっと学びたい方へ</text>
-  <!-- White box -->
-  <rect x="90" y="380" width="900" height="340" rx="30" fill="${WHITE}"/>
-  <text x="540" y="480" text-anchor="middle" font-size="44" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">LINE登録で</text>
-  <text x="540" y="550" text-anchor="middle" font-size="40" font-weight="700" fill="${ORANGE}" font-family="'Zen Maru Gothic', sans-serif">レベル別英語学習ロードマップ</text>
-  <text x="540" y="610" text-anchor="middle" font-size="40" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">を無料プレゼント!</text>
-  <!-- Engagement CTA -->
-  <rect x="180" y="790" width="720" height="80" rx="40" fill="${ORANGE}"/>
-  <text x="540" y="843" text-anchor="middle" font-size="38" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">好きな英単語をコメントしてね!</text>
-  <!-- Arrow prompt -->
-  <text x="540" y="960" text-anchor="middle" font-size="34" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">プロフィールのリンクから</text>
-  <!-- Handle -->
-  <text x="540" y="1020" text-anchor="middle" font-size="30" fill="rgba(255,255,255,0.85)" font-family="'Zen Maru Gothic', sans-serif">@barilingual</text>
+
+  <!-- メインCTA: コメント誘導 -->
+  <rect x="70" y="140" width="940" height="520" rx="30" fill="${WHITE}"/>
+  <text x="540" y="290" text-anchor="middle" font-size="72" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">好きな英単語を</text>
+  <text x="540" y="400" text-anchor="middle" font-size="72" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">コメントしてね!</text>
+  <!-- オレンジボタン風 -->
+  <rect x="140" y="470" width="800" height="100" rx="50" fill="${ORANGE}"/>
+  <text x="540" y="536" text-anchor="middle" font-size="46" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">コメントでプレゼントGET</text>
+
+  <!-- プレゼント内容カード -->
+  <rect x="70" y="730" width="940" height="380" rx="30" fill="rgba(255,255,255,0.95)"/>
+  <rect x="70" y="730" width="940" height="8" rx="4" fill="${ORANGE}"/>
+  <text x="540" y="830" text-anchor="middle" font-size="44" font-weight="700" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">無料プレゼント</text>
+  <text x="540" y="940" text-anchor="middle" font-size="64" font-weight="700" fill="${ORANGE}" font-family="'Zen Maru Gothic', sans-serif">レベル別</text>
+  <text x="540" y="1030" text-anchor="middle" font-size="60" font-weight="700" fill="${ORANGE}" font-family="'Zen Maru Gothic', sans-serif">英語学習ロードマップ</text>
+
+  <!-- アカウント誘導 -->
+  <text x="540" y="1185" text-anchor="middle" font-size="34" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">@balilingirl をフォロー</text>
+
   <!-- Bottom bar -->
   <rect x="0" y="1268" width="${WIDTH}" height="82" fill="rgba(0,0,0,0.2)"/>
   <text x="540" y="1320" text-anchor="middle" font-size="30" fill="rgba(255,255,255,0.9)" font-family="'Zen Maru Gothic', sans-serif">Barilingual | バリ島で英語を学ぼう</text>
@@ -195,14 +220,14 @@ function buildListSlideSvg(slide: SlideData, total: number): string {
   const exampleJp = escapeXml(slide.exampleJp ?? "");
 
   // Wrap long English phrases
-  const phraseLines = wrapText(slide.phraseEn ?? "", 22);
+  const phraseLines = wrapText(slide.phraseEn ?? "", 18);
   const phraseElements = phraseLines
     .map(
       (line, i) =>
-        `<text x="130" y="${340 + i * 76}" font-size="64" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(line)}</text>`,
+        `<text x="120" y="${310 + i * 100}" font-size="80" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(line)}</text>`,
     )
     .join("\n    ");
-  const phraseBottom = 340 + phraseLines.length * 76;
+  const phraseBottom = 310 + phraseLines.length * 100;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
   <defs>
@@ -218,23 +243,23 @@ function buildListSlideSvg(slide: SlideData, total: number): string {
   <ellipse cx="80" cy="1200" rx="280" ry="160" fill="rgba(0,188,212,0.06)" transform="rotate(15 80 1200)"/>
   <circle cx="920" cy="800" r="40" fill="rgba(0,150,136,0.05)"/>
   <!-- White card -->
-  <rect x="50" y="200" width="980" height="${phraseBottom + 340 - 200}" rx="30" fill="${WHITE}" opacity="0.92"/>
+  <rect x="40" y="170" width="1000" height="${phraseBottom + 420 - 170}" rx="30" fill="${WHITE}" opacity="0.92"/>
   <!-- Page badge -->
-  <circle cx="120" cy="120" r="44" fill="${TURQUOISE}"/>
-  <text x="120" y="134" text-anchor="middle" font-size="30" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(pageLabel)}</text>
+  <circle cx="120" cy="100" r="50" fill="${TURQUOISE}"/>
+  <text x="120" y="116" text-anchor="middle" font-size="36" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(pageLabel)}</text>
   <!-- English phrase -->
   ${phraseElements}
   <!-- Japanese -->
-  <text x="130" y="${phraseBottom + 50}" font-size="38" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${phraseJp}</text>
+  <text x="120" y="${phraseBottom + 60}" font-size="46" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${phraseJp}</text>
   <!-- Divider -->
-  <line x1="130" y1="${phraseBottom + 110}" x2="950" y2="${phraseBottom + 110}" stroke="${TURQUOISE}" stroke-width="3" opacity="0.4"/>
+  <line x1="120" y1="${phraseBottom + 120}" x2="960" y2="${phraseBottom + 120}" stroke="${TURQUOISE}" stroke-width="3" opacity="0.4"/>
   <!-- Example label -->
-  <rect x="130" y="${phraseBottom + 140}" width="150" height="42" rx="21" fill="${TURQUOISE}" opacity="0.15"/>
-  <text x="205" y="${phraseBottom + 170}" text-anchor="middle" font-size="28" font-weight="700" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">Example</text>
+  <rect x="120" y="${phraseBottom + 150}" width="180" height="50" rx="25" fill="${TURQUOISE}" opacity="0.15"/>
+  <text x="210" y="${phraseBottom + 184}" text-anchor="middle" font-size="32" font-weight="700" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">Example</text>
   <!-- Example EN -->
-  <text x="130" y="${phraseBottom + 230}" font-size="38" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${exampleEn}</text>
+  <text x="120" y="${phraseBottom + 260}" font-size="46" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${exampleEn}</text>
   <!-- Example JP -->
-  <text x="130" y="${phraseBottom + 290}" font-size="32" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${exampleJp}</text>
+  <text x="120" y="${phraseBottom + 330}" font-size="40" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${exampleJp}</text>
   <!-- Bottom bar -->
   <rect x="0" y="1268" width="${WIDTH}" height="82" fill="rgba(0,77,64,0.85)"/>
   <text x="540" y="1320" text-anchor="middle" font-size="30" fill="rgba(255,255,255,0.9)" font-family="'Zen Maru Gothic', sans-serif">Barilingual | バリ島で英語を学ぼう</text>
@@ -251,22 +276,22 @@ function buildQuizQuestionSvg(slide: SlideData): string {
     { label: "C", text: slide.optionC ?? "" },
   ];
 
-  const questionLines = wrapText(slide.questionJp ?? "", 18);
+  const questionLines = wrapText(slide.questionJp ?? "", 14);
   const questionElements = questionLines
     .map(
       (line, i) =>
-        `<text x="100" y="${350 + i * 68}" font-size="50" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(line)}</text>`,
+        `<text x="100" y="${370 + i * 80}" font-size="60" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(line)}</text>`,
     )
     .join("\n    ");
-  const qBottom = 350 + questionLines.length * 68;
+  const qBottom = 370 + questionLines.length * 80;
 
   const optionElements = options
     .map(
       (opt, i) =>
-        `<rect x="80" y="${qBottom + 50 + i * 110}" width="920" height="88" rx="20" fill="${WHITE}" stroke="#E0E0E0" stroke-width="2"/>
-    <circle cx="140" cy="${qBottom + 94 + i * 110}" r="22" fill="${TURQUOISE}" opacity="0.15"/>
-    <text x="140" y="${qBottom + 102 + i * 110}" text-anchor="middle" font-size="28" font-weight="700" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(opt.label)}</text>
-    <text x="185" y="${qBottom + 104 + i * 110}" font-size="38" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(opt.text)}</text>`,
+        `<rect x="70" y="${qBottom + 50 + i * 130}" width="940" height="106" rx="24" fill="${WHITE}" stroke="#E0E0E0" stroke-width="2"/>
+    <circle cx="140" cy="${qBottom + 103 + i * 130}" r="28" fill="${TURQUOISE}" opacity="0.15"/>
+    <text x="140" y="${qBottom + 114 + i * 130}" text-anchor="middle" font-size="34" font-weight="700" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(opt.label)}</text>
+    <text x="190" y="${qBottom + 114 + i * 130}" font-size="46" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(opt.text)}</text>`,
     )
     .join("\n    ");
 
@@ -283,16 +308,16 @@ function buildQuizQuestionSvg(slide: SlideData): string {
   <ellipse cx="80" cy="1100" rx="220" ry="130" fill="rgba(0,188,212,0.04)" transform="rotate(10 80 1100)"/>
   <circle cx="920" cy="300" r="35" fill="rgba(255,111,0,0.06)"/>
   <!-- Orange header -->
-  <rect width="${WIDTH}" height="220" rx="0" fill="${ORANGE}"/>
-  <path d="M0 200 Q270 240 540 200 Q810 160 1080 200 L1080 220 L0 220Z" fill="${ORANGE}"/>
-  <text x="540" y="140" text-anchor="middle" font-size="100" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">Q.</text>
+  <rect width="${WIDTH}" height="240" rx="0" fill="${ORANGE}"/>
+  <path d="M0 220 Q270 260 540 220 Q810 180 1080 220 L1080 240 L0 240Z" fill="${ORANGE}"/>
+  <text x="540" y="155" text-anchor="middle" font-size="120" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">Q.</text>
   <!-- Question -->
   ${questionElements}
   <!-- Options -->
   ${optionElements}
   <!-- Swipe prompt -->
-  <rect x="280" y="1140" width="520" height="60" rx="30" fill="rgba(0,188,212,0.12)"/>
-  <text x="540" y="1180" text-anchor="middle" font-size="32" font-weight="700" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">スワイプで答え合わせ</text>
+  <rect x="250" y="1140" width="580" height="66" rx="33" fill="rgba(0,188,212,0.12)"/>
+  <text x="540" y="1184" text-anchor="middle" font-size="38" font-weight="700" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">スワイプで答え合わせ</text>
   <!-- Bottom bar -->
   <rect x="0" y="1268" width="${WIDTH}" height="82" fill="rgba(0,77,64,0.85)"/>
   <text x="540" y="1320" text-anchor="middle" font-size="30" fill="rgba(255,255,255,0.9)" font-family="'Zen Maru Gothic', sans-serif">Barilingual | バリ島で英語を学ぼう</text>
@@ -303,13 +328,13 @@ function buildQuizQuestionSvg(slide: SlideData): string {
 // SVG Template: Quiz Answer
 // =====================================================
 function buildQuizAnswerSvg(slide: SlideData): string {
-  const explanationLines = wrapText(slide.explanation ?? "", 26);
-  const expBoxY = 620;
-  const expBoxH = 80 + explanationLines.length * 48;
+  const explanationLines = wrapText(slide.explanation ?? "", 22);
+  const expBoxY = 650;
+  const expBoxH = 100 + explanationLines.length * 56;
   const explanationElements = explanationLines
     .map(
       (line, i) =>
-        `<text x="130" y="${expBoxY + 55 + i * 48}" font-size="34" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(line)}</text>`,
+        `<text x="130" y="${expBoxY + 65 + i * 56}" font-size="42" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(line)}</text>`,
     )
     .join("\n    ");
 
@@ -326,18 +351,18 @@ function buildQuizAnswerSvg(slide: SlideData): string {
   <ellipse cx="80" cy="1100" rx="250" ry="140" fill="rgba(0,150,136,0.04)" transform="rotate(12 80 1100)"/>
   <circle cx="900" cy="350" r="30" fill="rgba(0,188,212,0.06)"/>
   <!-- Turquoise header -->
-  <rect width="${WIDTH}" height="220" fill="${TURQUOISE}"/>
-  <path d="M0 200 Q270 240 540 200 Q810 160 1080 200 L1080 220 L0 220Z" fill="${TURQUOISE}"/>
-  <text x="540" y="140" text-anchor="middle" font-size="100" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">A.</text>
+  <rect width="${WIDTH}" height="240" fill="${TURQUOISE}"/>
+  <path d="M0 220 Q270 260 540 220 Q810 180 1080 220 L1080 240 L0 240Z" fill="${TURQUOISE}"/>
+  <text x="540" y="155" text-anchor="middle" font-size="120" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">A.</text>
   <!-- Correct label -->
-  <rect x="80" y="270" width="320" height="56" rx="28" fill="${ORANGE}"/>
-  <text x="240" y="308" text-anchor="middle" font-size="36" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">正解は ${escapeXml(slide.correctOption ?? "")}</text>
+  <rect x="80" y="300" width="380" height="66" rx="33" fill="${ORANGE}"/>
+  <text x="270" y="344" text-anchor="middle" font-size="42" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">正解は ${escapeXml(slide.correctOption ?? "")}</text>
   <!-- Answer EN -->
-  <text x="80" y="420" font-size="58" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.answerEn ?? "")}</text>
+  <text x="80" y="460" font-size="70" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.answerEn ?? "")}</text>
   <!-- Answer JP -->
-  <text x="80" y="500" font-size="38" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.answerJp ?? "")}</text>
+  <text x="80" y="545" font-size="46" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.answerJp ?? "")}</text>
   <!-- Divider -->
-  <line x1="80" y1="560" x2="1000" y2="560" stroke="${TURQUOISE}" stroke-width="3" opacity="0.4"/>
+  <line x1="80" y1="600" x2="1000" y2="600" stroke="${TURQUOISE}" stroke-width="3" opacity="0.4"/>
   <!-- Explanation box with Bali decoration -->
   <rect x="80" y="${expBoxY}" width="920" height="${expBoxH}" rx="20" fill="${WHITE}" opacity="0.92"/>
   <rect x="80" y="${expBoxY}" width="6" height="${expBoxH}" rx="3" fill="${TURQUOISE}"/>
@@ -367,47 +392,47 @@ function buildBeforeAfterSvg(slide: SlideData): string {
     </linearGradient>
   </defs>
   <!-- Before (top half) -->
-  <rect width="${WIDTH}" height="620" fill="url(#baBeforeGrad)"/>
+  <rect width="${WIDTH}" height="600" fill="url(#baBeforeGrad)"/>
   <!-- Organic shapes before -->
   <ellipse cx="950" cy="100" rx="200" ry="120" fill="rgba(229,57,53,0.04)" transform="rotate(-10 950 100)"/>
-  <circle cx="920" cy="400" r="30" fill="rgba(229,57,53,0.05)"/>
+  <circle cx="920" cy="380" r="30" fill="rgba(229,57,53,0.05)"/>
   <!-- Before label -->
-  <rect x="80" y="80" width="180" height="48" rx="24" fill="#FFCDD2"/>
-  <text x="170" y="112" text-anchor="middle" font-size="28" font-weight="700" fill="#C62828" font-family="'Zen Maru Gothic', sans-serif">日本人英語</text>
+  <rect x="80" y="70" width="220" height="56" rx="28" fill="#FFCDD2"/>
+  <text x="190" y="106" text-anchor="middle" font-size="34" font-weight="700" fill="#C62828" font-family="'Zen Maru Gothic', sans-serif">日本人英語</text>
   <!-- Before EN -->
-  <text x="80" y="230" font-size="52" fill="#616161" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.beforeEn ?? "")}</text>
+  <text x="80" y="230" font-size="62" fill="#616161" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.beforeEn ?? "")}</text>
   <!-- Before JP -->
-  <text x="80" y="310" font-size="34" fill="#9E9E9E" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.beforeJp ?? "")}</text>
+  <text x="80" y="320" font-size="42" fill="#9E9E9E" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.beforeJp ?? "")}</text>
   <!-- X mark -->
-  <circle cx="120" cy="400" r="32" fill="#FFCDD2"/>
-  <text x="120" y="414" text-anchor="middle" font-size="40" font-weight="700" fill="#E53935" font-family="'Zen Maru Gothic', sans-serif">X</text>
+  <circle cx="130" cy="420" r="38" fill="#FFCDD2"/>
+  <text x="130" y="436" text-anchor="middle" font-size="48" font-weight="700" fill="#E53935" font-family="'Zen Maru Gothic', sans-serif">X</text>
 
   <!-- After (bottom half) -->
-  <rect y="620" width="${WIDTH}" height="648" fill="url(#baAfterGrad)"/>
+  <rect y="600" width="${WIDTH}" height="668" fill="url(#baAfterGrad)"/>
   <!-- Organic shapes after -->
   <ellipse cx="100" cy="1100" rx="220" ry="130" fill="rgba(0,150,136,0.05)" transform="rotate(15 100 1100)"/>
   <circle cx="180" cy="800" r="25" fill="rgba(0,188,212,0.06)"/>
   <!-- After label -->
-  <rect x="80" y="690" width="200" height="48" rx="24" fill="#B2DFDB"/>
-  <text x="180" y="722" text-anchor="middle" font-size="28" font-weight="700" fill="#00695C" font-family="'Zen Maru Gothic', sans-serif">ネイティブ英語</text>
+  <rect x="80" y="670" width="250" height="56" rx="28" fill="#B2DFDB"/>
+  <text x="205" y="706" text-anchor="middle" font-size="34" font-weight="700" fill="#00695C" font-family="'Zen Maru Gothic', sans-serif">ネイティブ英語</text>
   <!-- After EN -->
-  <text x="80" y="845" font-size="52" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.afterEn ?? "")}</text>
+  <text x="80" y="840" font-size="62" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.afterEn ?? "")}</text>
   <!-- After JP -->
-  <text x="80" y="925" font-size="34" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.afterJp ?? "")}</text>
+  <text x="80" y="930" font-size="42" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.afterJp ?? "")}</text>
   <!-- O mark -->
-  <circle cx="120" cy="1010" r="32" fill="#B2DFDB"/>
-  <text x="120" y="1024" text-anchor="middle" font-size="40" font-weight="700" fill="#2E7D32" font-family="'Zen Maru Gothic', sans-serif">O</text>
+  <circle cx="130" cy="1020" r="38" fill="#B2DFDB"/>
+  <text x="130" y="1036" text-anchor="middle" font-size="48" font-weight="700" fill="#2E7D32" font-family="'Zen Maru Gothic', sans-serif">O</text>
 
   <!-- VS circle -->
-  <circle cx="540" cy="620" r="44" fill="${ORANGE}"/>
-  <text x="540" y="634" text-anchor="middle" font-size="30" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">VS</text>
+  <circle cx="540" cy="600" r="50" fill="${ORANGE}"/>
+  <text x="540" y="616" text-anchor="middle" font-size="36" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">VS</text>
 
   <!-- Tip box with Bali decoration -->
-  <rect x="80" y="1100" width="920" height="86" rx="20" fill="${WHITE}" opacity="0.92"/>
-  <rect x="80" y="1100" width="6" height="86" rx="3" fill="${TURQUOISE}"/>
-  <circle cx="980" cy="1115" r="8" fill="rgba(0,188,212,0.15)"/>
-  <circle cx="960" cy="1140" r="5" fill="rgba(0,188,212,0.1)"/>
-  <text x="110" y="1152" font-size="30" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.tip ?? "")}</text>
+  <rect x="70" y="1100" width="940" height="100" rx="20" fill="${WHITE}" opacity="0.92"/>
+  <rect x="70" y="1100" width="6" height="100" rx="3" fill="${TURQUOISE}"/>
+  <circle cx="990" cy="1118" r="8" fill="rgba(0,188,212,0.15)"/>
+  <circle cx="970" cy="1143" r="5" fill="rgba(0,188,212,0.1)"/>
+  <text x="100" y="1162" font-size="36" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.tip ?? "")}</text>
 
   <!-- Bottom bar -->
   <rect x="0" y="1268" width="${WIDTH}" height="82" fill="rgba(0,77,64,0.85)"/>
@@ -433,37 +458,215 @@ function buildSituationSvg(slide: SlideData): string {
   <ellipse cx="80" cy="1100" rx="280" ry="160" fill="rgba(255,111,0,0.04)" transform="rotate(15 80 1100)"/>
   <circle cx="900" cy="600" r="35" fill="rgba(0,150,136,0.05)"/>
   <circle cx="160" cy="450" r="25" fill="rgba(0,188,212,0.06)"/>
-  <!-- Decorative dots -->
-  <circle cx="950" cy="400" r="8" fill="rgba(0,188,212,0.12)"/>
-  <circle cx="930" cy="430" r="5" fill="rgba(0,188,212,0.08)"/>
   <!-- Scene title -->
-  <rect x="60" y="60" width="${920}" height="80" rx="16" fill="rgba(0,77,64,0.08)"/>
-  <text x="100" y="115" font-size="52" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.sceneTitle ?? "")}</text>
+  <rect x="50" y="50" width="980" height="100" rx="20" fill="rgba(0,77,64,0.08)"/>
+  <text x="100" y="118" font-size="62" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.sceneTitle ?? "")}</text>
 
   <!-- Left bubble (You) -->
-  <rect x="80" y="200" width="820" height="250" rx="24" fill="${WHITE}" opacity="0.92"/>
-  <rect x="80" y="200" width="820" height="250" rx="24" fill="none" stroke="#B3E5FC" stroke-width="2"/>
-  <rect x="100" y="220" width="60" height="32" rx="16" fill="#039BE5"/>
-  <text x="130" y="244" text-anchor="middle" font-size="22" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">You</text>
-  <text x="120" y="310" font-size="40" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.phraseEn1 ?? "")}</text>
-  <text x="120" y="370" font-size="30" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.phraseJp1 ?? "")}</text>
+  <rect x="60" y="200" width="880" height="300" rx="28" fill="${WHITE}" opacity="0.92"/>
+  <rect x="60" y="200" width="880" height="300" rx="28" fill="none" stroke="#B3E5FC" stroke-width="2"/>
+  <rect x="90" y="225" width="80" height="40" rx="20" fill="#039BE5"/>
+  <text x="130" y="253" text-anchor="middle" font-size="28" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">You</text>
+  <text x="110" y="330" font-size="50" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.phraseEn1 ?? "")}</text>
+  <text x="110" y="410" font-size="38" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.phraseJp1 ?? "")}</text>
 
   <!-- Right bubble (Staff) -->
-  <rect x="180" y="490" width="820" height="250" rx="24" fill="${WHITE}" opacity="0.92"/>
-  <rect x="180" y="490" width="820" height="250" rx="24" fill="none" stroke="#FFE0B2" stroke-width="2"/>
-  <rect x="200" y="510" width="70" height="32" rx="16" fill="${ORANGE}"/>
-  <text x="235" y="534" text-anchor="middle" font-size="22" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">Staff</text>
-  <text x="220" y="600" font-size="40" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.responseEn ?? "")}</text>
-  <text x="220" y="660" font-size="30" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.responseJp ?? "")}</text>
+  <rect x="140" y="540" width="880" height="300" rx="28" fill="${WHITE}" opacity="0.92"/>
+  <rect x="140" y="540" width="880" height="300" rx="28" fill="none" stroke="#FFE0B2" stroke-width="2"/>
+  <rect x="170" y="565" width="90" height="40" rx="20" fill="${ORANGE}"/>
+  <text x="215" y="593" text-anchor="middle" font-size="28" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">Staff</text>
+  <text x="190" y="670" font-size="50" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.responseEn ?? "")}</text>
+  <text x="190" y="750" font-size="38" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.responseJp ?? "")}</text>
 
   <!-- Point box with Bali decoration -->
-  <rect x="80" y="800" width="920" height="110" rx="20" fill="${WHITE}" opacity="0.92"/>
-  <rect x="80" y="800" width="6" height="110" rx="3" fill="${TURQUOISE}"/>
-  <circle cx="980" cy="815" r="8" fill="rgba(0,188,212,0.15)"/>
-  <circle cx="960" cy="840" r="5" fill="rgba(0,188,212,0.1)"/>
-  <text x="110" y="845" font-size="28" font-weight="700" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">Point</text>
-  <text x="110" y="885" font-size="30" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.point ?? "")}</text>
+  <rect x="60" y="900" width="960" height="140" rx="24" fill="${WHITE}" opacity="0.92"/>
+  <rect x="60" y="900" width="6" height="140" rx="3" fill="${TURQUOISE}"/>
+  <circle cx="1000" cy="918" r="8" fill="rgba(0,188,212,0.15)"/>
+  <circle cx="980" cy="943" r="5" fill="rgba(0,188,212,0.1)"/>
+  <text x="100" y="950" font-size="34" font-weight="700" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">Point</text>
+  <text x="100" y="1005" font-size="38" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(slide.point ?? "")}</text>
 
+  <!-- Bottom bar -->
+  <rect x="0" y="1268" width="${WIDTH}" height="82" fill="rgba(0,77,64,0.85)"/>
+  <text x="540" y="1320" text-anchor="middle" font-size="30" fill="rgba(255,255,255,0.9)" font-family="'Zen Maru Gothic', sans-serif">Barilingual | バリ島で英語を学ぼう</text>
+</svg>`;
+}
+
+// =====================================================
+// SVG Template: Story (Bali experience → English phrase)
+// =====================================================
+function buildStorySvg(slide: SlideData): string {
+  const storyTitle = escapeXml(slide.storyTitle ?? "");
+  const phraseJp = escapeXml(slide.phraseJp ?? "");
+  const bodyLines = wrapText(slide.storyBody ?? "", 18);
+  const bodyElements = bodyLines
+    .map(
+      (line, i) =>
+        `<text x="540" y="${380 + i * 58}" text-anchor="middle" font-size="44" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(line)}</text>`,
+    )
+    .join("\n    ");
+
+  // Wrap English phrase to max 2 lines
+  const enLines = wrapText(slide.phraseEn ?? "", 32);
+  const enSize = enLines.length > 1 ? 50 : 58;
+  const enElements = enLines
+    .map(
+      (line, i) =>
+        `<text x="540" y="${790 + i * 68}" text-anchor="middle" font-size="${enSize}" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(line)}</text>`,
+    )
+    .join("\n    ");
+  const enBottom = 790 + enLines.length * 68;
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
+  <defs>
+    <linearGradient id="storyGrad" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#FFF8E1"/>
+      <stop offset="50%" stop-color="#FFE0B2"/>
+      <stop offset="100%" stop-color="#FFCC80"/>
+    </linearGradient>
+  </defs>
+  <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#storyGrad)"/>
+  <!-- Organic shapes -->
+  <ellipse cx="950" cy="120" rx="280" ry="160" fill="rgba(255,111,0,0.06)" transform="rotate(-15 950 120)"/>
+  <ellipse cx="80" cy="1150" rx="300" ry="180" fill="rgba(255,111,0,0.05)" transform="rotate(20 80 1150)"/>
+  <circle cx="900" cy="500" r="50" fill="rgba(255,111,0,0.04)"/>
+  <!-- Scene badge -->
+  <rect x="120" y="60" width="840" height="90" rx="45" fill="${ORANGE}"/>
+  <text x="540" y="120" text-anchor="middle" font-size="52" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">${storyTitle}</text>
+  <!-- Episode card (fixed height) -->
+  <rect x="60" y="210" width="960" height="340" rx="28" fill="${WHITE}" opacity="0.92"/>
+  <rect x="60" y="210" width="960" height="8" rx="4" fill="${ORANGE}"/>
+  <text x="540" y="290" text-anchor="middle" font-size="34" font-weight="700" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">バリ島でのエピソード</text>
+  ${bodyElements}
+  <!-- Phrase card (fixed position) -->
+  <rect x="60" y="610" width="960" height="500" rx="28" fill="${WHITE}" opacity="0.95"/>
+  <rect x="60" y="610" width="6" height="500" rx="3" fill="${TURQUOISE}"/>
+  <circle cx="1000" cy="630" r="8" fill="rgba(0,188,212,0.15)"/>
+  <circle cx="980" cy="655" r="5" fill="rgba(0,188,212,0.1)"/>
+  <rect x="120" y="640" width="320" height="56" rx="28" fill="${TURQUOISE}" opacity="0.15"/>
+  <text x="280" y="678" text-anchor="middle" font-size="36" font-weight="700" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">こう言えばOK!</text>
+  ${enElements}
+  <text x="540" y="${enBottom + 50}" text-anchor="middle" font-size="44" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${phraseJp}</text>
+  <!-- Bottom bar -->
+  <rect x="0" y="1268" width="${WIDTH}" height="82" fill="rgba(0,77,64,0.85)"/>
+  <text x="540" y="1320" text-anchor="middle" font-size="30" fill="rgba(255,255,255,0.9)" font-family="'Zen Maru Gothic', sans-serif">Barilingual | バリ島で英語を学ぼう</text>
+</svg>`;
+}
+
+// =====================================================
+// SVG Template: Student Mistake (common English errors)
+// =====================================================
+function buildStudentMistakeSvg(slide: SlideData): string {
+  const mistakeEn = escapeXml(slide.mistakeEn ?? "");
+  const correctEn = escapeXml(slide.correctEn ?? "");
+  const explLines = wrapText(slide.mistakeExplanation ?? "", 20);
+  // Center text vertically in the 260px card (y=940 to y=1200)
+  // Card center = 1070, Point label at 990, remaining space 1010-1190
+  // Center of remaining = 1100
+  const explStartY = 1100 - (explLines.length * 52) / 2 + 20;
+  const explElements = explLines
+    .map(
+      (line, i) =>
+        `<text x="540" y="${explStartY + i * 52}" text-anchor="middle" font-size="40" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(line)}</text>`,
+    )
+    .join("\n    ");
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
+  <defs>
+    <linearGradient id="smGrad" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0%" stop-color="#E0F7FA"/>
+      <stop offset="50%" stop-color="#B2EBF2"/>
+      <stop offset="100%" stop-color="#E0F2F1"/>
+    </linearGradient>
+  </defs>
+  <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#smGrad)"/>
+  <!-- Organic shapes -->
+  <ellipse cx="950" cy="130" rx="260" ry="150" fill="rgba(0,188,212,0.06)" transform="rotate(-12 950 130)"/>
+  <ellipse cx="80" cy="1100" rx="280" ry="160" fill="rgba(0,150,136,0.05)" transform="rotate(18 80 1100)"/>
+  <circle cx="920" cy="500" r="40" fill="rgba(0,188,212,0.04)"/>
+  <!-- Header -->
+  <rect x="120" y="50" width="840" height="90" rx="45" fill="${TURQUOISE}"/>
+  <text x="540" y="110" text-anchor="middle" font-size="46" font-weight="700" fill="${WHITE}" font-family="'Zen Maru Gothic', sans-serif">もっと自然な英語に!</text>
+  <!-- Chat bubble: こう言いがち -->
+  <rect x="80" y="200" width="700" height="120" rx="24" fill="${WHITE}" opacity="0.92"/>
+  <rect x="80" y="200" width="700" height="6" rx="3" fill="${GRAY}"/>
+  <text x="110" y="250" font-size="28" font-weight="700" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">こう言いがち...</text>
+  <text x="110" y="300" font-size="48" fill="#9E9E9E" font-family="'Zen Maru Gothic', sans-serif">${mistakeEn}</text>
+  <!-- Arrow -->
+  <text x="540" y="390" text-anchor="middle" font-size="44" font-weight="700" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">v</text>
+  <!-- Main card: ネイティブ表現 -->
+  <rect x="60" y="420" width="960" height="460" rx="28" fill="${WHITE}" opacity="0.95"/>
+  <rect x="60" y="420" width="960" height="10" rx="5" fill="${TURQUOISE}"/>
+  <rect x="100" y="455" width="380" height="56" rx="28" fill="rgba(0,188,212,0.12)"/>
+  <text x="290" y="493" text-anchor="middle" font-size="34" font-weight="700" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">ネイティブはこう言う!</text>
+  <text x="540" y="620" text-anchor="middle" font-size="66" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${correctEn}</text>
+  <!-- Usage example in card -->
+  <line x1="120" y1="680" x2="960" y2="680" stroke="${TURQUOISE}" stroke-width="2" opacity="0.3"/>
+  <text x="540" y="740" text-anchor="middle" font-size="38" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">自然で丁寧な表現です</text>
+  <text x="540" y="810" text-anchor="middle" font-size="34" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">日常会話でそのまま使えます</text>
+  <!-- Explanation card -->
+  <rect x="60" y="940" width="960" height="260" rx="24" fill="${WHITE}" opacity="0.92"/>
+  <rect x="60" y="940" width="960" height="8" rx="4" fill="${ORANGE}"/>
+  <text x="540" y="990" text-anchor="middle" font-size="30" font-weight="700" fill="${ORANGE}" font-family="'Zen Maru Gothic', sans-serif">Point</text>
+  ${explElements}
+  <!-- Bottom bar -->
+  <rect x="0" y="1268" width="${WIDTH}" height="82" fill="rgba(0,77,64,0.85)"/>
+  <text x="540" y="1320" text-anchor="middle" font-size="30" fill="rgba(255,255,255,0.9)" font-family="'Zen Maru Gothic', sans-serif">Barilingual | バリ島で英語を学ぼう</text>
+</svg>`;
+}
+
+// =====================================================
+// SVG Template: Bali Report (on-location English usage)
+// =====================================================
+function buildBaliReportSvg(slide: SlideData): string {
+  const locationName = escapeXml(slide.locationName ?? "");
+  const phraseEn = escapeXml(slide.phraseEn ?? "");
+  const phraseJp = escapeXml(slide.phraseJp ?? "");
+  const tipLines = wrapText(slide.usageTip ?? "", 18);
+  const tipElements = tipLines
+    .map(
+      (line, i) =>
+        `<text x="540" y="${960 + i * 54}" text-anchor="middle" font-size="42" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${escapeXml(line)}</text>`,
+    )
+    .join("\n    ");
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}">
+  <defs>
+    <linearGradient id="brGrad" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#00897B"/>
+      <stop offset="50%" stop-color="#4DB6AC"/>
+      <stop offset="100%" stop-color="#80CBC4"/>
+    </linearGradient>
+  </defs>
+  <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#brGrad)"/>
+  <!-- Organic shapes -->
+  <ellipse cx="950" cy="120" rx="300" ry="180" fill="rgba(255,255,255,0.06)" transform="rotate(-15 950 120)"/>
+  <ellipse cx="100" cy="1200" rx="350" ry="200" fill="rgba(255,255,255,0.05)" transform="rotate(20 100 1200)"/>
+  <circle cx="900" cy="450" r="55" fill="rgba(255,255,255,0.05)"/>
+  <!-- Decorative dots -->
+  <circle cx="160" cy="200" r="10" fill="rgba(255,255,255,0.2)"/>
+  <circle cx="920" cy="1000" r="10" fill="rgba(255,255,255,0.2)"/>
+  <!-- Wave pattern -->
+  <path d="M0 1200 Q270 1150 540 1200 Q810 1250 1080 1200 L1080 1350 L0 1350Z" fill="rgba(255,255,255,0.06)"/>
+  <!-- Location badge -->
+  <rect x="120" y="60" width="840" height="100" rx="50" fill="${WHITE}"/>
+  <text x="540" y="128" text-anchor="middle" font-size="56" font-weight="700" fill="#00695C" font-family="'Zen Maru Gothic', sans-serif">${locationName}</text>
+  <!-- Phrase card (fixed height) -->
+  <rect x="60" y="220" width="960" height="500" rx="28" fill="${WHITE}" opacity="0.95"/>
+  <rect x="60" y="220" width="960" height="8" rx="4" fill="${ORANGE}"/>
+  <circle cx="1000" cy="240" r="8" fill="rgba(0,188,212,0.15)"/>
+  <rect x="120" y="260" width="360" height="56" rx="28" fill="rgba(0,188,212,0.12)"/>
+  <text x="300" y="298" text-anchor="middle" font-size="34" font-weight="700" fill="${TURQUOISE}" font-family="'Zen Maru Gothic', sans-serif">実際に使った英語</text>
+  <!-- English phrase -->
+  <text x="540" y="450" text-anchor="middle" font-size="68" font-weight="700" fill="${NAVY}" font-family="'Zen Maru Gothic', sans-serif">${phraseEn}</text>
+  <!-- Japanese translation -->
+  <text x="540" y="560" text-anchor="middle" font-size="46" fill="${GRAY}" font-family="'Zen Maru Gothic', sans-serif">${phraseJp}</text>
+  <!-- Tip card (fixed position) -->
+  <rect x="60" y="790" width="960" height="300" rx="28" fill="rgba(255,255,255,0.92)"/>
+  <rect x="60" y="790" width="6" height="300" rx="3" fill="${ORANGE}"/>
+  <rect x="120" y="830" width="320" height="50" rx="25" fill="${ORANGE}" opacity="0.15"/>
+  <text x="280" y="864" text-anchor="middle" font-size="32" font-weight="700" fill="${ORANGE}" font-family="'Zen Maru Gothic', sans-serif">使い方ポイント</text>
+  ${tipElements}
   <!-- Bottom bar -->
   <rect x="0" y="1268" width="${WIDTH}" height="82" fill="rgba(0,77,64,0.85)"/>
   <text x="540" y="1320" text-anchor="middle" font-size="30" fill="rgba(255,255,255,0.9)" font-family="'Zen Maru Gothic', sans-serif">Barilingual | バリ島で英語を学ぼう</text>
@@ -489,6 +692,12 @@ function buildSlideSvg(
       return buildBeforeAfterSvg(slide);
     case "situation":
       return buildSituationSvg(slide);
+    case "story":
+      return buildStorySvg(slide);
+    case "student_mistake":
+      return buildStudentMistakeSvg(slide);
+    case "bali_report":
+      return buildBaliReportSvg(slide);
     default:
       return buildListSlideSvg(slide, total);
   }

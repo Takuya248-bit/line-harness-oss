@@ -1,7 +1,7 @@
 // バリリンガル Instagram カルーセル投稿 ネタデータ
 // 30本: リスト型8 / クイズ型8 / Before/After型7 / シチュエーション型7
 
-export type ContentType = 'list' | 'quiz' | 'before_after' | 'situation';
+export type ContentType = 'list' | 'quiz' | 'before_after' | 'situation' | 'story' | 'student_mistake' | 'bali_report';
 
 export interface SlideData {
   slideNumber: number;
@@ -34,6 +34,17 @@ export interface SlideData {
   responseEn?: string;
   responseJp?: string;
   point?: string;
+  // ストーリー型
+  storyTitle?: string;
+  storyBody?: string;
+  // 生徒あるある型
+  mistakeEn?: string;
+  correctEn?: string;
+  mistakeExplanation?: string;
+  mistakeNumber?: string;
+  // バリ現地レポ型
+  locationName?: string;
+  usageTip?: string;
   // CTA
   leadMagnet?: string;
 }
@@ -525,6 +536,477 @@ const situationItems: ContentItem[] = [
 ];
 
 // ============================================================
+// ストーリー型 10本
+// ============================================================
+
+const storyItems: ContentItem[] = [
+  {
+    id: 31,
+    type: 'story',
+    title: 'バリ島で本当にあった\n英語エピソード5選',
+    subtitle: '現地で体験したリアルな英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', storyTitle: 'ウブドの棚田にて', storyBody: '道に迷って地元の人に助けてもらった時の一言', phraseEn: 'Could you point me in the right direction?', phraseJp: '正しい方向を教えてもらえますか？' },
+      { slideNumber: 3, slideType: 'content', storyTitle: 'クタのコンビニで', storyBody: 'お釣りが足りない時に使ったフレーズ', phraseEn: 'I think the change is short.', phraseJp: 'お釣りが足りないと思います' },
+      { slideNumber: 4, slideType: 'content', storyTitle: 'サヌールの薬局にて', storyBody: 'お腹を壊して薬を買いに行った時のこと', phraseEn: 'Do you have anything for an upset stomach?', phraseJp: 'お腹の薬はありますか？' },
+      { slideNumber: 5, slideType: 'content', storyTitle: 'スミニャックの渋滞で', storyBody: 'Grabドライバーに別ルートを提案した時', phraseEn: 'Can we take a different route?', phraseJp: '別のルートで行けますか？' },
+      { slideNumber: 6, slideType: 'content', storyTitle: 'ヌサドゥアのホテルで', storyBody: 'プールのタオルが見つからず聞いた一言', phraseEn: 'Where can I get pool towels?', phraseJp: 'プール用タオルはどこでもらえますか？' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 32,
+    type: 'story',
+    title: 'ウブドのカフェで\n使える英語フレーズ5選',
+    subtitle: 'おしゃれカフェを満喫する英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', storyTitle: '席を探して', storyBody: '混んでるカフェで相席をお願いした場面', phraseEn: 'Do you mind if I sit here?', phraseJp: 'ここに座ってもいいですか？' },
+      { slideNumber: 3, slideType: 'content', storyTitle: 'メニュー選びで', storyBody: '何がおすすめか店員に聞いてみた', phraseEn: "What's your most popular drink?", phraseJp: '一番人気のドリンクは何ですか？' },
+      { slideNumber: 4, slideType: 'content', storyTitle: 'Wi-Fiが必要で', storyBody: 'ノマドワーカーの必須フレーズ', phraseEn: "What's the Wi-Fi password?", phraseJp: 'Wi-Fiのパスワードは何ですか？' },
+      { slideNumber: 5, slideType: 'content', storyTitle: 'オーダー変更したくて', storyBody: '注文後にやっぱり変えたくなった時', phraseEn: 'Sorry, can I change my order?', phraseJp: 'すみません、注文を変えてもいいですか？' },
+      { slideNumber: 6, slideType: 'content', storyTitle: 'お会計で', storyBody: '割り勘にしたい時に使ったフレーズ', phraseEn: 'Can we split the bill?', phraseJp: '別々に会計できますか？' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 33,
+    type: 'story',
+    title: 'バリのタクシーで\n困らない英語5選',
+    subtitle: '移動中に使えるリアル英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', storyTitle: '乗車前の交渉', storyBody: 'メーターを使うか確認した場面', phraseEn: 'Can you use the meter, please?', phraseJp: 'メーターを使ってもらえますか？' },
+      { slideNumber: 3, slideType: 'content', storyTitle: '目的地の説明', storyBody: '住所がわからずGoogleマップを見せた時', phraseEn: "I'll show you on my phone.", phraseJp: 'スマホで見せますね' },
+      { slideNumber: 4, slideType: 'content', storyTitle: 'ウブド方面で渋滞中', storyBody: '到着時間が気になって聞いた一言', phraseEn: 'How much longer do you think?', phraseJp: 'あとどれくらいかかりそうですか？' },
+      { slideNumber: 5, slideType: 'content', storyTitle: '途中で寄り道したくて', storyBody: 'ATMに寄ってほしい時に使った表現', phraseEn: 'Could you stop at an ATM on the way?', phraseJp: '途中でATMに寄ってもらえますか？' },
+      { slideNumber: 6, slideType: 'content', storyTitle: '降車時に', storyBody: 'お釣りをチップとして渡した場面', phraseEn: 'Keep the change.', phraseJp: 'お釣りは取っておいてください' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 34,
+    type: 'story',
+    title: 'サーフショップで\n実際に使った英語5選',
+    subtitle: 'チャングーのサーフシーンで使う英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', storyTitle: 'ボード選びで', storyBody: 'チャングーのショップで初心者用を探した時', phraseEn: 'Which board is best for beginners?', phraseJp: '初心者にはどのボードがいいですか？' },
+      { slideNumber: 3, slideType: 'content', storyTitle: 'レンタル料金の確認', storyBody: '1日いくらか聞いた場面', phraseEn: 'How much is it to rent for the whole day?', phraseJp: '1日レンタルはいくらですか？' },
+      { slideNumber: 4, slideType: 'content', storyTitle: 'レッスンの相談', storyBody: 'インストラクターを紹介してもらった', phraseEn: 'Do you offer surf lessons?', phraseJp: 'サーフレッスンはやっていますか？' },
+      { slideNumber: 5, slideType: 'content', storyTitle: 'ボードが壊れて', storyBody: 'リーシュが切れてしまった時の報告', phraseEn: 'The leash broke while I was surfing.', phraseJp: 'サーフィン中にリーシュが切れました' },
+      { slideNumber: 6, slideType: 'content', storyTitle: '波情報を聞いて', storyBody: '明日の波のコンディションを聞いた場面', phraseEn: "What's the surf forecast for tomorrow?", phraseJp: '明日の波予報はどうですか？' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 35,
+    type: 'story',
+    title: 'バリの市場で\n値切るための英語5選',
+    subtitle: 'ローカル市場で使える交渉術',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', storyTitle: '最初の値段を聞いて', storyBody: 'ウブド市場で木彫りの置物を見つけた時', phraseEn: 'How much is this one?', phraseJp: 'これはいくらですか？' },
+      { slideNumber: 3, slideType: 'content', storyTitle: '高すぎると感じて', storyBody: '言い値の半分くらいから交渉開始', phraseEn: "That's a bit too expensive. Can you do better?", phraseJp: 'ちょっと高いですね。もう少し安くなりますか？' },
+      { slideNumber: 4, slideType: 'content', storyTitle: 'まとめ買いで交渉', storyBody: '3つ買うからと値下げを提案した場面', phraseEn: "I'll take three. Can you give me a discount?", phraseJp: '3つ買うので割引してもらえますか？' },
+      { slideNumber: 5, slideType: 'content', storyTitle: '立ち去るフリで', storyBody: '最終手段の交渉テクニック', phraseEn: "I think I'll look around a bit more.", phraseJp: 'もう少し他も見てみます' },
+      { slideNumber: 6, slideType: 'content', storyTitle: '最終合意で', storyBody: '納得の価格で握手して購入', phraseEn: "OK, deal! I'll take it.", phraseJp: 'OK、それで決まり！買います' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 36,
+    type: 'story',
+    title: 'バリのレストランで\nやらかした英語5選',
+    subtitle: '失敗から学ぶリアル英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', storyTitle: '辛さの確認を忘れて', storyBody: 'サンバルたっぷりの料理が来て悶絶', phraseEn: 'Can you make it less spicy?', phraseJp: '辛さ控えめにできますか？' },
+      { slideNumber: 3, slideType: 'content', storyTitle: '注文が通ってなくて', storyBody: '30分待ったけど料理が来ない事件', phraseEn: "Excuse me, I ordered 30 minutes ago.", phraseJp: 'すみません、30分前に注文したのですが' },
+      { slideNumber: 4, slideType: 'content', storyTitle: '隣のテーブルの料理を指して', storyBody: 'メニュー名がわからず指差しで注文', phraseEn: "I'll have the same as that table.", phraseJp: 'あのテーブルと同じものをください' },
+      { slideNumber: 5, slideType: 'content', storyTitle: 'アレルギーを伝え忘れて', storyBody: 'ピーナッツ入りの料理が来てしまった', phraseEn: "I'm allergic to peanuts. Does this contain any?", phraseJp: 'ピーナッツアレルギーです。入ってますか？' },
+      { slideNumber: 6, slideType: 'content', storyTitle: 'お会計のトラブル', storyBody: '頼んでないものが含まれていた時', phraseEn: "I didn't order this item on the bill.", phraseJp: 'この項目は注文していません' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 37,
+    type: 'story',
+    title: 'バリのビーチで\n聞こえてくる英語5選',
+    subtitle: 'ビーチで飛び交うリアル英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', storyTitle: 'ビーチ売りが来て', storyBody: 'クタビーチでサングラス売りに話しかけられた', phraseEn: "No, thank you. I'm just relaxing.", phraseJp: 'いいえ、大丈夫です。くつろいでるだけです' },
+      { slideNumber: 3, slideType: 'content', storyTitle: 'パラソルのレンタルで', storyBody: 'ビーチチェアの料金交渉をした場面', phraseEn: 'How much for two chairs and an umbrella?', phraseJp: 'チェア2つとパラソルでいくらですか？' },
+      { slideNumber: 4, slideType: 'content', storyTitle: 'サンセットタイムに', storyBody: '隣の観光客に写真を頼まれた場面', phraseEn: 'Sure! Say cheese!', phraseJp: 'もちろん！はい、チーズ！' },
+      { slideNumber: 5, slideType: 'content', storyTitle: '荷物を見てもらう時', storyBody: '泳ぎに行く前に隣の人にお願いした', phraseEn: 'Could you keep an eye on my stuff?', phraseJp: '荷物を見ていてもらえますか？' },
+      { slideNumber: 6, slideType: 'content', storyTitle: '日焼け止めを借りて', storyBody: '塗り直したいけど持ってなかった時', phraseEn: 'Could I borrow some sunscreen?', phraseJp: '日焼け止めを少し借りてもいいですか？' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 38,
+    type: 'story',
+    title: 'バリの両替所で\n使える英語5選',
+    subtitle: '両替で損しないための英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', storyTitle: 'レートの確認で', storyBody: 'サヌールの両替所で看板と実際のレートが違った', phraseEn: "What's today's exchange rate for Japanese yen?", phraseJp: '今日の円の両替レートはいくらですか？' },
+      { slideNumber: 3, slideType: 'content', storyTitle: '手数料を聞いて', storyBody: '「No commission」の看板を確認した場面', phraseEn: 'Is there any commission or fee?', phraseJp: '手数料はかかりますか？' },
+      { slideNumber: 4, slideType: 'content', storyTitle: '金額を指定して', storyBody: '5万円分だけ両替したい時', phraseEn: 'I want to exchange 50,000 yen, please.', phraseJp: '5万円を両替したいです' },
+      { slideNumber: 5, slideType: 'content', storyTitle: 'お札の確認で', storyBody: '受け取った金額をその場でカウントした時', phraseEn: 'Let me count it here, please.', phraseJp: 'ここで数えさせてください' },
+      { slideNumber: 6, slideType: 'content', storyTitle: '小額紙幣が欲しくて', storyBody: '大きい紙幣だとお釣りがない店が多いので', phraseEn: 'Can I get some smaller bills?', phraseJp: '小額紙幣も混ぜてもらえますか？' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 39,
+    type: 'story',
+    title: 'バリの寺院巡りで\n知っておきたい英語5選',
+    subtitle: '寺院観光で使えるフレーズ',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', storyTitle: '入場の際に', storyBody: 'ウルワツ寺院でサロンを借りた場面', phraseEn: 'Where can I get a sarong?', phraseJp: 'サロンはどこで借りられますか？' },
+      { slideNumber: 3, slideType: 'content', storyTitle: '写真撮影の確認', storyBody: '神聖な場所で撮影していいか聞いた時', phraseEn: 'Is it OK to take photos here?', phraseJp: 'ここで写真を撮っても大丈夫ですか？' },
+      { slideNumber: 4, slideType: 'content', storyTitle: 'ガイドに質問して', storyBody: 'タマンアユン寺院の歴史が気になった', phraseEn: 'How old is this temple?', phraseJp: 'この寺院はどのくらい古いのですか？' },
+      { slideNumber: 5, slideType: 'content', storyTitle: 'お供え物について', storyBody: 'チャナンの意味をガイドに聞いた場面', phraseEn: 'What do these offerings mean?', phraseJp: 'このお供え物にはどんな意味がありますか？' },
+      { slideNumber: 6, slideType: 'content', storyTitle: 'ケチャダンスの開始時間', storyBody: 'ウルワツのケチャダンスを見たくて確認', phraseEn: 'What time does the Kecak dance start?', phraseJp: 'ケチャダンスは何時に始まりますか？' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 40,
+    type: 'story',
+    title: 'バリのヴィラで\nチェックイン英語5選',
+    subtitle: 'プライベートヴィラで使う英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', storyTitle: '到着時に', storyBody: 'ウブドのヴィラに予定より早く着いた時', phraseEn: 'We arrived a bit early. Is the room ready?', phraseJp: '少し早く着いたのですが、部屋は準備できていますか？' },
+      { slideNumber: 3, slideType: 'content', storyTitle: 'プールの確認で', storyBody: 'プライベートプールの使い方を聞いた', phraseEn: 'Is the pool available 24 hours?', phraseJp: 'プールは24時間使えますか？' },
+      { slideNumber: 4, slideType: 'content', storyTitle: '朝食の手配で', storyBody: '翌朝の朝食メニューを事前に選ぶ場面', phraseEn: 'Can we choose our breakfast menu tonight?', phraseJp: '今晩のうちに朝食メニューを選べますか？' },
+      { slideNumber: 5, slideType: 'content', storyTitle: 'エアコンの不調で', storyBody: '夜中にエアコンが止まって連絡した時', phraseEn: 'The air conditioning in our room stopped working.', phraseJp: '部屋のエアコンが動かなくなりました' },
+      { slideNumber: 6, slideType: 'content', storyTitle: 'チェックアウト延長', storyBody: 'フライトが夜なのでレイトチェックアウトを相談', phraseEn: 'Is it possible to get a late checkout?', phraseJp: 'レイトチェックアウトは可能ですか？' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+];
+
+// ============================================================
+// 生徒あるある型 10本
+// ============================================================
+
+const studentMistakeItems: ContentItem[] = [
+  {
+    id: 41,
+    type: 'student_mistake',
+    title: '生徒が毎回間違える\n英語フレーズ5選',
+    subtitle: '語学学校の現場からリアル報告',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', mistakeNumber: '1', mistakeEn: 'I will go to there.', correctEn: 'I will go there.', mistakeExplanation: 'thereは副詞なのでtoは不要です' },
+      { slideNumber: 3, slideType: 'content', mistakeNumber: '2', mistakeEn: 'I enjoyed.', correctEn: 'I enjoyed it.', mistakeExplanation: 'enjoyは他動詞。目的語itが必要' },
+      { slideNumber: 4, slideType: 'content', mistakeNumber: '3', mistakeEn: "I can't eat spicy.", correctEn: "I can't eat spicy food.", mistakeExplanation: 'spicyは形容詞。名詞foodが必要' },
+      { slideNumber: 5, slideType: 'content', mistakeNumber: '4', mistakeEn: 'I have ever been to Bali.', correctEn: 'I have been to Bali.', mistakeExplanation: 'everは疑問文・否定文で使うのが基本' },
+      { slideNumber: 6, slideType: 'content', mistakeNumber: '5', mistakeEn: 'I will explain about it.', correctEn: 'I will explain it.', mistakeExplanation: 'explainは直接目的語を取る動詞です' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 42,
+    type: 'student_mistake',
+    title: '日本人がやりがちな\n英語の間違い5選',
+    subtitle: '日本語の発想が原因の間違い',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', mistakeNumber: '1', mistakeEn: 'Please teach me the way.', correctEn: 'Could you show me the way?', mistakeExplanation: '道案内にteachは不自然。showを使う' },
+      { slideNumber: 3, slideType: 'content', mistakeNumber: '2', mistakeEn: "Let's go to drink.", correctEn: "Let's go for a drink.", mistakeExplanation: '"飲みに行く"はgo for a drinkが自然' },
+      { slideNumber: 4, slideType: 'content', mistakeNumber: '3', mistakeEn: 'I am boring.', correctEn: 'I am bored.', mistakeExplanation: 'boringだと「私はつまらない人間」の意味に' },
+      { slideNumber: 5, slideType: 'content', mistakeNumber: '4', mistakeEn: 'I went to shopping.', correctEn: 'I went shopping.', mistakeExplanation: 'go shoppingでセット。toは不要' },
+      { slideNumber: 6, slideType: 'content', mistakeNumber: '5', mistakeEn: 'I am looking forward to see you.', correctEn: 'I am looking forward to seeing you.', mistakeExplanation: 'toは前置詞なので動名詞-ingが続く' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 43,
+    type: 'student_mistake',
+    title: '先生に直される\n英語あるある5選',
+    subtitle: '授業中に何度も出る間違い',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', mistakeNumber: '1', mistakeEn: 'I am agree.', correctEn: 'I agree.', mistakeExplanation: 'agreeは動詞。be動詞は不要です' },
+      { slideNumber: 3, slideType: 'content', mistakeNumber: '2', mistakeEn: 'Almost people like coffee.', correctEn: 'Most people like coffee.', mistakeExplanation: 'almostは副詞。名詞の前はmostを使う' },
+      { slideNumber: 4, slideType: 'content', mistakeNumber: '3', mistakeEn: 'I could see the beautiful sea.', correctEn: 'I was able to see the beautiful sea.', mistakeExplanation: '実際にできた過去の話はwas able toが正確' },
+      { slideNumber: 5, slideType: 'content', mistakeNumber: '4', mistakeEn: 'I discussed about the problem.', correctEn: 'I discussed the problem.', mistakeExplanation: 'discussは他動詞。aboutは不要' },
+      { slideNumber: 6, slideType: 'content', mistakeNumber: '5', mistakeEn: "I don't have no money.", correctEn: "I don't have any money.", mistakeExplanation: '二重否定は文法的に誤り。anyを使う' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 44,
+    type: 'student_mistake',
+    title: '初心者が必ずハマる\n英語のワナ5選',
+    subtitle: '中級への壁を越える第一歩',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', mistakeNumber: '1', mistakeEn: 'I want to go to eat Nasi Goreng.', correctEn: 'I want to go eat Nasi Goreng.', mistakeExplanation: 'go + 動詞原形が自然。toの連続は避ける' },
+      { slideNumber: 3, slideType: 'content', mistakeNumber: '2', mistakeEn: 'Do you have a time?', correctEn: 'Do you have the time?', mistakeExplanation: 'a timeだと「暇？」、the timeで「何時？」' },
+      { slideNumber: 4, slideType: 'content', mistakeNumber: '3', mistakeEn: 'I am used to live in Bali.', correctEn: 'I am used to living in Bali.', mistakeExplanation: 'be used toの後は動名詞-ingが来る' },
+      { slideNumber: 5, slideType: 'content', mistakeNumber: '4', mistakeEn: 'She said me to come.', correctEn: 'She told me to come.', mistakeExplanation: 'sayは間接目的語を取らない。tellを使う' },
+      { slideNumber: 6, slideType: 'content', mistakeNumber: '5', mistakeEn: "I'm interesting in Bali culture.", correctEn: "I'm interested in Bali culture.", mistakeExplanation: '-ingは物が主語。人が主語なら-ed' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 45,
+    type: 'student_mistake',
+    title: '直訳すると恥ずかしい\n英語5選',
+    subtitle: '日本語そのままだと危険な表現',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', mistakeNumber: '1', mistakeEn: 'Please eat more.', correctEn: 'Help yourself to more.', mistakeExplanation: '命令っぽく聞こえる。Help yourselfが自然' },
+      { slideNumber: 3, slideType: 'content', mistakeNumber: '2', mistakeEn: 'My body condition is bad.', correctEn: "I'm not feeling well.", mistakeExplanation: 'body conditionは不自然。シンプルに言う' },
+      { slideNumber: 4, slideType: 'content', mistakeNumber: '3', mistakeEn: 'I have skinship with friends.', correctEn: 'I have a close bond with friends.', mistakeExplanation: 'skinshipは和製英語。通じません' },
+      { slideNumber: 5, slideType: 'content', mistakeNumber: '4', mistakeEn: 'I caught a cold, so I rest.', correctEn: "I caught a cold, so I'm resting.", mistakeExplanation: '今の状態を伝えるなら現在進行形を使う' },
+      { slideNumber: 6, slideType: 'content', mistakeNumber: '5', mistakeEn: "It's my first time Bali.", correctEn: "It's my first time in Bali.", mistakeExplanation: '場所の前にはinが必要です' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 46,
+    type: 'student_mistake',
+    title: '丁寧なつもりが\n失礼になる英語5選',
+    subtitle: '知らないと損する敬語のズレ',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', mistakeNumber: '1', mistakeEn: 'You should try this restaurant.', correctEn: 'You might want to try this restaurant.', mistakeExplanation: 'shouldは上から目線に聞こえることがある' },
+      { slideNumber: 3, slideType: 'content', mistakeNumber: '2', mistakeEn: 'What is your job?', correctEn: 'What do you do for a living?', mistakeExplanation: '直球すぎる。遠回しに聞くのがマナー' },
+      { slideNumber: 4, slideType: 'content', mistakeNumber: '3', mistakeEn: 'How old are you?', correctEn: 'May I ask how old you are?', mistakeExplanation: '年齢は敏感な話題。May I ask~で丁寧に' },
+      { slideNumber: 5, slideType: 'content', mistakeNumber: '4', mistakeEn: 'Give me water.', correctEn: 'Could I have some water, please?', mistakeExplanation: 'Give meは命令口調。Could I haveが丁寧' },
+      { slideNumber: 6, slideType: 'content', mistakeNumber: '5', mistakeEn: 'You are wrong.', correctEn: "I don't think that's quite right.", mistakeExplanation: '直接的すぎる。婉曲表現を使おう' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 47,
+    type: 'student_mistake',
+    title: '文法は合ってるのに\n通じない英語5選',
+    subtitle: 'ネイティブはこう言わない',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', mistakeNumber: '1', mistakeEn: 'I want to eat lunch from now.', correctEn: "Let's grab lunch.", mistakeExplanation: 'from nowは不自然。grabが日常的' },
+      { slideNumber: 3, slideType: 'content', mistakeNumber: '2', mistakeEn: 'I will do my best.', correctEn: "I'll give it my best shot.", mistakeExplanation: 'do my bestは硬い。best shotが口語的' },
+      { slideNumber: 4, slideType: 'content', mistakeNumber: '3', mistakeEn: 'I forgot my umbrella in the taxi.', correctEn: 'I left my umbrella in the taxi.', mistakeExplanation: '置き忘れはleft。forgetは記憶の話' },
+      { slideNumber: 5, slideType: 'content', mistakeNumber: '4', mistakeEn: 'The shop is close today.', correctEn: 'The shop is closed today.', mistakeExplanation: 'closeは動詞/形容詞「近い」。closedが正解' },
+      { slideNumber: 6, slideType: 'content', mistakeNumber: '5', mistakeEn: 'I am very fun.', correctEn: "I'm having a great time.", mistakeExplanation: 'funは物事に使う。人の感想はhaving fun' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 48,
+    type: 'student_mistake',
+    title: 'カタカナ英語の\n落とし穴5選',
+    subtitle: 'そのカタカナ、通じません',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', mistakeNumber: '1', mistakeEn: 'I drank a Viking lunch.', correctEn: 'I had a buffet lunch.', mistakeExplanation: 'バイキングは和製英語。buffetが正解' },
+      { slideNumber: 3, slideType: 'content', mistakeNumber: '2', mistakeEn: 'The consent is broken.', correctEn: 'The outlet is broken.', mistakeExplanation: 'コンセントは和製英語。outletかsocket' },
+      { slideNumber: 4, slideType: 'content', mistakeNumber: '3', mistakeEn: 'I need to get a gasoline stand.', correctEn: 'I need to find a gas station.', mistakeExplanation: 'ガソリンスタンドは和製英語。gas station' },
+      { slideNumber: 5, slideType: 'content', mistakeNumber: '4', mistakeEn: 'I work as a salary man.', correctEn: 'I work as an office worker.', mistakeExplanation: 'サラリーマンは和製英語。office workerが自然' },
+      { slideNumber: 6, slideType: 'content', mistakeNumber: '5', mistakeEn: 'Can I use the cunning in the test?', correctEn: 'Can I use a cheat sheet?', mistakeExplanation: 'カンニングは和製英語。cheatingが正解' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 49,
+    type: 'student_mistake',
+    title: '意味が全然違う\n和製英語5選',
+    subtitle: 'ネイティブに笑われる前に',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', mistakeNumber: '1', mistakeEn: "Let's take a claim to the hotel.", correctEn: "Let's file a complaint with the hotel.", mistakeExplanation: 'claimは「主張」。苦情はcomplaint' },
+      { slideNumber: 3, slideType: 'content', mistakeNumber: '2', mistakeEn: 'I have a mansion in Tokyo.', correctEn: 'I have a condo in Tokyo.', mistakeExplanation: 'mansionは大豪邸。マンションはcondo' },
+      { slideNumber: 4, slideType: 'content', mistakeNumber: '3', mistakeEn: 'I renewed my room.', correctEn: 'I renovated my room.', mistakeExplanation: 'renewは契約更新。部屋の改装はrenovate' },
+      { slideNumber: 5, slideType: 'content', mistakeNumber: '4', mistakeEn: 'I got a naive impression of her.', correctEn: 'I got a gentle impression of her.', mistakeExplanation: 'naiveは「世間知らず」。繊細はgentle/sensitive' },
+      { slideNumber: 6, slideType: 'content', mistakeNumber: '5', mistakeEn: 'The talent appeared on TV.', correctEn: 'The TV personality appeared on TV.', mistakeExplanation: 'talentは「才能」。芸能人はTV personality' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 50,
+    type: 'student_mistake',
+    title: 'バリの授業で\nよく出る質問5選',
+    subtitle: '生徒のリアルな疑問と回答',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', mistakeNumber: '1', mistakeEn: 'What is the different?', correctEn: 'What is the difference?', mistakeExplanation: 'differentは形容詞。名詞はdifference' },
+      { slideNumber: 3, slideType: 'content', mistakeNumber: '2', mistakeEn: 'Can you speak slowly?', correctEn: 'Could you speak more slowly?', mistakeExplanation: 'Couldの方が丁寧。moreも加えて自然に' },
+      { slideNumber: 4, slideType: 'content', mistakeNumber: '3', mistakeEn: 'How to say this in English?', correctEn: 'How do you say this in English?', mistakeExplanation: '疑問文にはdo youが必要です' },
+      { slideNumber: 5, slideType: 'content', mistakeNumber: '4', mistakeEn: 'What means "ubud"?', correctEn: 'What does "ubud" mean?', mistakeExplanation: '疑問文はdoesを使って作る' },
+      { slideNumber: 6, slideType: 'content', mistakeNumber: '5', mistakeEn: 'Please say one more time.', correctEn: 'Could you say that one more time?', mistakeExplanation: 'Pleaseよりcould youが丁寧。thatも追加' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+];
+
+// ============================================================
+// バリ現地レポ型 10本
+// ============================================================
+
+const baliReportItems: ContentItem[] = [
+  {
+    id: 51,
+    type: 'bali_report',
+    title: 'ウブド市場で使える\n英語フレーズ5選',
+    subtitle: 'ウブドアートマーケット攻略',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', locationName: 'ウブドアートマーケット', phraseEn: 'How much is this painting?', phraseJp: 'この絵はいくらですか？', usageTip: '指差しながら聞くと伝わりやすい' },
+      { slideNumber: 3, slideType: 'content', locationName: 'ウブドアートマーケット', phraseEn: "Can you wrap it carefully? It's a gift.", phraseJp: '丁寧に包んでもらえますか？贈り物です', usageTip: 'giftと伝えると丁寧に包んでくれる' },
+      { slideNumber: 4, slideType: 'content', locationName: 'ウブドアートマーケット', phraseEn: 'Do you accept credit cards?', phraseJp: 'クレジットカードは使えますか？', usageTip: '現金のみの店が多いので事前確認を' },
+      { slideNumber: 5, slideType: 'content', locationName: 'ウブドアートマーケット', phraseEn: "What's this made of?", phraseJp: 'これは何でできていますか？', usageTip: 'バリの木彫りは素材で値段が変わる' },
+      { slideNumber: 6, slideType: 'content', locationName: 'ウブドアートマーケット', phraseEn: "I'll come back later.", phraseJp: 'また後で来ます', usageTip: '値切り交渉の定番テクニック' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 52,
+    type: 'bali_report',
+    title: 'スミニャックの\nカフェ英語5選',
+    subtitle: 'おしゃれエリアのカフェ英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', locationName: 'スミニャック・カフェ', phraseEn: 'Is this seat taken?', phraseJp: 'この席は空いていますか？', usageTip: '混雑時は確認してから座ろう' },
+      { slideNumber: 3, slideType: 'content', locationName: 'スミニャック・カフェ', phraseEn: 'Do you have oat milk?', phraseJp: 'オーツミルクはありますか？', usageTip: 'バリのカフェは代替ミルクが充実' },
+      { slideNumber: 4, slideType: 'content', locationName: 'スミニャック・カフェ', phraseEn: 'Can I get this to go?', phraseJp: 'テイクアウトできますか？', usageTip: 'to goがテイクアウトの定番表現' },
+      { slideNumber: 5, slideType: 'content', locationName: 'スミニャック・カフェ', phraseEn: 'Is there a power outlet near this table?', phraseJp: 'このテーブルの近くにコンセントはありますか？', usageTip: 'ノマド必須フレーズ。plugでもOK' },
+      { slideNumber: 6, slideType: 'content', locationName: 'スミニャック・カフェ', phraseEn: 'Could I see the dessert menu?', phraseJp: 'デザートメニューを見せてもらえますか？', usageTip: 'バリのスイーツは意外とレベルが高い' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 53,
+    type: 'bali_report',
+    title: 'クタビーチで\n使える英語5選',
+    subtitle: 'バリ最大のビーチで使う英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', locationName: 'クタビーチ', phraseEn: 'Is it safe to swim here?', phraseJp: 'ここで泳いでも安全ですか？', usageTip: '旗の色を確認。赤旗は遊泳禁止' },
+      { slideNumber: 3, slideType: 'content', locationName: 'クタビーチ', phraseEn: 'Where can I rent a surfboard?', phraseJp: 'サーフボードはどこで借りられますか？', usageTip: 'ビーチ沿いにレンタル店が多数ある' },
+      { slideNumber: 4, slideType: 'content', locationName: 'クタビーチ', phraseEn: 'How much for a one-hour surf lesson?', phraseJp: '1時間のサーフレッスンはいくらですか？', usageTip: '相場を聞いてから交渉するのがコツ' },
+      { slideNumber: 5, slideType: 'content', locationName: 'クタビーチ', phraseEn: 'What time is sunset today?', phraseJp: '今日のサンセットは何時ですか？', usageTip: 'クタビーチの夕日は必見スポット' },
+      { slideNumber: 6, slideType: 'content', locationName: 'クタビーチ', phraseEn: 'Can I leave my things at your shop?', phraseJp: '荷物をお店に置いてもいいですか？', usageTip: '海に入る前に近くの店に預ける人が多い' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 54,
+    type: 'bali_report',
+    title: 'バリ空港で\n困らない英語5選',
+    subtitle: 'ングラ・ライ国際空港で使う英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', locationName: 'ングラ・ライ国際空港', phraseEn: "I'm here for vacation.", phraseJp: '観光で来ました', usageTip: '入国審査で目的を聞かれた時の定番' },
+      { slideNumber: 3, slideType: 'content', locationName: 'ングラ・ライ国際空港', phraseEn: 'Where is the baggage claim area?', phraseJp: '手荷物受取所はどこですか？', usageTip: 'baggageとluggageは同じ意味で使える' },
+      { slideNumber: 4, slideType: 'content', locationName: 'ングラ・ライ国際空港', phraseEn: 'Where can I buy a SIM card?', phraseJp: 'SIMカードはどこで買えますか？', usageTip: '到着ロビーにSIM販売カウンターがある' },
+      { slideNumber: 5, slideType: 'content', locationName: 'ングラ・ライ国際空港', phraseEn: 'How do I get to Ubud from here?', phraseJp: 'ここからウブドへはどう行きますか？', usageTip: '空港タクシーかGrabが一般的' },
+      { slideNumber: 6, slideType: 'content', locationName: 'ングラ・ライ国際空港', phraseEn: "I'd like to declare these items.", phraseJp: 'これらの品を申告したいです', usageTip: '免税範囲を超える場合は正直に申告を' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 55,
+    type: 'bali_report',
+    title: 'ヌサドゥアリゾートの\n英語フレーズ5選',
+    subtitle: '高級リゾートエリアで使う英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', locationName: 'ヌサドゥアリゾート', phraseEn: 'Can I book a cabana by the pool?', phraseJp: 'プールサイドのカバナを予約できますか？', usageTip: 'カバナは人気なので早めの予約が安心' },
+      { slideNumber: 3, slideType: 'content', locationName: 'ヌサドゥアリゾート', phraseEn: 'Is the spa included in the room package?', phraseJp: 'スパは宿泊プランに含まれていますか？', usageTip: 'パッケージ内容は事前に確認しよう' },
+      { slideNumber: 4, slideType: 'content', locationName: 'ヌサドゥアリゾート', phraseEn: 'Could you arrange a shuttle to the beach?', phraseJp: 'ビーチまでのシャトルを手配してもらえますか？', usageTip: '大型リゾートはシャトルサービスがある' },
+      { slideNumber: 5, slideType: 'content', locationName: 'ヌサドゥアリゾート', phraseEn: 'Do you have a kids club?', phraseJp: 'キッズクラブはありますか？', usageTip: '家族連れに人気のエリアならではの質問' },
+      { slideNumber: 6, slideType: 'content', locationName: 'ヌサドゥアリゾート', phraseEn: "I'd like to make a dinner reservation for tonight.", phraseJp: '今夜のディナーを予約したいです', usageTip: '人気レストランは当日でも予約がベター' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 56,
+    type: 'bali_report',
+    title: 'チャングーの\nサーフスポット英語5選',
+    subtitle: 'サーファーの聖地で使う英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', locationName: 'チャングー・バトゥボロン', phraseEn: "How's the surf today?", phraseJp: '今日の波はどうですか？', usageTip: 'ローカルに聞くのが一番正確' },
+      { slideNumber: 3, slideType: 'content', locationName: 'チャングー・エコビーチ', phraseEn: 'Is there a strong current right now?', phraseJp: '今、強い流れはありますか？', usageTip: '安全確認は必ずしよう。currentは潮流' },
+      { slideNumber: 4, slideType: 'content', locationName: 'チャングー・ベラワ', phraseEn: 'Can I store my board here overnight?', phraseJp: 'ボードを一晩預けられますか？', usageTip: 'ショップで預かりサービスがある場合も' },
+      { slideNumber: 5, slideType: 'content', locationName: 'チャングー・ペレレナン', phraseEn: "I'm still a beginner. Any tips?", phraseJp: 'まだ初心者です。コツはありますか？', usageTip: 'ローカルサーファーは親切に教えてくれる' },
+      { slideNumber: 6, slideType: 'content', locationName: 'チャングー・オールドマンズ', phraseEn: 'What time does the tide come in?', phraseJp: '満潮は何時ですか？', usageTip: '潮の満ち引きで波質が変わる' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 57,
+    type: 'bali_report',
+    title: 'サヌールの朝市で\n使える英語5選',
+    subtitle: 'ローカル朝市を楽しむ英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', locationName: 'サヌール・モーニングマーケット', phraseEn: 'What kind of fruit is this?', phraseJp: 'これは何のフルーツですか？', usageTip: '見たことない南国フルーツがたくさん' },
+      { slideNumber: 3, slideType: 'content', locationName: 'サヌール・モーニングマーケット', phraseEn: 'Can I try a sample?', phraseJp: '試食できますか？', usageTip: '指差して聞けばOKしてくれることが多い' },
+      { slideNumber: 4, slideType: 'content', locationName: 'サヌール・モーニングマーケット', phraseEn: 'How much for a kilo of mangoes?', phraseJp: 'マンゴー1キロはいくらですか？', usageTip: 'バリの市場は量り売りが基本' },
+      { slideNumber: 5, slideType: 'content', locationName: 'サヌール・モーニングマーケット', phraseEn: 'Is this locally grown?', phraseJp: 'これは地元で採れたものですか？', usageTip: 'locallyを使うと現地産か聞ける' },
+      { slideNumber: 6, slideType: 'content', locationName: 'サヌール・モーニングマーケット', phraseEn: "Do you have a bag? I'll buy these.", phraseJp: '袋はありますか？これ買います', usageTip: 'エコバッグ持参がベター' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 58,
+    type: 'bali_report',
+    title: 'ウルワツ寺院で\n知っておく英語5選',
+    subtitle: '断崖絶壁の絶景寺院で使う英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', locationName: 'ウルワツ寺院', phraseEn: 'Are there monkeys around here?', phraseJp: 'この辺にサルはいますか？', usageTip: 'サルにメガネや帽子を取られる被害多発' },
+      { slideNumber: 3, slideType: 'content', locationName: 'ウルワツ寺院', phraseEn: 'Do I need to wear a sarong to enter?', phraseJp: '入場にサロンは必要ですか？', usageTip: '寺院では肌の露出を控える服装が必須' },
+      { slideNumber: 4, slideType: 'content', locationName: 'ウルワツ寺院', phraseEn: 'Where is the best spot to watch the sunset?', phraseJp: 'サンセットを見るベストスポットはどこですか？', usageTip: '早めに場所を確保するのがポイント' },
+      { slideNumber: 5, slideType: 'content', locationName: 'ウルワツ寺院', phraseEn: 'How long does the Kecak dance last?', phraseJp: 'ケチャダンスはどのくらいの時間ですか？', usageTip: '約1時間。開始30分前には着席を' },
+      { slideNumber: 6, slideType: 'content', locationName: 'ウルワツ寺院', phraseEn: 'Where can I catch a taxi after the show?', phraseJp: 'ショーの後タクシーはどこで拾えますか？', usageTip: '終演後は混むので事前に確認しておこう' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 59,
+    type: 'bali_report',
+    title: 'バリのスパで\n使える英語5選',
+    subtitle: '極上リラクゼーション英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', locationName: 'バリ島スパ', phraseEn: 'Do you have a couples treatment?', phraseJp: 'カップル向けの施術はありますか？', usageTip: 'バリのスパはカップルプランが豊富' },
+      { slideNumber: 3, slideType: 'content', locationName: 'バリ島スパ', phraseEn: "I have sensitive skin. Is that OK?", phraseJp: '敏感肌なのですが大丈夫ですか？', usageTip: '事前に伝えるとオイルを変えてくれる' },
+      { slideNumber: 4, slideType: 'content', locationName: 'バリ島スパ', phraseEn: 'A bit softer on my lower back, please.', phraseJp: '腰はもう少し優しくお願いします', usageTip: '部位+強さを伝えれば調整してくれる' },
+      { slideNumber: 5, slideType: 'content', locationName: 'バリ島スパ', phraseEn: 'Which treatment do you recommend for jet lag?', phraseJp: '時差ボケにおすすめの施術はどれですか？', usageTip: 'アロマやリフレクソロジーを勧められる' },
+      { slideNumber: 6, slideType: 'content', locationName: 'バリ島スパ', phraseEn: 'Can I book the same therapist for next time?', phraseJp: '次回も同じセラピストを指名できますか？', usageTip: '気に入ったら指名するのがおすすめ' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+  {
+    id: 60,
+    type: 'bali_report',
+    title: 'ジンバランの\nシーフードBBQ英語5選',
+    subtitle: 'ビーチBBQを楽しむ英語',
+    slides: [
+      { slideNumber: 1, slideType: 'cover' },
+      { slideNumber: 2, slideType: 'content', locationName: 'ジンバラン・シーフード', phraseEn: 'Can I choose my own fish?', phraseJp: '自分で魚を選べますか？', usageTip: '水槽やディスプレイから選ぶスタイル' },
+      { slideNumber: 3, slideType: 'content', locationName: 'ジンバラン・シーフード', phraseEn: 'How is this cooked? Grilled or fried?', phraseJp: 'これはどう調理しますか？焼きか揚げか？', usageTip: '調理法を選べる店が多い' },
+      { slideNumber: 4, slideType: 'content', locationName: 'ジンバラン・シーフード', phraseEn: 'Is this price per kilo or per piece?', phraseJp: 'この値段はキロ単価ですか？1匹の値段ですか？', usageTip: '量り売りか個数売りか事前確認を' },
+      { slideNumber: 5, slideType: 'content', locationName: 'ジンバラン・シーフード', phraseEn: 'Can we have a table on the beach?', phraseJp: 'ビーチ側のテーブルをお願いできますか？', usageTip: 'サンセットを見ながら食事が最高' },
+      { slideNumber: 6, slideType: 'content', locationName: 'ジンバラン・シーフード', phraseEn: "We'd like the seafood platter for two.", phraseJp: '2人用シーフードプラッターをお願いします', usageTip: 'シェアプラッターがコスパ良くておすすめ' },
+      { slideNumber: 7, slideType: 'cta', leadMagnet: 'レベル別英語学習ロードマップ' },
+    ],
+  },
+];
+
+// ============================================================
 // 全コンテンツを結合してエクスポート
 // ============================================================
 
@@ -533,6 +1015,9 @@ export const allContent: ContentItem[] = [
   ...quizItems,
   ...beforeAfterItems,
   ...situationItems,
+  ...storyItems,
+  ...studentMistakeItems,
+  ...baliReportItems,
 ];
 
 export const getContentByType = (type: ContentType): ContentItem[] =>
