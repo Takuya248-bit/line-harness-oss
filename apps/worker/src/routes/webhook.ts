@@ -22,11 +22,17 @@ import {
   advanceFriendSurvey,
   completeFriendSurvey as completeFriendSurveyDb,
   startFriendSurvey,
+  createBooking,
+  getBookingById,
+  cancelBooking,
+  updateBookingGoogleEventId,
 } from '@line-crm/db';
 import type { SurveyChoice } from '@line-crm/db';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import { buildSurveyQuestionFlex } from '../services/survey-flex.js';
+import { getAccessToken, getAvailableSlots, createCalendarEvent, deleteCalendarEvent } from '../services/google-calendar-sa.js';
+import { buildDateSelectionFlex, buildAvailableSlotsFlex, buildBookingConfirmFlex, buildBookingCancelledFlex } from '../services/booking-flex.js';
 import type { Env } from '../index.js';
 
 const webhook = new Hono<Env>();
@@ -77,7 +83,7 @@ webhook.post('/webhook', async (c) => {
   const processingPromise = (async () => {
     for (const event of body.events) {
       try {
-        await handleEvent(db, lineClient, event, channelAccessToken, matchedAccountId, c.env.WORKER_URL || new URL(c.req.url).origin);
+        await handleEvent(db, lineClient, event, channelAccessToken, matchedAccountId, c.env.WORKER_URL || new URL(c.req.url).origin, c.env);
       } catch (err) {
         console.error('Error handling webhook event:', err);
       }
@@ -96,6 +102,7 @@ async function handleEvent(
   lineAccessToken: string,
   lineAccountId: string | null = null,
   workerUrl?: string,
+  env?: Env['Bindings'],
 ): Promise<void> {
   if (event.type === 'follow') {
     const userId =
@@ -598,6 +605,170 @@ async function handleEvent(
         }
       } catch (err) {
         console.error('Failed to process survey postback', err);
+      }
+    }
+
+    // Booking postback: booking_start
+    if (postbackData === 'booking_start') {
+      try {
+        const flex = buildDateSelectionFlex();
+        await lineClient.replyMessage(postbackEvent.replyToken, [
+          buildMessage('flex', JSON.stringify(flex)),
+        ]);
+      } catch (err) {
+        console.error('Failed to send booking date selection', err);
+      }
+    }
+
+    // Booking date selection: booking_date:{date}
+    if (postbackData.startsWith('booking_date:')) {
+      const userId = event.source.type === 'user' ? event.source.userId : undefined;
+      if (!userId) return;
+
+      const date = postbackData.split(':')[1];
+      if (!date) return;
+
+      try {
+        if (env?.GOOGLE_SERVICE_ACCOUNT_EMAIL && env?.GOOGLE_SERVICE_ACCOUNT_KEY && env?.GOOGLE_CALENDAR_ID) {
+          const accessToken = await getAccessToken({
+            GOOGLE_SERVICE_ACCOUNT_EMAIL: env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+            GOOGLE_SERVICE_ACCOUNT_KEY: env.GOOGLE_SERVICE_ACCOUNT_KEY,
+            GOOGLE_CALENDAR_ID: env.GOOGLE_CALENDAR_ID,
+          });
+          const slots = await getAvailableSlots(accessToken, env.GOOGLE_CALENDAR_ID, date, 14, 21, 60);
+          const flex = buildAvailableSlotsFlex(date, slots);
+          try {
+            await lineClient.replyMessage(postbackEvent.replyToken, [
+              buildMessage('flex', JSON.stringify(flex)),
+            ]);
+          } catch {
+            await lineClient.pushMessage(userId, [
+              buildMessage('flex', JSON.stringify(flex)),
+            ]);
+          }
+        } else {
+          await lineClient.replyMessage(postbackEvent.replyToken, [
+            buildMessage('text', '予約機能は現在準備中です。'),
+          ]);
+        }
+      } catch (err) {
+        console.error('Failed to send available slots', err);
+      }
+    }
+
+    // Booking slot selection: booking:{date}:{time}
+    if (postbackData.startsWith('booking:') && !postbackData.startsWith('booking_')) {
+      const userId = event.source.type === 'user' ? event.source.userId : undefined;
+      if (!userId) return;
+
+      const parts = postbackData.split(':');
+      if (parts.length !== 3) return;
+      const [, date, startTime] = parts;
+
+      try {
+        const friend = await getFriendByLineUserId(db, userId);
+        if (!friend) return;
+
+        // Calculate end time (60 min)
+        const startHour = parseInt(startTime.split(':')[0], 10);
+        const startMin = parseInt(startTime.split(':')[1], 10);
+        const endHour = startHour + 1;
+        const endTime = `${String(endHour).padStart(2, '0')}:${String(startMin).padStart(2, '0')}`;
+
+        const startISO = `${date}T${startTime}:00+09:00`;
+        const endISO = `${date}T${endTime}:00+09:00`;
+
+        // Create Google Calendar event
+        let googleEventId: string | undefined;
+        if (env?.GOOGLE_SERVICE_ACCOUNT_EMAIL && env?.GOOGLE_SERVICE_ACCOUNT_KEY && env?.GOOGLE_CALENDAR_ID) {
+          try {
+            const accessToken = await getAccessToken({
+              GOOGLE_SERVICE_ACCOUNT_EMAIL: env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+              GOOGLE_SERVICE_ACCOUNT_KEY: env.GOOGLE_SERVICE_ACCOUNT_KEY,
+              GOOGLE_CALENDAR_ID: env.GOOGLE_CALENDAR_ID,
+            });
+            const result = await createCalendarEvent(accessToken, env.GOOGLE_CALENDAR_ID, {
+              summary: `オンライン面談 - ${friend.display_name ?? 'LINE友だち'}`,
+              start: startISO,
+              end: endISO,
+              description: `LINE予約 (${friend.display_name ?? userId})`,
+            });
+            googleEventId = result.id;
+          } catch (err) {
+            console.warn('Google Calendar event creation failed (booking still saved):', err);
+          }
+        }
+
+        // Save booking to DB
+        const booking = await createBooking(db, {
+          friendId: friend.id,
+          lineAccountId: lineAccountId ?? undefined,
+          title: 'オンライン面談',
+          startTime: startISO,
+          endTime: endISO,
+          googleEventId,
+        });
+
+        if (googleEventId) {
+          await updateBookingGoogleEventId(db, booking.id, googleEventId);
+        }
+
+        // Send confirmation
+        const flex = buildBookingConfirmFlex(booking.id, date, startTime, endTime);
+        try {
+          await lineClient.replyMessage(postbackEvent.replyToken, [
+            buildMessage('flex', JSON.stringify(flex)),
+          ]);
+        } catch {
+          await lineClient.pushMessage(userId, [
+            buildMessage('flex', JSON.stringify(flex)),
+          ]);
+        }
+      } catch (err) {
+        console.error('Failed to process booking', err);
+      }
+    }
+
+    // Booking cancel: booking_cancel:{bookingId}
+    if (postbackData.startsWith('booking_cancel:')) {
+      const userId = event.source.type === 'user' ? event.source.userId : undefined;
+      if (!userId) return;
+
+      const bookingId = postbackData.split(':')[1];
+      if (!bookingId) return;
+
+      try {
+        const booking = await getBookingById(db, bookingId);
+        if (!booking) return;
+
+        // Delete from Google Calendar
+        if (booking.google_event_id && env?.GOOGLE_SERVICE_ACCOUNT_EMAIL && env?.GOOGLE_SERVICE_ACCOUNT_KEY && env?.GOOGLE_CALENDAR_ID) {
+          try {
+            const accessToken = await getAccessToken({
+              GOOGLE_SERVICE_ACCOUNT_EMAIL: env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+              GOOGLE_SERVICE_ACCOUNT_KEY: env.GOOGLE_SERVICE_ACCOUNT_KEY,
+              GOOGLE_CALENDAR_ID: env.GOOGLE_CALENDAR_ID,
+            });
+            await deleteCalendarEvent(accessToken, env.GOOGLE_CALENDAR_ID, booking.google_event_id);
+          } catch (err) {
+            console.warn('Google Calendar event deletion failed:', err);
+          }
+        }
+
+        await cancelBooking(db, bookingId);
+
+        const flex = buildBookingCancelledFlex();
+        try {
+          await lineClient.replyMessage(postbackEvent.replyToken, [
+            buildMessage('flex', JSON.stringify(flex)),
+          ]);
+        } catch {
+          await lineClient.pushMessage(userId, [
+            buildMessage('flex', JSON.stringify(flex)),
+          ]);
+        }
+      } catch (err) {
+        console.error('Failed to cancel booking', err);
       }
     }
 

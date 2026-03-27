@@ -22,6 +22,7 @@ export * from './tracked-links';
 export * from './forms';
 export * from './x-posts';
 export * from './surveys';
+export * from './bookings';
 
 /**
  * Thin wrapper around D1Database.

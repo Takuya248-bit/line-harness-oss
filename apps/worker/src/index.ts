@@ -37,6 +37,7 @@ import { forms } from './routes/forms.js';
 import { analytics } from './routes/analytics.js';
 import { xPosts } from './routes/x-posts.js';
 import { surveys } from './routes/surveys.js';
+import { bookings } from './routes/bookings.js';
 import { processXPosting } from './services/x-posting.js';
 import { processPhaseTransitions } from './services/phase-cron.js';
 
@@ -61,6 +62,10 @@ export type Env = {
     ANTHROPIC_API_KEY?: string;
     // X posting config
     X_MAX_DAILY_POSTS?: string;
+    // Google Calendar (Service Account)
+    GOOGLE_SERVICE_ACCOUNT_EMAIL?: string;
+    GOOGLE_SERVICE_ACCOUNT_KEY?: string;
+    GOOGLE_CALENDAR_ID?: string;
   };
 };
 
@@ -141,6 +146,7 @@ app.route('/', forms);
 app.route('/', analytics);
 app.route('/', xPosts);
 app.route('/', surveys);
+app.route('/', bookings);
 
 // Short link: /r/:ref → landing page with LINE open button
 app.get('/r/:ref', (c) => {
