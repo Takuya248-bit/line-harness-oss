@@ -16,7 +16,10 @@ import {
   recordActions,
   recordActionDate,
   incrementActionCount,
+  updateFriendResponseStatus,
+  getFriendsByResponseStatus,
 } from '@line-crm/db';
+import type { ResponseStatus } from '@line-crm/db';
 import type { Friend as DbFriend, Tag as DbTag } from '@line-crm/db';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage } from '../services/step-delivery.js';
@@ -152,6 +155,26 @@ friends.get('/api/friends/ref-stats', async (c) => {
     });
   } catch (err) {
     console.error('GET /api/friends/ref-stats error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
+// GET /api/friends/by-status/:status - list friends by response status (must be before /:id)
+friends.get('/api/friends/by-status/:status', async (c) => {
+  try {
+    const status = c.req.param('status');
+    const lineAccountId = c.req.query('lineAccountId');
+    const validStatuses: ResponseStatus[] = ['none', 'in_progress', 'done'];
+    if (!validStatuses.includes(status as ResponseStatus)) {
+      return c.json({ success: false, error: 'status must be one of: none, in_progress, done' }, 400);
+    }
+    if (!lineAccountId) {
+      return c.json({ success: false, error: 'lineAccountId is required' }, 400);
+    }
+    const items = await getFriendsByResponseStatus(c.env.DB, lineAccountId, status as ResponseStatus);
+    return c.json({ success: true, data: items.map(serializeFriend) });
+  } catch (err) {
+    console.error('GET /api/friends/by-status/:status error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });
@@ -759,6 +782,28 @@ friends.post('/api/friends/:id/actions', async (c) => {
     return c.json({ success: true });
   } catch (err) {
     console.error('POST /api/friends/:id/actions error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
+// PUT /api/friends/:id/response-status - update response status
+friends.put('/api/friends/:id/response-status', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const body = await c.req.json<{ status: string }>();
+    const validStatuses: ResponseStatus[] = ['none', 'in_progress', 'done'];
+    if (!body.status || !validStatuses.includes(body.status as ResponseStatus)) {
+      return c.json({ success: false, error: 'status must be one of: none, in_progress, done' }, 400);
+    }
+    const db = c.env.DB;
+    const friend = await getFriendById(db, id);
+    if (!friend) {
+      return c.json({ success: false, error: 'Friend not found' }, 404);
+    }
+    await updateFriendResponseStatus(db, id, body.status as ResponseStatus);
+    return c.json({ success: true, data: null });
+  } catch (err) {
+    console.error('PUT /api/friends/:id/response-status error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
 });

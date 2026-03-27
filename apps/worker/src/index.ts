@@ -38,6 +38,7 @@ import { analytics } from './routes/analytics.js';
 import { xPosts } from './routes/x-posts.js';
 import { surveys } from './routes/surveys.js';
 import { bookings } from './routes/bookings.js';
+import { tagFolders } from './routes/tag-folders.js';
 import { processXPosting } from './services/x-posting.js';
 import { processPhaseTransitions } from './services/phase-cron.js';
 
@@ -147,6 +148,7 @@ app.route('/', analytics);
 app.route('/', xPosts);
 app.route('/', surveys);
 app.route('/', bookings);
+app.route('/', tagFolders);
 
 // Short link: /r/:ref → landing page with LINE open button
 app.get('/r/:ref', (c) => {

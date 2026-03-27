@@ -143,6 +143,35 @@ export async function updateFriendFollowStatus(
     .run();
 }
 
+export type ResponseStatus = 'none' | 'in_progress' | 'done';
+
+export async function updateFriendResponseStatus(
+  db: D1Database,
+  friendId: string,
+  status: ResponseStatus,
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE friends SET response_status = ?, updated_at = ? WHERE id = ?`,
+    )
+    .bind(status, jstNow(), friendId)
+    .run();
+}
+
+export async function getFriendsByResponseStatus(
+  db: D1Database,
+  lineAccountId: string,
+  status: ResponseStatus,
+): Promise<Friend[]> {
+  const result = await db
+    .prepare(
+      `SELECT * FROM friends WHERE line_account_id = ? AND response_status = ? ORDER BY updated_at DESC`,
+    )
+    .bind(lineAccountId, status)
+    .all<Friend>();
+  return result.results;
+}
+
 export async function getFriendCount(db: D1Database): Promise<number> {
   const row = await db
     .prepare(`SELECT COUNT(*) as count FROM friends`)
