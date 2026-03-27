@@ -1,0 +1,61 @@
+schedule:
+  times: ["09:00", "21:00"]
+  timezone: "Asia/Tokyo"
+
+freshness:
+  max_age_hours: 48
+
+scoring:
+  notify_threshold: 70
+  save_threshold: 50
+
+sources:
+  chiebukuro:
+    enabled: true
+    categories:
+      - 恋愛相談
+      - 生き方と恋愛、人間関係の悩み
+      - 海外
+      - 職場の悩み
+      - 家族関係の悩み
+    min_views: 10000
+    min_answers: 3
+
+  twitter:
+    enabled: false
+    queries:
+      - '"海外あるある" OR "海外生活" OR "国際結婚"'
+      - '"共感" OR "わかる" OR "それな"'
+      - '"どう思う" OR "これってあり" OR "モヤモヤ"'
+    min_faves: 5000
+    min_replies: 100
+
+  youtube_shorts:
+    enabled: true
+    channels: []
+    min_views: 100000
+    max_duration_sec: 60
+
+  reddit:
+    enabled: true
+    subreddits:
+      - japan
+      - japanlife
+      - AskReddit
+      - tifu
+      - AmItheAsshole
+    rss_feeds:
+      - https://pandora11.com/feed
+    min_upvotes: 500
+
+  hatena:
+    enabled: true
+    min_bookmarks: 100
+
+notification:
+  line:
+    enabled: true
+
+obsidian:
+  vault_path: "~/Documents/Obsidian Vault"
+  output_dir: "knowledge/trending-topics"

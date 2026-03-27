@@ -1,0 +1,6 @@
+data/seen.db
+data/seen.db-shm
+data/seen.db-wal
+__pycache__/
+*.pyc
+.pytest_cache/
