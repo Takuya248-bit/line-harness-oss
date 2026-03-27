@@ -7,7 +7,7 @@
 - 作成日: 2026-03-25
 
 ## 部署
-secretary(常設), marketing, research, sales, qa, pm
+secretary(常設), marketing, research, sales, qa, pm, cs
 詳細は各部署の CLAUDE.md を参照。
 
 ## 運営ルール

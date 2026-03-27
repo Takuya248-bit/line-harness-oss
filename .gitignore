@@ -12,3 +12,7 @@ dist/
 apps/web/out/
 .dev.vars
 scripts/coconala-images/
+
+# スクショは自動除外。必要なものだけリネームしてコミット
+スクリーンショット*
+Screenshot*
