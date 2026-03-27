@@ -9,6 +9,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -26,7 +27,7 @@ from src.obsidian_writer import write_topic_note
 from src.line_notifier import send_notification
 
 
-def run(config_path: str | None = None, dry_run: bool = False, source_filter: str | None = None):
+def run(config_path: str | None = None, dry_run: bool = False, source_filter: str | None = None, csv_path: str | None = None):
     cfg = load_config(config_path)
     sources_cfg = cfg.get("sources", {})
     scoring_cfg = cfg.get("scoring", {})
@@ -98,6 +99,17 @@ def run(config_path: str | None = None, dry_run: bool = False, source_filter: st
         flag = "***" if s >= notify_threshold else "  *" if s >= save_threshold else "   "
         print(f"  {flag} {s:3d}点 [{item.source:10}] {item.title[:50]}")
 
+    # CSV出力
+    if csv_path:
+        csv_out = Path(csv_path)
+        with open(csv_out, "w", newline="", encoding="utf-8-sig") as f:
+            w = csv.writer(f)
+            w.writerow(["スコア", "ソース", "タイトル", "URL", "カテゴリ", "エンゲージメント"])
+            for item, s in scored:
+                eng_parts = [f"{k}:{v}" for k, v in item.engagement.items()]
+                w.writerow([s, item.source, item.title, item.url, item.category, " ".join(eng_parts)])
+        print(f"\nCSV出力: {len(scored)}件 → {csv_out}")
+
     if dry_run:
         print("\n[dry-run] 保存・通知はスキップ")
         db.close()
@@ -133,9 +145,10 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="収集+スコアのみ、保存・通知しない")
     parser.add_argument("--source", type=str, help="特定ソースのみ実行 (chiebukuro/reddit/hatena/youtube/twitter)")
     parser.add_argument("--config", type=str, help="config.yamlのパス")
+    parser.add_argument("--csv", type=str, help="CSV出力先パス")
     args = parser.parse_args()
 
-    run(config_path=args.config, dry_run=args.dry_run, source_filter=args.source)
+    run(config_path=args.config, dry_run=args.dry_run, source_filter=args.source, csv_path=args.csv)
 
 
 if __name__ == "__main__":
