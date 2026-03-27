@@ -22,6 +22,8 @@ import {
   advanceFriendSurvey,
   completeFriendSurvey as completeFriendSurveyDb,
   startFriendSurvey,
+  calculateSurveyScore,
+  getScoreTagId,
   createBooking,
   getBookingById,
   cancelBooking,
@@ -249,8 +251,27 @@ async function handleEvent(
       event.source.type === 'user' ? event.source.userId : undefined;
     if (!userId) return;
 
-    const friend = await getFriendByLineUserId(db, userId);
-    if (!friend) return;
+    let friend = await getFriendByLineUserId(db, userId);
+    // 未登録ユーザー（Lstepからの移行等）は自動登録
+    if (!friend) {
+      let profile;
+      try {
+        profile = await lineClient.getProfile(userId);
+      } catch (err) {
+        console.error('Failed to get profile for new message user:', userId, err);
+      }
+      friend = await upsertFriend(db, {
+        lineUserId: userId,
+        displayName: profile?.displayName ?? null,
+        pictureUrl: profile?.pictureUrl ?? null,
+        statusMessage: profile?.statusMessage ?? null,
+      });
+      if (lineAccountId) {
+        await db.prepare('UPDATE friends SET line_account_id = ? WHERE id = ?')
+          .bind(lineAccountId, friend.id).run();
+      }
+      console.log(`Auto-registered friend on message: ${userId} → ${friend.id}`);
+    }
 
     const incomingText = textMessage.text;
     const now = jstNow();
@@ -518,18 +539,36 @@ async function handleEvent(
   if (event.type === 'postback') {
     const postbackEvent = event as PostbackEvent;
     const postbackData = postbackEvent.postback.data;
+    console.log('Postback received:', postbackData);
 
     // Survey postback: survey:{surveyId}:{questionId}:{choiceId}
     if (postbackData.startsWith('survey:')) {
       const userId = event.source.type === 'user' ? event.source.userId : undefined;
-      if (!userId) return;
+      if (!userId) { console.log('Survey postback: no userId'); return; }
 
-      const friend = await getFriendByLineUserId(db, userId);
-      if (!friend) return;
+      let friend = await getFriendByLineUserId(db, userId);
+      if (!friend) {
+        // Auto-register on postback (e.g. migrated from Lstep)
+        let profile;
+        try { profile = await lineClient.getProfile(userId); } catch {}
+        friend = await upsertFriend(db, {
+          lineUserId: userId,
+          displayName: profile?.displayName ?? null,
+          pictureUrl: profile?.pictureUrl ?? null,
+          statusMessage: profile?.statusMessage ?? null,
+        });
+        if (lineAccountId) {
+          await db.prepare('UPDATE friends SET line_account_id = ? WHERE id = ?')
+            .bind(lineAccountId, friend.id).run();
+        }
+        console.log('Auto-registered friend on postback:', userId);
+      }
+      console.log('Survey postback friend:', friend.id, 'userId:', userId);
 
       const parts = postbackData.split(':');
-      if (parts.length !== 4) return;
+      if (parts.length !== 4) { console.log('Survey postback: invalid parts count', parts.length); return; }
       const [, surveyId, questionId, choiceId] = parts;
+      console.log('Survey postback parsed:', { surveyId, questionId, choiceId });
 
       try {
         // Get active friend survey
@@ -614,6 +653,21 @@ async function handleEvent(
             await addTagToFriend(db, friend.id, survey.on_complete_tag_id);
           }
 
+          // Score-based tag assignment
+          if (survey?.score_tag_rules) {
+            const totalScore = await calculateSurveyScore(db, surveyId, answers);
+            const scoreTagId = getScoreTagId(survey.score_tag_rules, totalScore);
+            if (scoreTagId) {
+              await addTagToFriend(db, friend.id, scoreTagId);
+            }
+            // Store score in friend metadata for later use
+            const existing = await db.prepare('SELECT metadata FROM friends WHERE id = ?').bind(friend.id).first<{ metadata: string }>();
+            const meta = JSON.parse(existing?.metadata || '{}');
+            meta[`survey_score_${surveyId}`] = totalScore;
+            await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+              .bind(JSON.stringify(meta), jstNow(), friend.id).run();
+          }
+
           // Start on_complete_scenario_id
           if (survey?.on_complete_scenario_id) {
             await enrollFriendInScenario(db, friend.id, survey.on_complete_scenario_id);
@@ -632,20 +686,27 @@ async function handleEvent(
             }
           }
 
-          // Send completion message
+          // Send completion message (with score if available)
           try {
-            const completionFlex = {
-              type: 'bubble',
-              body: {
-                type: 'box',
-                layout: 'vertical',
-                contents: [
-                  { type: 'text', text: 'ありがとうございました!', weight: 'bold', size: 'lg', color: '#F59E0B', align: 'center' },
-                  { type: 'text', text: '回答を受け付けました。', size: 'sm', color: '#64748b', align: 'center', margin: 'md', wrap: true },
-                ],
-                paddingAll: '20px',
-              },
-            };
+            let completionFlex;
+            if (survey?.score_tag_rules) {
+              const totalScore = await calculateSurveyScore(db, surveyId, answers);
+              const questionCount = allQuestions.length;
+              completionFlex = buildScoreResultFlex(totalScore, questionCount);
+            } else {
+              completionFlex = {
+                type: 'bubble',
+                body: {
+                  type: 'box',
+                  layout: 'vertical',
+                  contents: [
+                    { type: 'text', text: 'ありがとうございました!', weight: 'bold', size: 'lg', color: '#F59E0B', align: 'center' },
+                    { type: 'text', text: '回答を受け付けました。', size: 'sm', color: '#64748b', align: 'center', margin: 'md', wrap: true },
+                  ],
+                  paddingAll: '20px',
+                },
+              };
+            }
             await lineClient.replyMessage(postbackEvent.replyToken, [
               buildMessage('flex', JSON.stringify(completionFlex)),
             ]);
@@ -844,6 +905,42 @@ async function handleEvent(
 
     return;
   }
+}
+
+// スコア診断結果のFlexメッセージ
+function buildScoreResultFlex(score: number, maxScore: number) {
+  let level: string;
+  let comment: string;
+  let color: string;
+  if (score <= Math.floor(maxScore * 0.3)) {
+    level = '初級';
+    comment = 'もったいない！基本設定だけで反応が変わります';
+    color = '#EF4444';
+  } else if (score <= Math.floor(maxScore * 0.6)) {
+    level = '中級';
+    comment = 'いい感じ！あと少しの工夫で売上に繋がります';
+    color = '#F59E0B';
+  } else {
+    level = '上級';
+    comment = 'かなり活用できてます！さらに自動化で効率UP';
+    color = '#10B981';
+  }
+
+  return {
+    type: 'bubble',
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: '診断結果', weight: 'bold', size: 'sm', color: '#64748b', align: 'center' },
+        { type: 'text', text: `${score} / ${maxScore} 点`, weight: 'bold', size: 'xxl', color, align: 'center', margin: 'md' },
+        { type: 'text', text: `レベル: ${level}`, weight: 'bold', size: 'md', color, align: 'center', margin: 'sm' },
+        { type: 'separator', margin: 'lg' },
+        { type: 'text', text: comment, size: 'sm', color: '#334155', align: 'center', margin: 'lg', wrap: true },
+      ],
+      paddingAll: '20px',
+    },
+  };
 }
 
 export { webhook };

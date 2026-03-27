@@ -56,6 +56,7 @@ surveys.post('/api/surveys', async (c) => {
     lineAccountId?: string | null;
     onCompleteTagId?: string | null;
     onCompleteScenarioId?: string | null;
+    scoreTagRules?: string | null;
   }>();
   if (!body.name) return c.json({ success: false, error: 'name is required' }, 400);
 
@@ -71,6 +72,7 @@ surveys.put('/api/surveys/:id', async (c) => {
     name?: string;
     onCompleteTagId?: string | null;
     onCompleteScenarioId?: string | null;
+    scoreTagRules?: string | null;
     isActive?: number;
   }>();
 
@@ -78,6 +80,7 @@ surveys.put('/api/surveys/:id', async (c) => {
   if (body.name !== undefined) updates.name = body.name;
   if (body.onCompleteTagId !== undefined) updates.on_complete_tag_id = body.onCompleteTagId;
   if (body.onCompleteScenarioId !== undefined) updates.on_complete_scenario_id = body.onCompleteScenarioId;
+  if (body.scoreTagRules !== undefined) updates.score_tag_rules = body.scoreTagRules;
   if (body.isActive !== undefined) updates.is_active = body.isActive;
 
   const survey = await updateSurvey(db, id, updates);
@@ -152,6 +155,7 @@ surveys.post('/api/surveys/questions/:id/choices', async (c) => {
     label: string;
     metadataKey?: string | null;
     tagId?: string | null;
+    score?: number;
   }>();
   if (!body.label || body.choiceOrder === undefined) {
     return c.json({ success: false, error: 'label and choiceOrder are required' }, 400);
@@ -163,6 +167,7 @@ surveys.post('/api/surveys/questions/:id/choices', async (c) => {
     label: body.label,
     metadataKey: body.metadataKey,
     tagId: body.tagId,
+    score: body.score,
   });
   return c.json({ success: true, data: choice }, 201);
 });
@@ -176,12 +181,14 @@ surveys.put('/api/surveys/choices/:id', async (c) => {
     metadataKey?: string | null;
     tagId?: string | null;
     choiceOrder?: number;
+    score?: number;
   }>();
 
   const updates: Record<string, unknown> = {};
   if (body.label !== undefined) updates.label = body.label;
   if (body.metadataKey !== undefined) updates.metadata_key = body.metadataKey;
   if (body.tagId !== undefined) updates.tag_id = body.tagId;
+  if (body.score !== undefined) updates.score = body.score;
   if (body.choiceOrder !== undefined) updates.choice_order = body.choiceOrder;
 
   const choice = await updateSurveyChoice(db, id, updates);
