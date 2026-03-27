@@ -3,9 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2024-03-01"
 compatibility_flags = ["nodejs_compat_v2"]
 
-# Cron disabled until auto-post is confirmed
-# [triggers]
-# crons = ["0 0,9 * * *"]
+# Bali time (WITA UTC+8): 9:00 and 18:00
+[triggers]
+crons = ["0 1,10 * * *"]
 
 [[r2_buckets]]
 binding = "IMAGES"

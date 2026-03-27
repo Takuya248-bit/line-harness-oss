@@ -90,8 +90,9 @@ export default {
     env: Env,
     _ctx: ExecutionContext,
   ): Promise<void> {
-    // Cron is disabled until preview workflow is confirmed
-    console.log("Cron triggered but auto-post is disabled. Use POST /preview then POST /publish.");
+    const preview = await generatePreview(env);
+    await postFromPreview(env, preview.imageUrls, preview.caption, preview.contentIndex);
+    console.log(`Auto-posted content index ${preview.contentIndex}: ${preview.content.title}`);
   },
 
   async fetch(
