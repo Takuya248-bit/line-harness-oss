@@ -42,7 +42,60 @@ export function expandVariables(
       return `${apiOrigin}/auth/line?${params.toString()}`;
     });
   }
+
+  // Countdown variable: {{countdown:YYYY-MM-DDTHH:mm}} → "あと3日" etc.
+  result = result.replace(/\{\{countdown:([^}]+)\}\}/g, (_match, dateStr: string) => {
+    return formatCountdown(dateStr, false);
+  });
+
+  // Detailed countdown: {{countdown_detail:YYYY-MM-DDTHH:mm}} → "あと3日と5時間" etc.
+  result = result.replace(/\{\{countdown_detail:([^}]+)\}\}/g, (_match, dateStr: string) => {
+    return formatCountdown(dateStr, true);
+  });
+
   return result;
+}
+
+/**
+ * Format countdown text from now (JST) to the target datetime.
+ * @param dateStr - target datetime in "YYYY-MM-DDTHH:mm" format (JST)
+ * @param detail - if true, show "あとN日とM時間" style
+ */
+function formatCountdown(dateStr: string, detail: boolean): string {
+  // Parse target as JST: append +09:00 if no timezone info
+  const targetStr = dateStr.includes('+') || dateStr.includes('Z') ? dateStr : `${dateStr}:00+09:00`;
+  const target = new Date(targetStr);
+  if (isNaN(target.getTime())) return dateStr; // invalid date → return as-is
+
+  // Current time in JST
+  const now = new Date();
+  const diffMs = target.getTime() - now.getTime();
+
+  if (diffMs <= 0) return '終了しました';
+
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const totalDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (!detail) {
+    // Simple format
+    if (totalDays >= 1) return `あと${totalDays}日`;
+    if (totalHours >= 1) return `あと${totalHours}時間`;
+    return `あと${totalMinutes}分`;
+  }
+
+  // Detailed format
+  const days = totalDays;
+  const remainingHours = Math.floor((diffMs - days * 24 * 60 * 60 * 1000) / (1000 * 60 * 60));
+  const remainingMinutes = Math.floor(
+    (diffMs - days * 24 * 60 * 60 * 1000 - remainingHours * 60 * 60 * 1000) / (1000 * 60),
+  );
+
+  if (days >= 1 && remainingHours > 0) return `あと${days}日と${remainingHours}時間`;
+  if (days >= 1) return `あと${days}日`;
+  if (remainingHours >= 1 && remainingMinutes > 0) return `あと${remainingHours}時間と${remainingMinutes}分`;
+  if (remainingHours >= 1) return `あと${remainingHours}時間`;
+  return `あと${remainingMinutes}分`;
 }
 
 /** Default delivery window: 9:00-23:00 JST. If outside, push to next 9:00 AM. */

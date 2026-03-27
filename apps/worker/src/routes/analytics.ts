@@ -316,4 +316,57 @@ analytics.get('/api/analytics/funnel', async (c) => {
   }
 });
 
+// ========== POST /api/analytics/cross-tags ==========
+// タグ×タグのクロス分析（重複友だち数マトリクス）
+analytics.post('/api/analytics/cross-tags', async (c) => {
+  try {
+    const db = c.env.DB;
+    const body = await c.req.json<{ tagIds: string[]; lineAccountId?: string }>();
+    const { tagIds, lineAccountId } = body;
+
+    if (!tagIds || !Array.isArray(tagIds) || tagIds.length === 0) {
+      return c.json({ success: false, error: 'tagIds is required and must be a non-empty array' }, 400);
+    }
+    if (!lineAccountId) {
+      return c.json({ success: false, error: 'lineAccountId is required' }, 400);
+    }
+
+    const { crossAnalyzeTagVsTag } = await import('@line-crm/db');
+    const result = await crossAnalyzeTagVsTag(db, lineAccountId, tagIds);
+
+    return c.json({ success: true, data: result });
+  } catch (err) {
+    console.error('POST /api/analytics/cross-tags error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
+// ========== POST /api/analytics/cross-tag-scenario ==========
+// タグ×シナリオのクロス分析（タグ別シナリオ進捗）
+analytics.post('/api/analytics/cross-tag-scenario', async (c) => {
+  try {
+    const db = c.env.DB;
+    const body = await c.req.json<{ tagIds: string[]; scenarioIds: string[]; lineAccountId?: string }>();
+    const { tagIds, scenarioIds, lineAccountId } = body;
+
+    if (!tagIds || !Array.isArray(tagIds) || tagIds.length === 0) {
+      return c.json({ success: false, error: 'tagIds is required and must be a non-empty array' }, 400);
+    }
+    if (!scenarioIds || !Array.isArray(scenarioIds) || scenarioIds.length === 0) {
+      return c.json({ success: false, error: 'scenarioIds is required and must be a non-empty array' }, 400);
+    }
+    if (!lineAccountId) {
+      return c.json({ success: false, error: 'lineAccountId is required' }, 400);
+    }
+
+    const { crossAnalyzeTagVsScenario } = await import('@line-crm/db');
+    const result = await crossAnalyzeTagVsScenario(db, lineAccountId, tagIds, scenarioIds);
+
+    return c.json({ success: true, data: result });
+  } catch (err) {
+    console.error('POST /api/analytics/cross-tag-scenario error:', err);
+    return c.json({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
 export { analytics };
