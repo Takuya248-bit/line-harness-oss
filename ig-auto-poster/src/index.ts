@@ -2,6 +2,9 @@ import { generateSlideImages } from "./image-generator";
 import { publishCarousel } from "./instagram";
 import { getCaption } from "./captions";
 import { allContent } from "./content-data";
+import { generateContent } from "./content-generator";
+import { sendPreview, sendNotification, parsePostback } from "./line-preview";
+import type { ContentItem } from "./content-data";
 
 export interface Env {
   IMAGES: R2Bucket;
@@ -14,6 +17,7 @@ export interface Env {
   LINE_OWNER_USER_ID: string;
 }
 
+// --- 既存データ用ヘルパー（フォールバック） ---
 async function getContentIndex(db: D1Database): Promise<number> {
   const row = await db
     .prepare("SELECT content_index FROM ig_post_state WHERE id = 1")
@@ -21,18 +25,138 @@ async function getContentIndex(db: D1Database): Promise<number> {
   return row?.content_index ?? 0;
 }
 
-async function updateContentIndex(
-  db: D1Database,
-  newIndex: number,
-): Promise<void> {
+async function updateContentIndex(db: D1Database, newIndex: number): Promise<void> {
   await db
-    .prepare(
-      "UPDATE ig_post_state SET content_index = ?, last_posted_at = datetime('now') WHERE id = 1",
-    )
+    .prepare("UPDATE ig_post_state SET content_index = ?, last_posted_at = datetime('now') WHERE id = 1")
     .bind(newIndex)
     .run();
 }
 
+// --- 画像生成+R2保存 ---
+async function generateAndStoreImages(
+  content: ContentItem,
+  env: Env,
+  prefix: string,
+): Promise<string[]> {
+  const slideImages = await generateSlideImages(content);
+  const imageUrls: string[] = [];
+  const timestamp = Date.now();
+
+  for (let i = 0; i < slideImages.length; i++) {
+    const key = `${prefix}/${timestamp}/slide-${i + 1}.png`;
+    await env.IMAGES.put(key, slideImages[i], {
+      httpMetadata: { contentType: "image/png" },
+    });
+    imageUrls.push(`${env.R2_PUBLIC_URL}/${key}`);
+  }
+  return imageUrls;
+}
+
+// --- Cronハンドラー ---
+async function handleGenerateCron(env: Env): Promise<void> {
+  const { content, caption } = await generateContent(env.ANTHROPIC_API_KEY, env.DB);
+  const imageUrls = await generateAndStoreImages(content, env, "preview");
+
+  await env.DB
+    .prepare("UPDATE generated_content SET content_json = ? WHERE id = (SELECT MAX(id) FROM generated_content)")
+    .bind(JSON.stringify({ ...content, imageUrls, caption }))
+    .run();
+
+  await sendPreview(
+    imageUrls,
+    content.id,
+    content.type,
+    content.title,
+    env.LINE_OWNER_USER_ID,
+    env.LINE_CHANNEL_ACCESS_TOKEN,
+  );
+  console.log(`Preview sent for: ${content.title}`);
+}
+
+async function handlePostCron(env: Env): Promise<void> {
+  const row = await env.DB
+    .prepare("SELECT id, content_json, caption FROM generated_content WHERE status = 'approved' ORDER BY id ASC LIMIT 1")
+    .first<{ id: number; content_json: string; caption: string }>();
+
+  if (!row) {
+    console.log("No approved content. Using fallback from content-data.ts");
+    const contentIndex = await getContentIndex(env.DB);
+    const content = allContent[contentIndex % allContent.length];
+    const imageUrls = await generateAndStoreImages(content, env, "auto");
+    const caption = getCaption(content.title.replaceAll("\n", " "), contentIndex);
+    await publishCarousel(imageUrls, caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
+    await updateContentIndex(env.DB, (contentIndex + 1) % allContent.length);
+    console.log(`Fallback posted: ${content.title}`);
+    return;
+  }
+
+  const stored = JSON.parse(row.content_json) as ContentItem & { imageUrls: string[]; caption: string };
+  await publishCarousel(stored.imageUrls, row.caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
+
+  await env.DB
+    .prepare("UPDATE generated_content SET status = 'posted', posted_at = datetime('now') WHERE id = ?")
+    .bind(row.id)
+    .run();
+
+  await sendNotification(
+    `投稿完了: ${stored.title.replaceAll("\\n", " ")}`,
+    env.LINE_OWNER_USER_ID,
+    env.LINE_CHANNEL_ACCESS_TOKEN,
+  );
+  console.log(`Posted: ${stored.title}`);
+}
+
+// --- LINE Webhookハンドラー ---
+interface LineWebhookEvent {
+  type: string;
+  postback?: { data: string };
+  source?: { userId: string };
+}
+
+async function handleLineWebhook(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as { events: LineWebhookEvent[] };
+
+  for (const event of body.events) {
+    if (event.type !== "postback" || !event.postback) continue;
+    if (event.source?.userId !== env.LINE_OWNER_USER_ID) continue;
+
+    const parsed = parsePostback(event.postback.data);
+    if (!parsed) continue;
+
+    switch (parsed.action) {
+      case "approve": {
+        await env.DB
+          .prepare("UPDATE generated_content SET status = 'approved' WHERE id = ?")
+          .bind(parsed.id)
+          .run();
+        await sendNotification("承認しました。次の投稿時間に自動投稿します。", env.LINE_OWNER_USER_ID, env.LINE_CHANNEL_ACCESS_TOKEN);
+        break;
+      }
+      case "regenerate": {
+        await env.DB
+          .prepare("UPDATE generated_content SET status = 'rejected' WHERE id = ?")
+          .bind(parsed.id)
+          .run();
+        await handleGenerateCron(env);
+        break;
+      }
+      case "skip": {
+        await env.DB
+          .prepare("UPDATE generated_content SET status = 'skipped' WHERE id = ?")
+          .bind(parsed.id)
+          .run();
+        await sendNotification("スキップしました。", env.LINE_OWNER_USER_ID, env.LINE_CHANNEL_ACCESS_TOKEN);
+        break;
+      }
+    }
+  }
+
+  return new Response(JSON.stringify({ status: "ok" }), {
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// --- 既存プレビューAPI（後方互換） ---
 interface PreviewResult {
   contentIndex: number;
   content: { id: number; type: string; title: string; subtitle: string };
@@ -43,21 +167,7 @@ interface PreviewResult {
 async function generatePreview(env: Env, indexOverride?: number): Promise<PreviewResult> {
   const contentIndex = indexOverride ?? await getContentIndex(env.DB);
   const content = allContent[contentIndex % allContent.length];
-
-  // Generate all slide images via Satori + resvg-wasm
-  const slideImages = await generateSlideImages(content);
-
-  const imageUrls: string[] = [];
-  const timestamp = Date.now();
-
-  for (let i = 0; i < slideImages.length; i++) {
-    const key = `preview/${timestamp}/slide-${i + 1}.png`;
-    await env.IMAGES.put(key, slideImages[i], {
-      httpMetadata: { contentType: "image/png" },
-    });
-    imageUrls.push(`${env.R2_PUBLIC_URL}/${key}`);
-  }
-
+  const imageUrls = await generateAndStoreImages(content, env, "preview");
   const caption = getCaption(content.title.replaceAll("\n", " "), contentIndex);
 
   return {
@@ -68,34 +178,20 @@ async function generatePreview(env: Env, indexOverride?: number): Promise<Previe
   };
 }
 
-async function postFromPreview(
-  env: Env,
-  imageUrls: string[],
-  caption: string,
-  contentIndex: number,
-): Promise<string> {
-  const publishedId = await publishCarousel(
-    imageUrls,
-    caption,
-    env.IG_ACCESS_TOKEN,
-    env.IG_BUSINESS_ACCOUNT_ID,
-  );
-
-  const nextIndex = (contentIndex + 1) % allContent.length;
-  await updateContentIndex(env.DB, nextIndex);
-
-  return publishedId;
-}
-
+// --- メインエクスポート ---
 export default {
   async scheduled(
-    _controller: ScheduledController,
+    controller: ScheduledController,
     env: Env,
     _ctx: ExecutionContext,
   ): Promise<void> {
-    const preview = await generatePreview(env);
-    await postFromPreview(env, preview.imageUrls, preview.caption, preview.contentIndex);
-    console.log(`Auto-posted content index ${preview.contentIndex}: ${preview.content.title}`);
+    const hour = new Date(controller.scheduledTime).getUTCHours();
+
+    if (hour === 0 || hour === 8) {
+      await handleGenerateCron(env);
+    } else if (hour === 1 || hour === 10) {
+      await handlePostCron(env);
+    }
   },
 
   async fetch(
@@ -111,22 +207,31 @@ export default {
       });
 
     try {
-      // GET /status - 現在の状態を確認
+      if (request.method === "POST" && url.pathname === "/line-webhook") {
+        return handleLineWebhook(request, env);
+      }
+
       if (request.method === "GET" && url.pathname === "/status") {
         const index = await getContentIndex(env.DB);
         const row = await env.DB
           .prepare("SELECT last_posted_at FROM ig_post_state WHERE id = 1")
           .first<{ last_posted_at: string | null }>();
+        const pendingCount = await env.DB
+          .prepare("SELECT COUNT(*) as count FROM generated_content WHERE status = 'pending_review'")
+          .first<{ count: number }>();
+        const approvedCount = await env.DB
+          .prepare("SELECT COUNT(*) as count FROM generated_content WHERE status = 'approved'")
+          .first<{ count: number }>();
         return json({
           contentIndex: index,
           totalContent: allContent.length,
           nextContent: allContent[index % allContent.length].title.replaceAll("\n", " "),
-          nextType: allContent[index % allContent.length].type,
           lastPostedAt: row?.last_posted_at,
+          pendingReview: pendingCount?.count ?? 0,
+          approved: approvedCount?.count ?? 0,
         });
       }
 
-      // POST /preview - 画像生成+R2保存（Instagram投稿しない）
       if (request.method === "POST" && url.pathname === "/preview") {
         const body = await request.json().catch(() => ({})) as Record<string, unknown>;
         const indexOverride = typeof body.index === "number" ? body.index : undefined;
@@ -134,7 +239,11 @@ export default {
         return json({ success: true, ...preview });
       }
 
-      // POST /publish - プレビュー済み画像をInstagramに投稿
+      if (request.method === "POST" && url.pathname === "/generate") {
+        await handleGenerateCron(env);
+        return json({ success: true, message: "Content generated and preview sent to LINE" });
+      }
+
       if (request.method === "POST" && url.pathname === "/publish") {
         const body = await request.json() as {
           imageUrls: string[];
@@ -142,19 +251,20 @@ export default {
           contentIndex: number;
         };
         if (!body.imageUrls || !body.caption) {
-          return json({ error: "imageUrls and caption are required. Run POST /preview first." }, 400);
+          return json({ error: "imageUrls and caption are required." }, 400);
         }
-        const publishedId = await postFromPreview(env, body.imageUrls, body.caption, body.contentIndex);
+        const publishedId = await publishCarousel(
+          body.imageUrls, body.caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID,
+        );
+        const nextIndex = (body.contentIndex + 1) % allContent.length;
+        await updateContentIndex(env.DB, nextIndex);
         return json({ success: true, id: publishedId });
       }
 
-      // GET /images/* - R2から画像を配信（Instagram Graph APIに必要）
       if (request.method === "GET" && url.pathname.startsWith("/images/")) {
         const key = url.pathname.replace("/images/", "");
         const object = await env.IMAGES.get(key);
-        if (!object) {
-          return new Response("Not found", { status: 404 });
-        }
+        if (!object) return new Response("Not found", { status: 404 });
         return new Response(object.body, {
           headers: {
             "Content-Type": object.httpMetadata?.contentType ?? "image/png",
@@ -163,38 +273,21 @@ export default {
         });
       }
 
-      // POST /preview-all - 全コンテンツのslide-2をまとめて生成
-      if (request.method === "POST" && url.pathname === "/preview-all") {
-        const results: { index: number; id: number; type: string; title: string; slide2: string }[] = [];
-        for (let i = 0; i < allContent.length; i++) {
-          const preview = await generatePreview(env, i);
-          results.push({
-            index: i,
-            id: preview.content.id,
-            type: preview.content.type,
-            title: preview.content.title.replaceAll("\n", " "),
-            slide2: preview.imageUrls[1],
-          });
-        }
-        return json({ total: results.length, previews: results });
-      }
-
-      // GET /content - ネタリスト一覧
       if (request.method === "GET" && url.pathname === "/content") {
         const list = allContent.map((c) => ({
-          id: c.id,
-          type: c.type,
-          title: c.title.replaceAll("\n", " "),
+          id: c.id, type: c.type, title: c.title.replaceAll("\n", " "),
         }));
         return json({ total: list.length, content: list });
       }
 
       return json({
         endpoints: [
-          "GET  /status   - 現在の投稿インデックスと状態",
-          "GET  /content  - ネタリスト一覧",
-          "POST /preview  - 下書き生成（画像+キャプション）",
-          "POST /publish  - プレビュー済みを投稿",
+          "GET  /status       - 現在の状態",
+          "GET  /content      - 既存ネタリスト",
+          "POST /preview      - 既存データでプレビュー生成",
+          "POST /generate     - AI生成+LINEプレビュー送信",
+          "POST /publish      - 手動投稿",
+          "POST /line-webhook - LINE Webhook",
         ],
       }, 404);
     } catch (err) {

@@ -3,9 +3,13 @@ main = "src/index.ts"
 compatibility_date = "2024-03-01"
 compatibility_flags = ["nodejs_compat_v2"]
 
-# Bali time (WITA UTC+8): 9:00 and 18:00
+# Bali time (WITA UTC+8):
+# 08:00 (UTC 00:00) - 朝のAI生成+プレビュー送信
+# 09:00 (UTC 01:00) - 朝の承認済み投稿
+# 16:00 (UTC 08:00) - 午後のAI生成+プレビュー送信
+# 18:00 (UTC 10:00) - 午後の承認済み投稿
 [triggers]
-crons = ["0 1,10 * * *"]
+crons = ["0 0,8 * * *", "0 1,10 * * *"]
 
 [[r2_buckets]]
 binding = "IMAGES"
@@ -20,3 +24,6 @@ database_id = "5d6c137b-4667-4862-a087-5372aebe1e48"
 # - IG_ACCESS_TOKEN
 # - IG_BUSINESS_ACCOUNT_ID
 # - R2_PUBLIC_URL (e.g. https://images.barilingual.com)
+# - ANTHROPIC_API_KEY
+# - LINE_CHANNEL_ACCESS_TOKEN
+# - LINE_OWNER_USER_ID
