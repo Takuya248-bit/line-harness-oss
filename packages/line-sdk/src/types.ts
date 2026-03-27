@@ -176,6 +176,26 @@ export interface VideoMessage {
   previewImageUrl: string;
 }
 
+export interface AudioMessage {
+  type: 'audio';
+  originalContentUrl: string;
+  duration: number;
+}
+
+export interface StickerMessage {
+  type: 'sticker';
+  packageId: string;
+  stickerId: string;
+}
+
+export interface LocationMessage {
+  type: 'location';
+  title: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+}
+
 export interface TemplateMessage {
   type: 'template';
   altText: string;
@@ -195,6 +215,9 @@ export type Message =
   | ImageMessage
   | FlexMessage
   | VideoMessage
+  | AudioMessage
+  | StickerMessage
+  | LocationMessage
   | TemplateMessage
   | ImageMapMessageType;
 

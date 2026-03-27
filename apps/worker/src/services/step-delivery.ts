@@ -431,6 +431,90 @@ export function buildMessage(messageType: string, messageContent: string): Messa
     }
   }
 
+  if (messageType === 'video') {
+    try {
+      const parsed = JSON.parse(messageContent) as {
+        originalContentUrl: string;
+        previewImageUrl: string;
+      };
+      return {
+        type: 'video',
+        originalContentUrl: parsed.originalContentUrl,
+        previewImageUrl: parsed.previewImageUrl,
+      };
+    } catch {
+      return { type: 'text', text: messageContent };
+    }
+  }
+
+  if (messageType === 'audio') {
+    try {
+      const parsed = JSON.parse(messageContent) as {
+        originalContentUrl: string;
+        duration: number;
+      };
+      return {
+        type: 'audio',
+        originalContentUrl: parsed.originalContentUrl,
+        duration: parsed.duration,
+      };
+    } catch {
+      return { type: 'text', text: messageContent };
+    }
+  }
+
+  if (messageType === 'sticker') {
+    try {
+      const parsed = JSON.parse(messageContent) as {
+        packageId: string;
+        stickerId: string;
+      };
+      return {
+        type: 'sticker',
+        packageId: parsed.packageId,
+        stickerId: parsed.stickerId,
+      };
+    } catch {
+      return { type: 'text', text: messageContent };
+    }
+  }
+
+  if (messageType === 'location') {
+    try {
+      const parsed = JSON.parse(messageContent) as {
+        title: string;
+        address: string;
+        latitude: number;
+        longitude: number;
+      };
+      return {
+        type: 'location',
+        title: parsed.title,
+        address: parsed.address,
+        latitude: parsed.latitude,
+        longitude: parsed.longitude,
+      };
+    } catch {
+      return { type: 'text', text: messageContent };
+    }
+  }
+
+  if (messageType === 'template') {
+    try {
+      const parsed = JSON.parse(messageContent) as {
+        altText?: string;
+        template: Record<string, unknown>;
+      };
+      return {
+        type: 'template',
+        altText: parsed.altText || 'お知らせ',
+        template: parsed.template,
+      };
+    } catch {
+      return { type: 'text', text: messageContent };
+    }
+  }
+
   // Fallback
   return { type: 'text', text: messageContent };
 }

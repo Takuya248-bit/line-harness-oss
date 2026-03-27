@@ -141,12 +141,15 @@ CREATE INDEX IF NOT EXISTS idx_messages_log_created_at ON messages_log (created_
 -- ============================================================
 CREATE TABLE IF NOT EXISTS auto_replies (
   id               TEXT PRIMARY KEY,
-  keyword          TEXT NOT NULL,
-  match_type       TEXT NOT NULL CHECK (match_type IN ('exact', 'contains')) DEFAULT 'exact',
+  keyword          TEXT NOT NULL DEFAULT '',
+  match_type       TEXT NOT NULL CHECK (match_type IN ('exact', 'contains', 'range_number', 'range_date')) DEFAULT 'exact',
   response_type    TEXT NOT NULL DEFAULT 'text',
   response_content TEXT NOT NULL,
+  range_min        TEXT,
+  range_max        TEXT,
   is_active        INTEGER NOT NULL DEFAULT 1,
-  created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+  created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
+  line_account_id  TEXT
 );
 
 -- ============================================================

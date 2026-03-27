@@ -22,6 +22,7 @@ export {
 } from './messages.js';
 export type {
   AudioEventMessage,
+  AudioMessage,
   BroadcastRequest,
   EventMessage,
   FileEventMessage,
@@ -33,6 +34,7 @@ export type {
   ImageMessage,
   ImageMapMessageType,
   LocationEventMessage,
+  LocationMessage,
   Message,
   MessageEvent,
   MulticastRequest,
@@ -42,6 +44,7 @@ export type {
   RoomSource,
   Source,
   StickerEventMessage,
+  StickerMessage,
   TemplateMessage,
   TextEventMessage,
   TextMessage,

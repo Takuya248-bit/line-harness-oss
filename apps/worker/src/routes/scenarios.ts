@@ -236,6 +236,14 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
       );
     }
 
+    const validMessageTypes = ['text', 'image', 'flex', 'video', 'audio', 'sticker', 'location', 'template'];
+    if (!validMessageTypes.includes(body.messageType)) {
+      return c.json(
+        { success: false, error: `messageType must be one of: ${validMessageTypes.join(', ')}` },
+        400,
+      );
+    }
+
     // Validate delivery_hour range (0-23)
     if (body.deliveryHour !== undefined && body.deliveryHour !== null) {
       if (!Number.isInteger(body.deliveryHour) || body.deliveryHour < 0 || body.deliveryHour > 23) {
@@ -300,6 +308,17 @@ scenarios.put('/api/scenarios/:id/steps/:stepId', async (c) => {
       conditionValue?: string | null;
       nextStepOnFalse?: number | null;
     }>();
+
+    // Validate messageType if provided
+    if (body.messageType !== undefined) {
+      const validMessageTypes = ['text', 'image', 'flex', 'video', 'audio', 'sticker', 'location', 'template'];
+      if (!validMessageTypes.includes(body.messageType)) {
+        return c.json(
+          { success: false, error: `messageType must be one of: ${validMessageTypes.join(', ')}` },
+          400,
+        );
+      }
+    }
 
     // Validate delivery_hour range (0-23) if provided
     if (body.deliveryHour !== undefined && body.deliveryHour !== null) {

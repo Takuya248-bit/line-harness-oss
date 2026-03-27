@@ -372,9 +372,11 @@ async function handleEvent(
       .all<{
         id: string;
         keyword: string;
-        match_type: 'exact' | 'contains';
+        match_type: 'exact' | 'contains' | 'range_number' | 'range_date';
         response_type: string;
         response_content: string;
+        range_min: string | null;
+        range_max: string | null;
         is_active: number;
         created_at: string;
       }>();
@@ -396,10 +398,29 @@ async function handleEvent(
 
     // Check auto_replies first
     for (const rule of autoReplies.results) {
-      const isMatch =
-        rule.match_type === 'exact'
-          ? incomingText === rule.keyword
-          : incomingText.includes(rule.keyword);
+      let isMatch = false;
+
+      if (rule.match_type === 'exact') {
+        isMatch = incomingText === rule.keyword;
+      } else if (rule.match_type === 'contains') {
+        isMatch = incomingText.includes(rule.keyword);
+      } else if (rule.match_type === 'range_number') {
+        const num = parseFloat(incomingText.replace(/[,、]/g, '').trim());
+        if (!isNaN(num) && rule.range_min !== null && rule.range_max !== null) {
+          isMatch = num >= parseFloat(rule.range_min) && num <= parseFloat(rule.range_max);
+        }
+      } else if (rule.match_type === 'range_date') {
+        // Parse incoming text as date (supports YYYY-MM-DD, YYYY/MM/DD, MM/DD, etc.)
+        const normalized = incomingText.trim().replace(/\//g, '-');
+        const parsed = new Date(normalized);
+        if (!isNaN(parsed.getTime()) && rule.range_min !== null && rule.range_max !== null) {
+          const minDate = new Date(rule.range_min);
+          const maxDate = new Date(rule.range_max);
+          if (!isNaN(minDate.getTime()) && !isNaN(maxDate.getTime())) {
+            isMatch = parsed >= minDate && parsed <= maxDate;
+          }
+        }
+      }
 
       if (isMatch) {
         try {
