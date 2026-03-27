@@ -53,7 +53,16 @@ export async function processBroadcastSend(
       }
 
       const friends = await getFriendsByTag(db, broadcast.target_tag_id);
-      const followingFriends = friends.filter((f) => f.is_following);
+
+      // 配信停止タグチェック: 「配信停止」タグが付いた友だちを除外
+      const stopTagFriends = await db
+        .prepare(
+          `SELECT ft.friend_id FROM friend_tags ft JOIN tags t ON ft.tag_id = t.id WHERE t.name = '配信停止'`,
+        )
+        .all<{ friend_id: string }>();
+      const stopFriendIds = new Set((stopTagFriends.results || []).map((r) => r.friend_id));
+
+      const followingFriends = friends.filter((f) => f.is_following && !stopFriendIds.has(f.id));
       totalCount = followingFriends.length;
 
       // Send in batches with stealth delays to mimic human patterns

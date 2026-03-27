@@ -125,6 +125,18 @@ async function processSingleDelivery(
     await completeFriendScenario(db, fs.id);
     return;
   }
+
+  // 配信停止タグチェック: タグ「配信停止」が付いている友だちはシナリオをスキップ
+  const stopTag = await db
+    .prepare(
+      `SELECT 1 FROM friend_tags ft JOIN tags t ON ft.tag_id = t.id WHERE ft.friend_id = ? AND t.name = '配信停止'`,
+    )
+    .bind(fs.friend_id)
+    .first();
+  if (stopTag) {
+    await completeFriendScenario(db, fs.id);
+    return;
+  }
   const metadata = JSON.parse((friend as { metadata?: string }).metadata || '{}') as Record<string, unknown>;
   const preferredHour = typeof metadata.preferred_hour === 'number' ? metadata.preferred_hour : undefined;
 
