@@ -1,9 +1,11 @@
 name = "ig-auto-poster"
 main = "src/index.ts"
 compatibility_date = "2024-03-01"
+compatibility_flags = ["nodejs_compat"]
 
-[triggers]
-crons = ["0 0,9 * * *"]
+# Cron disabled until auto-post is confirmed
+# [triggers]
+# crons = ["0 0,9 * * *"]
 
 [[r2_buckets]]
 binding = "IMAGES"
@@ -11,10 +13,10 @@ bucket_name = "barilingual-ig-images"
 
 [[d1_databases]]
 binding = "DB"
-# database_id is set via wrangler CLI, not committed here
+database_name = "ig-auto-poster-db"
+database_id = "5d6c137b-4667-4862-a087-5372aebe1e48"
 
 # Secrets (set via `wrangler secret put`):
-# - GEMINI_API_KEY
 # - IG_ACCESS_TOKEN
 # - IG_BUSINESS_ACCOUNT_ID
 # - R2_PUBLIC_URL (e.g. https://images.barilingual.com)
