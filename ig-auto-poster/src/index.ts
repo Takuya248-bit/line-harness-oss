@@ -9,6 +9,9 @@ export interface Env {
   IG_ACCESS_TOKEN: string;
   IG_BUSINESS_ACCOUNT_ID: string;
   R2_PUBLIC_URL: string;
+  ANTHROPIC_API_KEY: string;
+  LINE_CHANNEL_ACCESS_TOKEN: string;
+  LINE_OWNER_USER_ID: string;
 }
 
 async function getContentIndex(db: D1Database): Promise<number> {
@@ -158,6 +161,22 @@ export default {
             "Cache-Control": "public, max-age=31536000",
           },
         });
+      }
+
+      // POST /preview-all - 全コンテンツのslide-2をまとめて生成
+      if (request.method === "POST" && url.pathname === "/preview-all") {
+        const results: { index: number; id: number; type: string; title: string; slide2: string }[] = [];
+        for (let i = 0; i < allContent.length; i++) {
+          const preview = await generatePreview(env, i);
+          results.push({
+            index: i,
+            id: preview.content.id,
+            type: preview.content.type,
+            title: preview.content.title.replaceAll("\n", " "),
+            slide2: preview.imageUrls[1],
+          });
+        }
+        return json({ total: results.length, previews: results });
       }
 
       // GET /content - ネタリスト一覧
