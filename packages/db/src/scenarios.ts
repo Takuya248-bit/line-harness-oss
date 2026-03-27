@@ -23,6 +23,8 @@ export interface ScenarioStep {
   delivery_hour: number | null;
   message_type: MessageType;
   message_content: string;
+  extra_messages: string | null;
+  rich_menu_id: string | null;
   condition_type: string | null;
   condition_value: string | null;
   next_step_on_false: number | null;
@@ -191,6 +193,8 @@ export interface CreateScenarioStepInput {
   deliveryHour?: number | null;
   messageType: MessageType;
   messageContent: string;
+  extraMessages?: string | null;
+  richMenuId?: string | null;
   conditionType?: string | null;
   conditionValue?: string | null;
   nextStepOnFalse?: number | null;
@@ -205,8 +209,8 @@ export async function createScenarioStep(
 
   await db
     .prepare(
-      `INSERT INTO scenario_steps (id, scenario_id, step_order, delay_minutes, delivery_hour, message_type, message_content, condition_type, condition_value, next_step_on_false, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO scenario_steps (id, scenario_id, step_order, delay_minutes, delivery_hour, message_type, message_content, extra_messages, rich_menu_id, condition_type, condition_value, next_step_on_false, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
@@ -216,6 +220,8 @@ export async function createScenarioStep(
       input.deliveryHour ?? null,
       input.messageType,
       input.messageContent,
+      input.extraMessages ?? null,
+      input.richMenuId ?? null,
       input.conditionType ?? null,
       input.conditionValue ?? null,
       input.nextStepOnFalse ?? null,
@@ -230,7 +236,7 @@ export async function createScenarioStep(
 }
 
 export type UpdateScenarioStepInput = Partial<
-  Pick<ScenarioStep, 'step_order' | 'delay_minutes' | 'delivery_hour' | 'message_type' | 'message_content' | 'condition_type' | 'condition_value' | 'next_step_on_false'>
+  Pick<ScenarioStep, 'step_order' | 'delay_minutes' | 'delivery_hour' | 'message_type' | 'message_content' | 'extra_messages' | 'rich_menu_id' | 'condition_type' | 'condition_value' | 'next_step_on_false'>
 >;
 
 export async function updateScenarioStep(
@@ -260,6 +266,14 @@ export async function updateScenarioStep(
   if (updates.message_content !== undefined) {
     fields.push('message_content = ?');
     values.push(updates.message_content);
+  }
+  if (updates.extra_messages !== undefined) {
+    fields.push('extra_messages = ?');
+    values.push(updates.extra_messages);
+  }
+  if (updates.rich_menu_id !== undefined) {
+    fields.push('rich_menu_id = ?');
+    values.push(updates.rich_menu_id);
   }
   if (updates.condition_type !== undefined) {
     fields.push('condition_type = ?');

@@ -47,6 +47,8 @@ function serializeStep(row: DbScenarioStep) {
     deliveryHour: row.delivery_hour ?? null,
     messageType: row.message_type,
     messageContent: row.message_content,
+    extraMessages: row.extra_messages ? JSON.parse(row.extra_messages) : null,
+    richMenuId: row.rich_menu_id ?? null,
     conditionType: row.condition_type ?? null,
     conditionValue: row.condition_value ?? null,
     nextStepOnFalse: row.next_step_on_false ?? null,
@@ -220,6 +222,8 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
       deliveryHour?: number | null;
       messageType: MessageType;
       messageContent: string;
+      extraMessages?: Array<{ type: string; content: string }> | null;
+      richMenuId?: string | null;
       conditionType?: string | null;
       conditionValue?: string | null;
       nextStepOnFalse?: number | null;
@@ -242,6 +246,23 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
       }
     }
 
+    // Validate extraMessages format
+    if (body.extraMessages !== undefined && body.extraMessages !== null) {
+      if (!Array.isArray(body.extraMessages)) {
+        return c.json(
+          { success: false, error: 'extraMessages must be an array of {type, content} objects' },
+          400,
+        );
+      }
+      // Max 4 extra messages (main + 4 extras = 5 LINE API limit)
+      if (body.extraMessages.length > 4) {
+        return c.json(
+          { success: false, error: 'extraMessages cannot exceed 4 items (5 messages total with main message)' },
+          400,
+        );
+      }
+    }
+
     const step = await createScenarioStep(c.env.DB, {
       scenarioId,
       stepOrder: body.stepOrder,
@@ -249,6 +270,8 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
       deliveryHour: body.deliveryHour ?? null,
       messageType: body.messageType,
       messageContent: body.messageContent,
+      extraMessages: body.extraMessages ? JSON.stringify(body.extraMessages) : null,
+      richMenuId: body.richMenuId ?? null,
       conditionType: body.conditionType ?? null,
       conditionValue: body.conditionValue ?? null,
       nextStepOnFalse: body.nextStepOnFalse ?? null,
@@ -271,6 +294,8 @@ scenarios.put('/api/scenarios/:id/steps/:stepId', async (c) => {
       deliveryHour?: number | null;
       messageType?: MessageType;
       messageContent?: string;
+      extraMessages?: Array<{ type: string; content: string }> | null;
+      richMenuId?: string | null;
       conditionType?: string | null;
       conditionValue?: string | null;
       nextStepOnFalse?: number | null;
@@ -286,12 +311,30 @@ scenarios.put('/api/scenarios/:id/steps/:stepId', async (c) => {
       }
     }
 
+    // Validate extraMessages format if provided
+    if (body.extraMessages !== undefined && body.extraMessages !== null) {
+      if (!Array.isArray(body.extraMessages)) {
+        return c.json(
+          { success: false, error: 'extraMessages must be an array of {type, content} objects' },
+          400,
+        );
+      }
+      if (body.extraMessages.length > 4) {
+        return c.json(
+          { success: false, error: 'extraMessages cannot exceed 4 items (5 messages total with main message)' },
+          400,
+        );
+      }
+    }
+
     const updated = await updateScenarioStep(c.env.DB, stepId, {
       step_order: body.stepOrder,
       delay_minutes: body.delayMinutes,
       delivery_hour: body.deliveryHour,
       message_type: body.messageType,
       message_content: body.messageContent,
+      extra_messages: body.extraMessages !== undefined ? (body.extraMessages ? JSON.stringify(body.extraMessages) : null) : undefined,
+      rich_menu_id: body.richMenuId,
       condition_type: body.conditionType,
       condition_value: body.conditionValue,
       next_step_on_false: body.nextStepOnFalse,

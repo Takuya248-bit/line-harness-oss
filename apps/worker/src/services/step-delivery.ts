@@ -199,8 +199,33 @@ async function processSingleDelivery(
     trackedType = tracked.messageType;
     trackedContent = tracked.content;
   }
-  const message = buildMessage(trackedType, trackedContent);
-  await lineClient.pushMessage(friend.line_user_id, [message]);
+  // Build main message
+  const messages: Message[] = [buildMessage(trackedType, trackedContent)];
+
+  // Append extra_messages if present
+  if (currentStep.extra_messages) {
+    try {
+      const extras = JSON.parse(currentStep.extra_messages) as Array<{ type: string; content: string }>;
+      for (const extra of extras) {
+        const expandedExtra = expandVariables(extra.content, friend, workerUrl);
+        messages.push(buildMessage(extra.type, expandedExtra));
+      }
+    } catch {
+      console.error(`Invalid extra_messages JSON for step ${currentStep.id}`);
+    }
+  }
+
+  // LINE API allows max 5 messages per push
+  await lineClient.pushMessage(friend.line_user_id, messages.slice(0, 5));
+
+  // Switch rich menu if specified
+  if (currentStep.rich_menu_id) {
+    try {
+      await lineClient.linkRichMenuToUser(friend.line_user_id, currentStep.rich_menu_id);
+    } catch (err) {
+      console.error(`Failed to link rich menu ${currentStep.rich_menu_id} to user ${friend.line_user_id}:`, err);
+    }
+  }
 
   // Log outgoing message
   const logId = crypto.randomUUID();
