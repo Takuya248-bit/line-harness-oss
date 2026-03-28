@@ -1,3 +1,6 @@
 .pw-profile/
+.pw-profile-playwright/
 screenshots/
 data/
+__pycache__/
+*.pyc
