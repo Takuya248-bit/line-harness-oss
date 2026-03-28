@@ -30,10 +30,10 @@ export function buildQuizAnswerNode(slide: SlideData): SatoriNode {
         style: { fontSize: 70, fontWeight: 700, color: COLORS.navy, fontFamily: FONT_FAMILY, wordBreak: "break-word", marginTop: 20 },
       }, slide.answerEn ?? ""),
       h("span", {
-        style: { fontSize: 46, color: COLORS.gray, fontFamily: FONT_FAMILY },
+        style: { fontSize: 46, color: "#424242", fontFamily: FONT_FAMILY },
       }, slide.answerJp ?? ""),
       h("div", {
-        style: { width: "100%", height: 3, backgroundColor: COLORS.turquoise, opacity: 0.4, marginTop: 20, marginBottom: 20 },
+        style: { width: "100%", height: 3, backgroundColor: COLORS.turquoise, opacity: 0.7, marginTop: 20, marginBottom: 20 },
       }),
       h("div", {
         style: {

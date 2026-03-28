@@ -39,10 +39,10 @@ export function buildQuizQuestionNode(slide: SlideData): SatoriNode {
           h("div", {
             style: {
               display: "flex", alignItems: "center", justifyContent: "center",
-              width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(0,188,212,0.15)", flexShrink: 0,
+              width: 56, height: 56, borderRadius: 28, backgroundColor: "rgba(0,188,212,0.25)", flexShrink: 0,
             },
           },
-            h("span", { style: { fontSize: 34, fontWeight: 700, color: COLORS.turquoise, fontFamily: FONT_FAMILY } }, opt.label),
+            h("span", { style: { fontSize: 34, fontWeight: 700, color: "#006064", fontFamily: FONT_FAMILY } }, opt.label),
           ),
           h("span", {
             style: { fontSize: 46, color: COLORS.navy, fontFamily: FONT_FAMILY, wordBreak: "break-word" },
@@ -55,10 +55,10 @@ export function buildQuizQuestionNode(slide: SlideData): SatoriNode {
         style: {
           display: "flex", alignItems: "center", justifyContent: "center",
           paddingLeft: 60, paddingRight: 60, paddingTop: 16, paddingBottom: 16,
-          borderRadius: 33, backgroundColor: "rgba(0,188,212,0.12)",
+          borderRadius: 33, backgroundColor: "rgba(0,188,212,0.25)",
         },
       },
-        h("span", { style: { fontSize: 38, fontWeight: 700, color: COLORS.turquoise, fontFamily: FONT_FAMILY } }, "スワイプで答え合わせ"),
+        h("span", { style: { fontSize: 38, fontWeight: 700, color: "#00695C", fontFamily: FONT_FAMILY } }, "スワイプで答え合わせ"),
       ),
     ),
     bottomBar(),
