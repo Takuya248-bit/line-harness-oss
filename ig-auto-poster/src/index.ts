@@ -1,4 +1,4 @@
-import { generateSlideImages, generateFirstSlideSvg } from "./image-generator";
+import { generateSlideImages, generateFirstSlideSvg, generateSingleSlidePng, getSlideCount } from "./image-generator";
 import { publishCarousel } from "./instagram";
 import { getCaption } from "./captions";
 import { allContent } from "./content-data";
@@ -32,38 +32,39 @@ async function updateContentIndex(db: D1Database, newIndex: number): Promise<voi
     .run();
 }
 
-// --- PNG画像生成+R2保存 ---
-async function generateAndStoreImages(
+// --- PNG画像1枚生成+R2保存 ---
+async function generateAndStoreSingleImage(
   content: ContentItem,
+  slideIndex: number,
   env: Env,
   prefix: string,
-): Promise<string[]> {
-  const slidePngs = await generateSlideImages(content);
-  const imageUrls: string[] = [];
-  const timestamp = Date.now();
-
-  for (let i = 0; i < slidePngs.length; i++) {
-    const key = `${prefix}/${timestamp}/slide-${i + 1}.png`;
-    await env.IMAGES.put(key, slidePngs[i], {
-      httpMetadata: { contentType: "image/png" },
-    });
-    imageUrls.push(`${env.R2_PUBLIC_URL}/${key}`);
-  }
-  return imageUrls;
+  timestamp: number,
+): Promise<string> {
+  const png = await generateSingleSlidePng(content, slideIndex);
+  const key = `${prefix}/${timestamp}/slide-${slideIndex + 1}.png`;
+  await env.IMAGES.put(key, png, {
+    httpMetadata: { contentType: "image/png" },
+  });
+  return `${env.R2_PUBLIC_URL}/${key}`;
 }
+
 
 // --- Cronハンドラー ---
 async function handleGenerateCron(env: Env): Promise<void> {
   const { content, caption } = await generateContent(env.ANTHROPIC_API_KEY, env.DB);
-  const imageUrls = await generateAndStoreImages(content, env, "preview");
+  const timestamp = Date.now();
 
+  // プレビュー用: カバー1枚だけPNG変換（CPU節約）
+  const coverUrl = await generateAndStoreSingleImage(content, 0, env, "preview", timestamp);
+
+  // コンテンツをDBに保存（画像は投稿時に全枚生成）
   await env.DB
     .prepare("UPDATE generated_content SET content_json = ? WHERE id = (SELECT MAX(id) FROM generated_content)")
-    .bind(JSON.stringify({ ...content, imageUrls, caption }))
+    .bind(JSON.stringify({ ...content, coverUrl, caption }))
     .run();
 
   await sendPreview(
-    imageUrls,
+    [coverUrl],
     content.id,
     content.type,
     content.title,
@@ -82,7 +83,13 @@ async function handlePostCron(env: Env): Promise<void> {
     console.log("No approved content. Using fallback from content-data.ts");
     const contentIndex = await getContentIndex(env.DB);
     const content = allContent[contentIndex % allContent.length];
-    const imageUrls = await generateAndStoreImages(content, env, "auto");
+    const timestamp = Date.now();
+    const total = getSlideCount(content);
+    const imageUrls: string[] = [];
+    for (let i = 0; i < total; i++) {
+      const url = await generateAndStoreSingleImage(content, i, env, "auto", timestamp);
+      imageUrls.push(url);
+    }
     const caption = getCaption(content.title.replaceAll("\n", " "), contentIndex);
     await publishCarousel(imageUrls, caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
     await updateContentIndex(env.DB, (contentIndex + 1) % allContent.length);
@@ -90,8 +97,16 @@ async function handlePostCron(env: Env): Promise<void> {
     return;
   }
 
-  const stored = JSON.parse(row.content_json) as ContentItem & { imageUrls: string[]; caption: string };
-  await publishCarousel(stored.imageUrls, row.caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
+  const stored = JSON.parse(row.content_json) as ContentItem & { coverUrl: string; caption: string };
+  // 承認済みコンテンツ: 全スライドPNG生成
+  const timestamp = Date.now();
+  const total = getSlideCount(stored);
+  const imageUrls: string[] = [];
+  for (let i = 0; i < total; i++) {
+    const url = await generateAndStoreSingleImage(stored, i, env, "post", timestamp);
+    imageUrls.push(url);
+  }
+  await publishCarousel(imageUrls, row.caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
 
   await env.DB
     .prepare("UPDATE generated_content SET status = 'posted', posted_at = datetime('now') WHERE id = ?")
@@ -109,6 +124,7 @@ async function handlePostCron(env: Env): Promise<void> {
 // --- LINE Webhookハンドラー ---
 interface LineWebhookEvent {
   type: string;
+  message?: { type: string; text?: string };
   postback?: { data: string };
   source?: { userId: string };
 }
@@ -167,14 +183,16 @@ interface PreviewResult {
 async function generatePreview(env: Env, indexOverride?: number): Promise<PreviewResult> {
   const contentIndex = indexOverride ?? await getContentIndex(env.DB);
   const content = allContent[contentIndex % allContent.length];
-  const imageUrls = await generateAndStoreImages(content, env, "preview");
+  const timestamp = Date.now();
+  // カバー1枚のみPNG変換（CPU節約）
+  const coverUrl = await generateAndStoreSingleImage(content, 0, env, "preview", timestamp);
   const caption = getCaption(content.title.replaceAll("\n", " "), contentIndex);
 
   return {
     contentIndex,
     content: { id: content.id, type: content.type, title: content.title, subtitle: content.subtitle },
     caption,
-    imageUrls,
+    imageUrls: [coverUrl],
   };
 }
 

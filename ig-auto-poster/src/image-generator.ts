@@ -100,6 +100,19 @@ export async function generateSlideImages(content: ContentItem): Promise<Uint8Ar
   return pngs;
 }
 
+/** 1枚だけSVG→PNGに変換 */
+export async function generateSingleSlidePng(content: ContentItem, slideIndex: number): Promise<Uint8Array> {
+  const nodes = buildSlides(content);
+  if (slideIndex >= nodes.length) throw new Error(`Slide index ${slideIndex} out of range (total: ${nodes.length})`);
+  const svg = await renderNodeToSvg(nodes[slideIndex]);
+  return svgToPng(svg);
+}
+
+/** スライド総数を返す */
+export function getSlideCount(content: ContentItem): number {
+  return buildSlides(content).length;
+}
+
 /** 1枚目（カバー）のSVG文字列を返す */
 export async function generateFirstSlideSvg(content: ContentItem): Promise<string> {
   const nodes = buildSlides(content);
