@@ -2,13 +2,13 @@
   "version": 74,
   "categories": [
     {
-      "id": "cat-x-curation",
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       "name": "X Curation",
       "layoutType": "linear_list",
       "hidden": false,
       "shortcuts": [
         {
-          "id": "sc-x-curation",
+          "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
           "name": "チームに投げる",
           "description": "X投稿をGitHub Issueに登録してチームに共有",
           "method": "POST",
