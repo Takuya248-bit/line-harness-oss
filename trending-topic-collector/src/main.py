@@ -21,7 +21,7 @@ from src.collectors.reddit import RedditCollector
 from src.collectors.hatena import HatenaCollector
 from src.collectors.youtube_shorts import YoutubeShortsCollector
 from src.collectors.twitter import TwitterCollector
-from src.scorer import score_item
+from src.scorer import score_item, score_item_detail, classify_tier, is_excluded
 from src.dedup import DedupDB
 from src.obsidian_writer import write_topic_note
 from src.line_notifier import send_notification
@@ -81,33 +81,39 @@ def run(config_path: str | None = None, dry_run: bool = False, source_filter: st
             new_items.append(item)
     print(f"新規: {len(new_items)}件 (既知: {len(all_items) - len(new_items)}件)\n")
 
-    scored: list[tuple[CollectedItem, int]] = []
+    excluded_count = 0
+    scored: list[tuple[CollectedItem, int, dict]] = []
     for item in new_items:
+        if is_excluded(item):
+            excluded_count += 1
+            continue
         s = score_item(item)
-        scored.append((item, s))
+        detail = score_item_detail(item)
+        scored.append((item, s, detail))
 
     scored.sort(key=lambda x: x[1], reverse=True)
 
-    to_save = [(item, s) for item, s in scored if s >= save_threshold]
-    to_notify = [(item, s) for item, s in scored if s >= notify_threshold]
+    to_save = [(item, s, d) for item, s, d in scored if s >= save_threshold]
+    to_notify = [(item, s, d) for item, s, d in scored if s >= notify_threshold]
 
     print(f"=== スコアリング結果 ===")
+    print(f"除外: {excluded_count}件")
     print(f"保存対象(>={save_threshold}): {len(to_save)}件")
     print(f"通知対象(>={notify_threshold}): {len(to_notify)}件\n")
 
-    for item, s in scored[:20]:
+    for item, s, d in scored[:20]:
         flag = "***" if s >= notify_threshold else "  *" if s >= save_threshold else "   "
-        print(f"  {flag} {s:3d}点 [{item.source:10}] {item.title[:50]}")
+        print(f"  {flag} {s:3d}点 [{item.source:10}] [{d['tier']}] {item.title[:45]}")
 
     # CSV出力
     if csv_path:
         csv_out = Path(csv_path)
         with open(csv_out, "w", newline="", encoding="utf-8-sig") as f:
             w = csv.writer(f)
-            w.writerow(["スコア", "ソース", "タイトル", "URL", "カテゴリ", "エンゲージメント"])
-            for item, s in scored:
+            w.writerow(["スコア", "Tier", "コメント誘発", "感情", "語り適性", "鮮度", "櫻子視点", "ソース", "タイトル", "URL", "カテゴリ", "エンゲージメント"])
+            for item, s, d in scored:
                 eng_parts = [f"{k}:{v}" for k, v in item.engagement.items()]
-                w.writerow([s, item.source, item.title, item.url, item.category, " ".join(eng_parts)])
+                w.writerow([s, d["tier"], d["comment_trigger"], d["emotion"], d["brevity"], d["freshness"], d["sakurako_angle"], item.source, item.title, item.url, item.category, " ".join(eng_parts)])
         print(f"\nCSV出力: {len(scored)}件 → {csv_out}")
 
     if dry_run:
@@ -116,7 +122,7 @@ def run(config_path: str | None = None, dry_run: bool = False, source_filter: st
         return
 
     saved_count = 0
-    for item, s in to_save:
+    for item, s, d in to_save:
         try:
             write_topic_note(item, score=s, output_dir=output_dir)
             db.mark_seen(item.url, item.title, item.source)
@@ -126,11 +132,12 @@ def run(config_path: str | None = None, dry_run: bool = False, source_filter: st
 
     print(f"\nObsidian保存: {saved_count}件 → {output_dir}")
 
-    if to_notify and notify_cfg.get("enabled") and notify_cfg.get("token"):
-        ok = send_notification(to_notify, token=notify_cfg["token"])
+    notify_items = [(item, s) for item, s, d in to_notify]
+    if notify_items and notify_cfg.get("enabled") and notify_cfg.get("token"):
+        ok = send_notification(notify_items, token=notify_cfg["token"])
         print(f"LINE通知: {'送信成功' if ok else '送信失敗'} ({len(to_notify)}件)")
-    elif to_notify:
-        print(f"LINE通知: token未設定のためスキップ ({len(to_notify)}件)")
+    elif notify_items:
+        print(f"LINE通知: token未設定のためスキップ ({len(notify_items)}件)")
 
     cleaned = db.cleanup(max_age_days=30)
     if cleaned:
