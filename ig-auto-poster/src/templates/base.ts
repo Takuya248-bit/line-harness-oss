@@ -116,6 +116,93 @@ export function lightBackground(...children: SatoriNode[]): SatoriNode {
   }, ...children);
 }
 
+// V2: 写真背景（Satori img要素）
+export function photoBackground(
+  imageUrl: string,
+  ...children: SatoriNode[]
+): SatoriNode {
+  return h("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      width: WIDTH,
+      height: HEIGHT,
+      fontFamily: FONT_FAMILY,
+      position: "relative",
+      overflow: "hidden",
+    },
+  },
+    // 背景画像
+    h("img", {
+      src: imageUrl,
+      style: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: WIDTH,
+        height: HEIGHT,
+        objectFit: "cover",
+      },
+    }),
+    // コンテンツレイヤー
+    h("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        width: WIDTH,
+        height: HEIGHT,
+        position: "relative",
+      },
+    }, ...children),
+  );
+}
+
+// V2: Balilingualロゴ（上部）
+export function baliLogo(): SatoriNode {
+  return h("div", {
+    style: {
+      display: "flex",
+      justifyContent: "center",
+      paddingTop: 32,
+      paddingBottom: 8,
+    },
+  },
+    h("span", {
+      style: {
+        fontSize: 36,
+        fontWeight: 700,
+        color: "white",
+        fontFamily: FONT_FAMILY,
+        textShadow: "0 2px 8px rgba(0,0,0,0.7)",
+      },
+    }, "Barilingual"),
+  );
+}
+
+// V2: 番号バッジ（オレンジ丸）
+export function numberBadge(label: string): SatoriNode {
+  return h("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: "#E67E22",
+    },
+  },
+    h("span", {
+      style: {
+        fontSize: 32,
+        fontWeight: 900,
+        color: "white",
+        fontFamily: FONT_FAMILY,
+      },
+    }, label),
+  );
+}
+
 // 共通: ページバッジ
 export function pageBadge(label: string): SatoriNode {
   return h("div", {
