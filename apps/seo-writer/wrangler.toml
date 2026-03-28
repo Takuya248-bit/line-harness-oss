@@ -17,5 +17,10 @@ binding = "DB"
 database_name = "line-crm"
 database_id = "YOUR_D1_DATABASE_ID"
 
+[[d1_databases]]
+binding = "KNOWLEDGE_DB"
+database_name = "ig-auto-poster-db"
+database_id = "5d6c137b-4667-4862-a087-5372aebe1e48"
+
 [triggers]
 crons = ["0 0 * * *"]  # Daily at midnight JST (adjust as needed)

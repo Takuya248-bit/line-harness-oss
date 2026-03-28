@@ -1,4 +1,5 @@
 import type { Env, ClaudeResponse } from './types';
+import { fetchKnowledgeForSEO, formatKnowledgeForSEO } from './knowledge';
 
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
@@ -156,7 +157,18 @@ ${caseStudyPrompt || ''}
 
 このセクションのHTML本文を生成してください。HTMLタグのみ出力し、前後の説明文は不要です。`;
 
-  return callClaude(env, 'claude-sonnet-4-6-20250514', system, prompt, 4096);
+  // 知識DB参照（KNOWLEDGE_DBがバインドされている場合のみ）
+  let knowledgeSection = "";
+  if (env.KNOWLEDGE_DB) {
+    try {
+      const { entries, guardrails } = await fetchKnowledgeForSEO(env.KNOWLEDGE_DB, keyword);
+      knowledgeSection = formatKnowledgeForSEO(entries, guardrails);
+    } catch { /* KNOWLEDGE_DB未設定時はスキップ */ }
+  }
+
+  const systemWithKnowledge = knowledgeSection ? `${system}${knowledgeSection}` : system;
+
+  return callClaude(env, 'claude-sonnet-4-6-20250514', systemWithKnowledge, prompt, 4096);
 }
 
 export async function polishArticle(

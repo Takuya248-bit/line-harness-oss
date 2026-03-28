@@ -1,5 +1,6 @@
 export interface Env {
   DB: D1Database;
+  KNOWLEDGE_DB: D1Database;
   ANTHROPIC_API_KEY: string;
   WP_URL: string;
   WP_USER: string;
