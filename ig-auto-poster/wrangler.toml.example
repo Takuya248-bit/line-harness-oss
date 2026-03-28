@@ -1,7 +1,7 @@
 name = "ig-auto-poster"
 main = "src/index.ts"
-compatibility_date = "2024-03-01"
-compatibility_flags = ["nodejs_compat_v2"]
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
 
 # Bali time (WITA UTC+8):
 # 08:00 (UTC 00:00) - 朝のAI生成+プレビュー送信
@@ -18,7 +18,7 @@ bucket_name = "barilingual-ig-images"
 [[d1_databases]]
 binding = "DB"
 database_name = "ig-auto-poster-db"
-database_id = "5d6c137b-4667-4862-a087-5372aebe1e48"
+database_id = "<YOUR_D1_DATABASE_ID>"  # wrangler d1 list で確認
 
 # Secrets (set via `wrangler secret put`):
 # - IG_ACCESS_TOKEN
