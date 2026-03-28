@@ -1,0 +1,18 @@
+# Generated output
+output/*.mp4
+
+# Generated/cached audio
+assets/bgm.wav
+assets/narration.wav
+assets/mixed_audio.wav
+
+# Fetched images (regenerable via scripts/)
+assets/pref_images/
+
+# System
+.DS_Store
+__pycache__/
+*.pyc
+
+# Temp files from moviepy
+*TEMP_MPY*
