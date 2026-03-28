@@ -1,0 +1,1 @@
+curl -X POST "https://api.github.com/repos/Takuya248-bit/line-harness-oss/issues" -H "Authorization: Bearer YOUR_TOKEN_HERE" -H "Content-Type: application/json" -H "Accept: application/vnd.github+json" -d "{\"title\":\"📌 X共有\",\"labels\":[\"x-curation\",\"unprocessed\"],\"body\":\"URL: ここにURLを貼る\"}"
