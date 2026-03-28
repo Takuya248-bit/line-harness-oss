@@ -1,9 +1,37 @@
-import { Resvg } from "@cf-wasm/resvg/workerd";
-import satori from "satori";
+import satori, { init as initSatori } from "satori/standalone";
+// @ts-expect-error wasm module import
+import yogaWasm from "satori/yoga.wasm";
+import { initWasm, Resvg } from "@resvg/resvg-wasm";
+// @ts-expect-error wasm module import
+import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
 import type { ContentItem } from "./content-data";
 import type { SatoriNode } from "./satori-types";
 import { WIDTH, HEIGHT, FONT_FAMILY, FONT_BOLD_URL, FONT_MEDIUM_URL } from "./templates/styles";
 import { buildSlides } from "./templates/index";
+
+let satoriInitialized = false;
+let satoriInitPromise: Promise<void> | null = null;
+
+function ensureSatori(): Promise<void> {
+  if (satoriInitialized) return Promise.resolve();
+  if (satoriInitPromise) return satoriInitPromise;
+  satoriInitPromise = initSatori(yogaWasm).then(() => {
+    satoriInitialized = true;
+  });
+  return satoriInitPromise;
+}
+
+let resvgInitialized = false;
+let resvgInitPromise: Promise<void> | null = null;
+
+function ensureResvg(): Promise<void> {
+  if (resvgInitialized) return Promise.resolve();
+  if (resvgInitPromise) return resvgInitPromise;
+  resvgInitPromise = initWasm(resvgWasm as WebAssembly.Module).then(() => {
+    resvgInitialized = true;
+  });
+  return resvgInitPromise;
+}
 
 let fontBoldData: ArrayBuffer | null = null;
 let fontMediumData: ArrayBuffer | null = null;
@@ -24,10 +52,11 @@ async function ensureFonts(): Promise<void> {
   fontMediumData = medium;
 }
 
-async function renderNode(node: SatoriNode): Promise<Uint8Array> {
+async function renderNodeToSvg(node: SatoriNode): Promise<string> {
+  await ensureSatori();
   await ensureFonts();
 
-  const svg = await satori(node as any, {
+  return satori(node as any, {
     width: WIDTH,
     height: HEIGHT,
     fonts: [
@@ -35,31 +64,55 @@ async function renderNode(node: SatoriNode): Promise<Uint8Array> {
       { name: FONT_FAMILY, data: fontMediumData!, weight: 700, style: "normal" },
     ],
   });
+}
 
-  const resvg = await Resvg.async(svg, {
-    fitTo: { mode: "width" as const, value: WIDTH },
+/** SVGをPNGバイナリに変換 */
+async function svgToPng(svg: string): Promise<Uint8Array> {
+  await ensureResvg();
+  await ensureFonts();
+
+  const resvg = new Resvg(svg, {
+    fitTo: { mode: "width", value: WIDTH },
     font: {
-      fontBuffers: [new Uint8Array(fontBoldData!), new Uint8Array(fontMediumData!)],
-      loadSystemFonts: false,
+      fontBuffers: [
+        new Uint8Array(fontBoldData!),
+        new Uint8Array(fontMediumData!),
+      ],
+      defaultFontFamily: FONT_FAMILY,
     },
   });
   const rendered = resvg.render();
-  return rendered.asPng();
+  const png = rendered.asPng();
+  rendered.free();
+  resvg.free();
+  return png;
 }
 
+/** スライド画像をPNGバイナリ配列で返す */
 export async function generateSlideImages(content: ContentItem): Promise<Uint8Array[]> {
   const nodes = buildSlides(content);
-  const images: Uint8Array[] = [];
+  const pngs: Uint8Array[] = [];
   for (const node of nodes) {
-    const png = await renderNode(node);
-    images.push(png);
+    const svg = await renderNodeToSvg(node);
+    const png = await svgToPng(svg);
+    pngs.push(png);
   }
-  return images;
+  return pngs;
 }
 
-/** 1枚目（カバー）のみレンダリングしてPNGバイナリを返す */
-export async function generateFirstSlideImage(content: ContentItem): Promise<Uint8Array> {
+/** 1枚目（カバー）のSVG文字列を返す */
+export async function generateFirstSlideSvg(content: ContentItem): Promise<string> {
   const nodes = buildSlides(content);
   if (nodes.length === 0) throw new Error("No slides for content: " + content.id);
-  return renderNode(nodes[0]);
+  return renderNodeToSvg(nodes[0]);
+}
+
+/** 全スライドのSVG文字列を返す */
+export async function generateAllSlideSvgs(content: ContentItem): Promise<string[]> {
+  const nodes = buildSlides(content);
+  const svgs: string[] = [];
+  for (const node of nodes) {
+    svgs.push(await renderNodeToSvg(node));
+  }
+  return svgs;
 }

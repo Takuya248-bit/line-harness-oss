@@ -1,4 +1,4 @@
-import { generateSlideImages, generateFirstSlideImage } from "./image-generator";
+import { generateSlideImages, generateFirstSlideSvg } from "./image-generator";
 import { publishCarousel } from "./instagram";
 import { getCaption } from "./captions";
 import { allContent } from "./content-data";
@@ -32,19 +32,19 @@ async function updateContentIndex(db: D1Database, newIndex: number): Promise<voi
     .run();
 }
 
-// --- 画像生成+R2保存 ---
+// --- PNG画像生成+R2保存 ---
 async function generateAndStoreImages(
   content: ContentItem,
   env: Env,
   prefix: string,
 ): Promise<string[]> {
-  const slideImages = await generateSlideImages(content);
+  const slidePngs = await generateSlideImages(content);
   const imageUrls: string[] = [];
   const timestamp = Date.now();
 
-  for (let i = 0; i < slideImages.length; i++) {
+  for (let i = 0; i < slidePngs.length; i++) {
     const key = `${prefix}/${timestamp}/slide-${i + 1}.png`;
-    await env.IMAGES.put(key, slideImages[i], {
+    await env.IMAGES.put(key, slidePngs[i], {
       httpMetadata: { contentType: "image/png" },
     });
     imageUrls.push(`${env.R2_PUBLIC_URL}/${key}`);
@@ -281,17 +281,14 @@ export default {
       }
 
       if (request.method === "POST" && url.pathname === "/preview-all") {
-        const results: { index: number; title: string; image_base64: string }[] = [];
+        const results: { index: number; title: string; svg: string }[] = [];
         for (let i = 0; i < allContent.length; i++) {
           const content = allContent[i];
-          const png = await generateFirstSlideImage(content);
-          const base64 = btoa(
-            Array.from(png, (b) => String.fromCharCode(b)).join(""),
-          );
+          const svg = await generateFirstSlideSvg(content);
           results.push({
             index: i,
             title: content.title.replaceAll("\n", " "),
-            image_base64: base64,
+            svg,
           });
         }
         return json(results);
@@ -302,7 +299,7 @@ export default {
           "GET  /status       - 現在の状態",
           "GET  /content      - 既存ネタリスト",
           "POST /preview      - 既存データでプレビュー生成",
-          "POST /preview-all  - 全コンテンツ1枚目プレビュー(base64)",
+          "POST /preview-all  - 全コンテンツ1枚目プレビュー(SVG)",
           "POST /generate     - AI生成+LINEプレビュー送信",
           "POST /publish      - 手動投稿",
           "POST /line-webhook - LINE Webhook",
