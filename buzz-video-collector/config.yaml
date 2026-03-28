@@ -30,7 +30,7 @@ sources:
     max_results: 50
 
 analyzer:
-  model: "gemini-2.5-flash-preview-05-20"
+  model: "gemini-2.5-flash"
   batch_size: 5
 
 notification:
