@@ -34,14 +34,21 @@ sources:
     enabled: true
     channels: []
     keywords:
-      - "語り系ショート"
+      - "語り ショート 共感"
       - "あるある ショート"
-      - "海外 文化 違い"
+      - "海外 文化 違い ショート"
+      - "恋愛 ショート 実話"
+      - "同棲 ショート"
+      - "スカッと ショート"
+      - "海外生活 あるある"
+      - "社会人 あるある ショート"
+      - "旅行 ショート 体験"
+      - "英語 あるある ショート"
     max_results: 50
 
 analyzer:
-  model: "gemini-2.5-flash"
-  batch_size: 5
+  model: "gemini-2.0-flash"
+  batch_size: 20
 
 notification:
   line:
