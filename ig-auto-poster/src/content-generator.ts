@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ContentType, ContentItem, SlideData } from "./content-data";
+import { fetchKnowledge, fetchGuardrails, incrementUseCount, formatKnowledgeForPrompt } from "./knowledge";
 
 const TEMPLATE_TYPES: ContentType[] = [
   "list", "quiz", "before_after", "situation",
@@ -12,6 +13,27 @@ const SYSTEM_PROMPT = `あなたはバリ島の語学学校「バリリンガル
 コンテンツは日本人が実際にバリ島や海外で使える英語表現を教える内容です。
 
 必ず以下のJSON形式で返してください。それ以外のテキストは含めないでください。`;
+
+/** テンプレタイプに関連するknowledge_entriesのcategoryをマッピング */
+const TYPE_CATEGORIES: Record<ContentType, string[]> = {
+  list: ["english_learning"],
+  quiz: ["english_learning"],
+  before_after: ["english_learning"],
+  situation: ["english_learning", "bali_area"],
+  story: ["barilingual", "evidence"],
+  student_mistake: ["english_learning", "evidence"],
+  bali_report: ["bali_area", "barilingual"],
+};
+
+const TYPE_TAGS: Record<ContentType, string[]> = {
+  list: ["phrases", "vocabulary"],
+  quiz: ["grammar", "vocabulary"],
+  before_after: ["natural_english", "mistakes"],
+  situation: ["speaking", "real_scene"],
+  story: ["student_change", "experience"],
+  student_mistake: ["beginner_mistakes", "common_errors"],
+  bali_report: ["cafe", "lifestyle", "location"],
+};
 
 function buildPromptForType(
   templateType: ContentType,
@@ -260,12 +282,23 @@ export async function generateContent(
     .first<{ next_id: number }>();
   const nextId = maxIdRow?.next_id ?? 1001;
 
+  // 知識DB参照
+  const categories = TYPE_CATEGORIES[templateType] ?? [];
+  const tags = TYPE_TAGS[templateType] ?? [];
+  const entries = await fetchKnowledge(db, categories, tags);
+  const guardrails = await fetchGuardrails(db, "ig");
+  const knowledgeContext = formatKnowledgeForPrompt(entries, guardrails);
+
+  const systemPrompt = knowledgeContext
+    ? `${SYSTEM_PROMPT}\n\n${knowledgeContext}`
+    : SYSTEM_PROMPT;
+
   const prompt = buildPromptForType(templateType, pastThemes);
 
   const message = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 2000,
-    system: SYSTEM_PROMPT,
+    system: systemPrompt,
     messages: [{ role: "user", content: prompt }],
   });
 
@@ -282,6 +315,11 @@ export async function generateContent(
     .prepare("INSERT INTO generated_content (template_type, content_json, caption, status) VALUES (?, ?, ?, 'pending_review')")
     .bind(templateType, JSON.stringify(content), caption)
     .run();
+
+  // 使用したエントリのカウントをインクリメント
+  if (entries.length > 0) {
+    await incrementUseCount(db, entries.map((e) => e.id));
+  }
 
   return { content, caption };
 }
