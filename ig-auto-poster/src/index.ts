@@ -5,6 +5,8 @@ import { allContent } from "./content-data";
 import { generateContent } from "./content-generator";
 import { sendPreview, sendNotification, parsePostback } from "./line-preview";
 import type { ContentItem } from "./content-data";
+import { fetchKnowledge, fetchGuardrails, formatKnowledgeForPrompt } from "./knowledge";
+import type { KnowledgeEntry } from "./knowledge";
 
 export interface Env {
   IMAGES: R2Bucket;
@@ -312,6 +314,68 @@ export default {
         return json(results);
       }
 
+      // --- Knowledge DB API ---
+      if (request.method === "GET" && url.pathname === "/api/knowledge") {
+        const category = url.searchParams.get("category");
+        const tagsParam = url.searchParams.get("tags");
+        const limit = parseInt(url.searchParams.get("limit") || "20");
+
+        const categories = category ? category.split(",") : [];
+        const tags = tagsParam ? tagsParam.split(",") : [];
+
+        if (categories.length === 0) {
+          // カテゴリ未指定: 全カテゴリの件数を返す
+          const counts = await env.DB
+            .prepare("SELECT category, COUNT(*) as count FROM knowledge_entries GROUP BY category")
+            .all<{ category: string; count: number }>();
+          const guardrailCount = await env.DB
+            .prepare("SELECT COUNT(*) as count FROM content_guardrails")
+            .first<{ count: number }>();
+          return json({
+            categories: counts.results,
+            guardrails: guardrailCount?.count ?? 0,
+          });
+        }
+
+        const entries = await fetchKnowledge(env.DB, categories, tags, limit);
+        const guardrails = await fetchGuardrails(env.DB, url.searchParams.get("platform") || "all");
+        return json({ entries, guardrails });
+      }
+
+      if (request.method === "POST" && url.pathname === "/api/knowledge") {
+        const body = await request.json() as {
+          category: string;
+          subcategory?: string;
+          title: string;
+          content: string;
+          tags?: string;
+          source?: string;
+          reliability?: string;
+        };
+
+        if (!body.category || !body.title || !body.content) {
+          return json({ error: "category, title, content are required" }, 400);
+        }
+
+        const result = await env.DB
+          .prepare(
+            `INSERT INTO knowledge_entries (category, subcategory, title, content, tags, source, reliability)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`
+          )
+          .bind(
+            body.category,
+            body.subcategory || null,
+            body.title,
+            body.content,
+            body.tags || null,
+            body.source || "auto",
+            body.reliability || "unverified"
+          )
+          .run();
+
+        return json({ success: true, id: result.meta.last_row_id });
+      }
+
       return json({
         endpoints: [
           "GET  /status       - 現在の状態",
@@ -321,6 +385,8 @@ export default {
           "POST /generate     - AI生成+LINEプレビュー送信",
           "POST /publish      - 手動投稿",
           "POST /line-webhook - LINE Webhook",
+          "GET  /api/knowledge - 知識エントリ取得(?category=X&tags=Y&platform=Z&limit=N)",
+          "POST /api/knowledge - 知識エントリ追加(JSON: category,title,content,tags?,source?,reliability?)",
         ],
       }, 404);
     } catch (err) {
