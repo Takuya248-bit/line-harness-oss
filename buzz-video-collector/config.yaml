@@ -15,10 +15,20 @@ sources:
       - "orecipe_"
     hashtags:
       - "ショート動画"
+      - "バズ"
+      - "共感"
+      - "あるある"
+      - "海外生活"
+      - "海外あるある"
+      - "国際恋愛"
+      - "旅行好き"
+      - "語り"
+      - "ストーリー"
+      - "それな"
+      - "reels"
       - "バズレシピ"
-      - "shorts"
-    max_items: 100
-    yt_dlp_parallel: 5
+    max_items: 200
+    yt_dlp_parallel: 3
 
   yt_shorts:
     enabled: true

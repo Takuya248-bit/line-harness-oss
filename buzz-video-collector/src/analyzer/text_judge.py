@@ -119,5 +119,5 @@ def parse_text_judgments_batch(raw: str) -> list[Optional[TextJudgment]]:
 def build_text_prompt(captions: list[str]) -> str:
     lines = []
     for i, cap in enumerate(captions):
-        lines.append(f"[{i}] {cap[:500]}")
+        lines.append(f"[{i}] {(cap or '')[:500]}")
     return TEXT_JUDGE_PROMPT + "\n".join(lines)
