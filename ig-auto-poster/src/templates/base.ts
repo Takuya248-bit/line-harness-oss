@@ -16,6 +16,60 @@ export function h(
   };
 }
 
+/**
+ * テキスト折り返しヘルパー
+ * 長いテキストをコンテナ幅に収まるよう複数行のSatoriノードに分割する。
+ * 英語は単語区切り、日本語は文字区切りで折り返す。
+ */
+export function wrapText(
+  text: string,
+  style: Record<string, unknown>,
+  maxCharsPerLine: number,
+): SatoriNode[] {
+  if (!text) return [];
+  const lines = splitTextIntoLines(text, maxCharsPerLine);
+  return lines.map((line) =>
+    h("span", { style: { ...style, wordBreak: "break-word" as const } }, line),
+  );
+}
+
+/** テキストを行に分割する。英語は単語境界、日本語は文字数で分割 */
+function splitTextIntoLines(text: string, maxChars: number): string[] {
+  // 短いテキストはそのまま
+  if (text.length <= maxChars) return [text];
+
+  const isMainlyEnglish = /^[\x20-\x7E]+$/.test(text.trim());
+  if (isMainlyEnglish) {
+    return splitEnglishByWord(text, maxChars);
+  }
+  return splitByChars(text, maxChars);
+}
+
+function splitEnglishByWord(text: string, maxChars: number): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length > maxChars && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function splitByChars(text: string, maxChars: number): string[] {
+  const lines: string[] = [];
+  for (let i = 0; i < text.length; i += maxChars) {
+    lines.push(text.slice(i, i + maxChars));
+  }
+  return lines;
+}
+
 // 共通: ボトムバー
 export function bottomBar(): SatoriNode {
   return h("div", {

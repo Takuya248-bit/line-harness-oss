@@ -1,4 +1,4 @@
-import { generateSlideImages } from "./image-generator";
+import { generateSlideImages, generateFirstSlideImage } from "./image-generator";
 import { publishCarousel } from "./instagram";
 import { getCaption } from "./captions";
 import { allContent } from "./content-data";
@@ -280,11 +280,29 @@ export default {
         return json({ total: list.length, content: list });
       }
 
+      if (request.method === "POST" && url.pathname === "/preview-all") {
+        const results: { index: number; title: string; image_base64: string }[] = [];
+        for (let i = 0; i < allContent.length; i++) {
+          const content = allContent[i];
+          const png = await generateFirstSlideImage(content);
+          const base64 = btoa(
+            Array.from(png, (b) => String.fromCharCode(b)).join(""),
+          );
+          results.push({
+            index: i,
+            title: content.title.replaceAll("\n", " "),
+            image_base64: base64,
+          });
+        }
+        return json(results);
+      }
+
       return json({
         endpoints: [
           "GET  /status       - 現在の状態",
           "GET  /content      - 既存ネタリスト",
           "POST /preview      - 既存データでプレビュー生成",
+          "POST /preview-all  - 全コンテンツ1枚目プレビュー(base64)",
           "POST /generate     - AI生成+LINEプレビュー送信",
           "POST /publish      - 手動投稿",
           "POST /line-webhook - LINE Webhook",

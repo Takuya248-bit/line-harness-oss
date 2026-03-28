@@ -1,9 +1,25 @@
 import type { SlideData } from "../content-data";
 import type { SatoriNode } from "../satori-types";
 import { COLORS, WIDTH, FONT_FAMILY } from "./styles";
-import { h, bottomBar } from "./base";
+import { h, bottomBar, wrapText } from "./base";
 
 export function buildSituationNode(slide: SlideData): SatoriNode {
+  const phraseEn1Lines = wrapText(
+    slide.phraseEn1 ?? "",
+    { fontSize: 56, fontWeight: 700, color: COLORS.navy, fontFamily: FONT_FAMILY },
+    20,
+  );
+  const responseEnLines = wrapText(
+    slide.responseEn ?? "",
+    { fontSize: 56, fontWeight: 700, color: "#00695C", fontFamily: FONT_FAMILY },
+    20,
+  );
+  const pointLines = wrapText(
+    slide.point ?? "",
+    { fontSize: 34, color: COLORS.navy, fontFamily: FONT_FAMILY },
+    30,
+  );
+
   return h("div", {
     style: {
       display: "flex", flexDirection: "column", width: WIDTH, height: 1350,
@@ -21,17 +37,17 @@ export function buildSituationNode(slide: SlideData): SatoriNode {
       h("span", { style: { fontSize: 52, fontWeight: 700, color: COLORS.navy, fontFamily: FONT_FAMILY, textAlign: "center" } }, slide.sceneTitle ?? ""),
     ),
     h("div", {
-      style: { display: "flex", flexDirection: "column", flex: 1, margin: "0 40px", padding: 40, backgroundColor: COLORS.white, borderRadius: 30, opacity: 0.92, gap: 24 },
+      style: { display: "flex", flexDirection: "column", flex: 1, margin: "0 40px", padding: 40, backgroundColor: COLORS.white, borderRadius: 30, opacity: 0.92, gap: 24, overflow: "hidden" },
     },
-      h("span", { style: { fontSize: 56, fontWeight: 700, color: COLORS.navy, fontFamily: FONT_FAMILY, wordBreak: "break-word" } }, slide.phraseEn1 ?? ""),
+      h("div", { style: { display: "flex", flexDirection: "column", gap: 4 } }, ...phraseEn1Lines),
       h("span", { style: { fontSize: 40, color: COLORS.gray, fontFamily: FONT_FAMILY } }, slide.phraseJp1 ?? ""),
       h("div", { style: { width: "100%", height: 3, backgroundColor: COLORS.turquoise, opacity: 0.3 } }),
-      h("span", { style: { fontSize: 56, fontWeight: 700, color: "#00695C", fontFamily: FONT_FAMILY, wordBreak: "break-word" } }, slide.responseEn ?? ""),
+      h("div", { style: { display: "flex", flexDirection: "column", gap: 4 } }, ...responseEnLines),
       h("span", { style: { fontSize: 40, color: COLORS.gray, fontFamily: FONT_FAMILY } }, slide.responseJp ?? ""),
       h("div", {
-        style: { display: "flex", width: "100%", padding: 20, backgroundColor: "rgba(0,188,212,0.08)", borderRadius: 16, borderLeft: `4px solid ${COLORS.turquoise}`, marginTop: 10 },
+        style: { display: "flex", flexDirection: "column", width: "100%", padding: 20, backgroundColor: "rgba(0,188,212,0.08)", borderRadius: 16, borderLeft: `4px solid ${COLORS.turquoise}`, marginTop: 10, overflow: "hidden" },
       },
-        h("span", { style: { fontSize: 34, color: COLORS.navy, fontFamily: FONT_FAMILY, wordBreak: "break-word" } }, slide.point ?? ""),
+        ...pointLines,
       ),
     ),
     bottomBar(),

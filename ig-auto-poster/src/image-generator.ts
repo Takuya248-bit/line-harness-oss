@@ -56,3 +56,10 @@ export async function generateSlideImages(content: ContentItem): Promise<Uint8Ar
   }
   return images;
 }
+
+/** 1枚目（カバー）のみレンダリングしてPNGバイナリを返す */
+export async function generateFirstSlideImage(content: ContentItem): Promise<Uint8Array> {
+  const nodes = buildSlides(content);
+  if (nodes.length === 0) throw new Error("No slides for content: " + content.id);
+  return renderNode(nodes[0]);
+}
