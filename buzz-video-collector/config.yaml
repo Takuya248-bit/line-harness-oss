@@ -1,0 +1,42 @@
+schedule:
+  times: ["09:00"]
+  timezone: "Asia/Makassar"
+
+scoring:
+  save_threshold: 50
+  notify_threshold: 70
+
+sources:
+  ig_reels:
+    enabled: true
+    accounts:
+      - "buzzrecipe"
+      - "and_and_and_and"
+      - "orecipe_"
+    hashtags:
+      - "ショート動画"
+      - "バズレシピ"
+      - "shorts"
+    max_items: 100
+    yt_dlp_parallel: 5
+
+  yt_shorts:
+    enabled: true
+    channels: []
+    keywords:
+      - "語り系ショート"
+      - "あるある ショート"
+      - "海外 文化 違い"
+    max_results: 50
+
+analyzer:
+  model: "gemini-2.5-flash-preview-05-20"
+  batch_size: 5
+
+notification:
+  line:
+    enabled: true
+
+obsidian:
+  vault_path: "~/Documents/Obsidian Vault"
+  output_dir: "knowledge/buzz-videos"

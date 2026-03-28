@@ -1,0 +1,7 @@
+playwright>=1.40
+yt-dlp>=2024.1
+google-generativeai>=0.8
+google-api-python-client>=2.100
+pyyaml>=6.0
+requests>=2.31
+pytest>=8.0
