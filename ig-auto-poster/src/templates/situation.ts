@@ -16,7 +16,7 @@ export function buildSituationNode(slide: SlideData): SatoriNode {
   );
   const pointLines = wrapText(
     slide.point ?? "",
-    { fontSize: 34, color: COLORS.navy, fontFamily: FONT_FAMILY },
+    { fontSize: 34, fontWeight: 700, color: COLORS.navy, fontFamily: FONT_FAMILY },
     30,
   );
 
@@ -40,10 +40,10 @@ export function buildSituationNode(slide: SlideData): SatoriNode {
       style: { display: "flex", flexDirection: "column", flex: 1, margin: "0 40px", padding: 40, backgroundColor: COLORS.white, borderRadius: 30, opacity: 0.92, gap: 24, overflow: "hidden" },
     },
       h("div", { style: { display: "flex", flexDirection: "column", gap: 4 } }, ...phraseEn1Lines),
-      h("span", { style: { fontSize: 40, color: COLORS.gray, fontFamily: FONT_FAMILY } }, slide.phraseJp1 ?? ""),
+      h("span", { style: { fontSize: 40, fontWeight: 700, color: COLORS.gray, fontFamily: FONT_FAMILY } }, slide.phraseJp1 ?? ""),
       h("div", { style: { width: "100%", height: 3, backgroundColor: COLORS.turquoise, opacity: 0.3 } }),
       h("div", { style: { display: "flex", flexDirection: "column", gap: 4 } }, ...responseEnLines),
-      h("span", { style: { fontSize: 40, color: COLORS.gray, fontFamily: FONT_FAMILY } }, slide.responseJp ?? ""),
+      h("span", { style: { fontSize: 40, fontWeight: 700, color: COLORS.gray, fontFamily: FONT_FAMILY } }, slide.responseJp ?? ""),
       h("div", {
         style: { display: "flex", flexDirection: "column", width: "100%", padding: 20, backgroundColor: "rgba(0,188,212,0.08)", borderRadius: 16, borderLeft: `4px solid ${COLORS.turquoise}`, marginTop: 10, overflow: "hidden" },
       },

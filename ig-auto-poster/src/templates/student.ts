@@ -24,7 +24,7 @@ export function buildStudentNode(slide: SlideData): SatoriNode {
         style: { display: "flex", flexDirection: "column", width: "100%", padding: 24, borderRadius: 20, backgroundColor: "#FFF0F0", gap: 8 },
       },
         h("span", { style: { fontSize: 28, fontWeight: 700, color: "#C62828", fontFamily: FONT_FAMILY } }, "よくある間違い"),
-        h("span", { style: { fontSize: 52, color: "#616161", fontFamily: FONT_FAMILY, wordBreak: "break-word", textDecoration: "line-through" } }, slide.mistakeEn ?? ""),
+        h("span", { style: { fontSize: 52, fontWeight: 700, color: "#616161", fontFamily: FONT_FAMILY, wordBreak: "break-word", textDecoration: "line-through" } }, slide.mistakeEn ?? ""),
       ),
       h("div", {
         style: { display: "flex", flexDirection: "column", width: "100%", padding: 24, borderRadius: 20, backgroundColor: "#E8F5E9", gap: 8 },
@@ -35,7 +35,7 @@ export function buildStudentNode(slide: SlideData): SatoriNode {
       h("div", {
         style: { display: "flex", width: "100%", padding: 24, borderRadius: 16, borderLeft: `4px solid ${COLORS.turquoise}`, backgroundColor: "rgba(0,188,212,0.06)" },
       },
-        h("span", { style: { fontSize: 38, color: COLORS.navy, fontFamily: FONT_FAMILY, wordBreak: "break-word", lineHeight: 1.5 } }, slide.mistakeExplanation ?? ""),
+        h("span", { style: { fontSize: 38, fontWeight: 700, color: COLORS.navy, fontFamily: FONT_FAMILY, wordBreak: "break-word", lineHeight: 1.5 } }, slide.mistakeExplanation ?? ""),
       ),
     ),
     bottomBar(),

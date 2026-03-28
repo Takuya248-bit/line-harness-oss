@@ -13,7 +13,7 @@ export function buildStoryNode(slide: SlideData): SatoriNode {
       h("div", {
         style: { display: "flex", flex: 1, width: "100%", padding: 40, backgroundColor: COLORS.white, borderRadius: 24, opacity: 0.92 },
       },
-        h("span", { style: { fontSize: 42, color: COLORS.navy, fontFamily: FONT_FAMILY, wordBreak: "break-word", lineHeight: 1.6 } }, slide.storyBody ?? ""),
+        h("span", { style: { fontSize: 42, fontWeight: 700, color: COLORS.navy, fontFamily: FONT_FAMILY, wordBreak: "break-word", lineHeight: 1.6 } }, slide.storyBody ?? ""),
       ),
     ),
     bottomBar(),

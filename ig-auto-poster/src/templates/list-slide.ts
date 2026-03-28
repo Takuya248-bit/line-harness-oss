@@ -25,7 +25,7 @@ export function buildListSlideNode(slide: SlideData, pageLabel: string): SatoriN
         style: { fontSize: 80, fontWeight: 700, color: COLORS.navy, fontFamily: FONT_FAMILY, wordBreak: "break-word" },
       }, slide.phraseEn ?? ""),
       h("span", {
-        style: { fontSize: 46, color: COLORS.gray, fontFamily: FONT_FAMILY },
+        style: { fontSize: 46, fontWeight: 700, color: COLORS.gray, fontFamily: FONT_FAMILY },
       }, slide.phraseJp ?? ""),
       h("div", {
         style: { width: "100%", height: 3, backgroundColor: COLORS.turquoise, opacity: 0.4, marginTop: 20, marginBottom: 20 },
@@ -39,10 +39,10 @@ export function buildListSlideNode(slide: SlideData, pageLabel: string): SatoriN
         h("span", { style: { fontSize: 32, fontWeight: 700, color: COLORS.turquoise, fontFamily: FONT_FAMILY } }, "Example"),
       ),
       h("span", {
-        style: { fontSize: 46, color: COLORS.navy, fontFamily: FONT_FAMILY, wordBreak: "break-word", marginTop: 10 },
+        style: { fontSize: 46, fontWeight: 700, color: COLORS.navy, fontFamily: FONT_FAMILY, wordBreak: "break-word", marginTop: 10 },
       }, slide.exampleEn ?? ""),
       h("span", {
-        style: { fontSize: 40, color: COLORS.gray, fontFamily: FONT_FAMILY, wordBreak: "break-word" },
+        style: { fontSize: 40, fontWeight: 700, color: COLORS.gray, fontFamily: FONT_FAMILY, wordBreak: "break-word" },
       }, slide.exampleJp ?? ""),
     ),
     bottomBar(),
