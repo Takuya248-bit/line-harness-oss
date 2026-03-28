@@ -1,0 +1,43 @@
+{
+  "version": 74,
+  "categories": [
+    {
+      "id": "cat-x-curation",
+      "name": "X Curation",
+      "layoutType": "linear_list",
+      "hidden": false,
+      "shortcuts": [
+        {
+          "id": "sc-x-curation",
+          "name": "チームに投げる",
+          "description": "X投稿をGitHub Issueに登録してチームに共有",
+          "method": "POST",
+          "url": "https://api.github.com/repos/Takuya248-bit/line-harness-oss/issues",
+          "executionType": "app",
+          "authentication": "bearer",
+          "authToken": "YOUR_TOKEN_HERE",
+          "requestBodyType": "custom_text",
+          "contentType": "application/json",
+          "bodyContent": "{\"title\":\"📌 X共有\",\"labels\":[\"x-curation\",\"unprocessed\"],\"body\":\"URL: {shared_text}\"}",
+          "timeout": 10000,
+          "headers": [
+            {"key": "Accept", "value": "application/vnd.github+json"}
+          ],
+          "responseHandling": {
+            "uiType": "toast",
+            "successOutput": "message",
+            "successMessage": "チームに共有しました!",
+            "failureOutput": "detailed"
+          },
+          "followRedirects": true,
+          "acceptCookies": false,
+          "launcherShortcut": true,
+          "hidden": false,
+          "delay": 0,
+          "confirmation": "none"
+        }
+      ]
+    }
+  ],
+  "variables": []
+}
