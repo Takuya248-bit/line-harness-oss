@@ -17,6 +17,7 @@ export interface Env {
   ANTHROPIC_API_KEY: string;
   LINE_CHANNEL_ACCESS_TOKEN: string;
   LINE_OWNER_USER_ID: string;
+  UNSPLASH_ACCESS_KEY: string;
 }
 
 // --- 既存データ用ヘルパー（フォールバック） ---
