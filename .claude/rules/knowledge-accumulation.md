@@ -30,22 +30,18 @@ curl -s -X POST https://ig-auto-poster.archbridge24.workers.dev/api/knowledge \
   -d '{"category":"...","subcategory":"...","title":"...","content":"...","tags":"...","source":"...","reliability":"..."}'
 ```
 
-## カテゴリ体系
+## カテゴリ体系（知識の性質ベース、事業非依存）
 
-| category | 内容 | subcategory例 |
-|----------|------|---------------|
-| bali_area | バリ島エリア情報 | canggu, ubud, seminyak, kuta, kerobokan |
-| study_faq | バリ留学FAQ | beginner_ok, one_week, dorm_life, making_friends |
-| barilingual | バリリンガル固有 | mantooman, dorm, teachers, student_types, common_worries |
-| english_learning | 英語学習 | beginner_mistakes, speaking, aizuchi, paraphrase, natural_english |
-| evidence | 実例・エピソード | first_3days, one_week_change, real_scene, outside_class |
-| lstep | Lstep操作・設定ノウハウ | scenario, template, tag, reminder, gui_pattern |
-| line_official | LINE公式アカウント運用 | messaging_api, richmenu, webhook, segmentation |
-| lcustom | Lカスタム（LINE構築代行）事業 | pricing, sales, client_case, pitch, onboarding |
-| seo | SEO・コンテンツマーケ | keyword, ranking, geo, article_structure |
-| tech | 技術知見 | cloudflare, d1, workers, playwright, api_cost |
-| marketing | マーケティング全般 | sns_trend, engagement, ad, funnel |
-| business | 事業運営・経営 | cost, pricing, competitor, partnership |
+| category | 何の知識か | subcategory例 |
+|----------|-----------|---------------|
+| market | 市場・統計・トレンド・業界動向 | study_abroad, line_market, ai_market, sns_trend |
+| technology | 技術・ツール・API・PF仕様 | line_api, cloudflare, llm, lstep, playwright |
+| method | ノウハウ・手法・ベストプラクティス | seo, english_speaking, line_automation, content_creation |
+| case | 事例・実績・Before/After | barilingual_student, lcustom_client, competitor |
+| locale | 地域・生活・文化・制度 | bali_area, bali_visa, bali_cost, bali_cafe |
+| people | 顧客の声・FAQ・行動パターン | barilingual_student, lcustom_client, common_worry |
+| ai_news | AI・LLM・自動化の最新動向 | model_release, api_pricing, use_case |
+| regulation | 法律・規制・ガイドライン | tokushoho, keihin, privacy, platform_tos |
 
 ## source / reliability
 
