@@ -7,7 +7,7 @@ import resvgWasm from "@resvg/resvg-wasm/index_bg.wasm";
 import type { ContentItem } from "./content-data";
 import type { SatoriNode } from "./satori-types";
 import { WIDTH, HEIGHT, FONT_FAMILY, FONT_BOLD_URL, FONT_MEDIUM_URL } from "./templates/styles";
-import { buildSlides } from "./templates/index";
+import { buildSlides, buildV2Slides, type BaliContentV2 } from "./templates/index";
 
 let satoriInitialized = false;
 let satoriInitPromise: Promise<void> | null = null;
@@ -128,4 +128,29 @@ export async function generateAllSlideSvgs(content: ContentItem): Promise<string
     svgs.push(await renderNodeToSvg(node));
   }
   return svgs;
+}
+
+/** V2: バリ情報カルーセルの全スライドをPNG配列で返す */
+export async function generateV2SlideImages(content: BaliContentV2): Promise<Uint8Array[]> {
+  const nodes = buildV2Slides(content);
+  const pngs: Uint8Array[] = [];
+  for (const node of nodes) {
+    const svg = await renderNodeToSvg(node);
+    const png = await svgToPng(svg);
+    pngs.push(png);
+  }
+  return pngs;
+}
+
+/** V2: 1枚だけPNG変換（プレビュー用） */
+export async function generateV2SinglePng(content: BaliContentV2, slideIndex: number): Promise<Uint8Array> {
+  const nodes = buildV2Slides(content);
+  if (slideIndex >= nodes.length) throw new Error(`V2 slide index ${slideIndex} out of range (total: ${nodes.length})`);
+  const svg = await renderNodeToSvg(nodes[slideIndex]);
+  return svgToPng(svg);
+}
+
+/** V2: スライド総数 */
+export function getV2SlideCount(content: BaliContentV2): number {
+  return buildV2Slides(content).length;
 }
