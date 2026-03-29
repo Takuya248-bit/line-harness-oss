@@ -79,36 +79,42 @@ export async function renderGalleryDetail(db: D1Database, id: number): Promise<s
   const coverUrl = parsed.coverUrl ?? "";
   const slideUrls: string[] = Array.isArray(parsed.slideUrls) ? parsed.slideUrls : [];
 
-  const slidesHtml = slideUrls.length > 0
-    ? `<h2>全スライド (${slideUrls.length}枚)</h2>
-<div style="display:flex;flex-direction:column;gap:12px">
-${slideUrls.map((u: string, i: number) => `<div><p style="margin:0 0 4px;font-size:13px;color:#666">スライド ${i + 1}</p><img src="${escapeHtml(u)}" alt="slide ${i + 1}" style="max-width:100%;border-radius:8px"></div>`).join("\n")}
-</div>`
-    : `${coverUrl ? `<img src="${escapeHtml(coverUrl)}" alt="cover">` : ""}
-<div style="margin-top:12px">
-  <button id="genBtn" onclick="generateSlides(${row.id})" style="background:#E67E22;color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:15px">全スライド生成</button>
-  <span id="genStatus" style="margin-left:12px;color:#666"></span>
+  const slidesHtml = `<h2>スライドプレビュー</h2>
+<div id="slides">
+  ${coverUrl ? `<div id="slide-0"><p>Slide 1 (カバー)</p><img src="${escapeHtml(coverUrl)}" style="max-width:100%"></div>` : ""}
+  ${slideUrls.slice(1).map((u: string, i: number) => `<div id="slide-${i + 1}"><p>Slide ${i + 2}</p><img src="${escapeHtml(u)}" style="max-width:100%;border-radius:8px;margin-bottom:8px"></div>`).join("\n  ")}
 </div>
+<button id="genBtn" onclick="generateSlides()" style="background:#E67E22;color:#fff;border:none;padding:12px 32px;border-radius:8px;cursor:pointer;font-size:16px">
+  全スライド生成（1枚ずつ）
+</button>
+<p id="genStatus" style="color:#666"></p>
 <script>
-async function generateSlides(id) {
+async function generateSlides() {
   const btn = document.getElementById('genBtn');
   const status = document.getElementById('genStatus');
+  const container = document.getElementById('slides');
   btn.disabled = true;
-  status.textContent = '生成中...';
-  try {
-    const res = await fetch('/gallery/' + id + '/preview-all', { method: 'POST' });
-    const data = await res.json();
-    if (data.slideUrls) {
-      status.textContent = '完了！リロードします...';
-      setTimeout(() => location.reload(), 1000);
-    } else {
-      status.textContent = 'エラー: ' + (data.error || '不明');
-      btn.disabled = false;
-    }
-  } catch(e) {
-    status.textContent = 'エラー: ' + e.message;
-    btn.disabled = false;
+
+  for (let i = 0; i < 8; i++) {
+    status.textContent = 'スライド ' + (i+1) + ' 生成中...';
+    try {
+      const res = await fetch('/gallery/${row.id}/preview/' + i, { method: 'POST' });
+      const data = await res.json();
+      if (!data.success) { status.textContent = 'エラー: ' + (data.error || ''); break; }
+
+      let slideDiv = document.getElementById('slide-' + i);
+      if (!slideDiv) {
+        slideDiv = document.createElement('div');
+        slideDiv.id = 'slide-' + i;
+        container.appendChild(slideDiv);
+      }
+      slideDiv.innerHTML = '<p>Slide ' + (i+1) + '</p><img src="' + data.slideUrl + '" style="max-width:100%;border-radius:8px;margin-bottom:8px">';
+
+      if (i >= data.totalSlides - 1) break;
+    } catch(e) { status.textContent = 'エラー: ' + e.message; break; }
   }
+  status.textContent = '完了！';
+  btn.style.display = 'none';
 }
 </script>`;
 

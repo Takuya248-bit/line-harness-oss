@@ -287,31 +287,38 @@ export default {
         return html(page);
       }
 
-      if (request.method === "POST" && url.pathname.match(/^\/gallery\/\d+\/preview-all$/)) {
-        const id = parseInt(url.pathname.split("/")[2], 10);
+      if (request.method === "POST" && url.pathname.match(/^\/gallery\/\d+\/preview\/\d+$/)) {
+        const parts = url.pathname.split("/");
+        const id = parseInt(parts[2], 10);
+        const slideIndex = parseInt(parts[4], 10);
+
         const row = await env.DB
-          .prepare("SELECT id, content_json, template_type FROM generated_content WHERE id = ?")
+          .prepare("SELECT content_json, template_type FROM generated_content WHERE id = ?")
           .bind(id)
-          .first<{ id: number; content_json: string; template_type: string }>();
+          .first<{ content_json: string; template_type: string }>();
+
         if (!row) return json({ error: "Not found" }, 404);
-        if (row.template_type !== "bali_v2") return json({ error: "Only bali_v2 supported" }, 400);
 
         const stored = JSON.parse(row.content_json) as BaliContentV2 & { coverUrl?: string; slideUrls?: string[] };
-        const timestamp = Date.now();
         const total = getV2SlideCount(stored);
-        const slideUrls: string[] = [];
-        for (let i = 0; i < total; i++) {
-          const url2 = await generateAndStoreV2Image(stored, i, env, "preview", timestamp);
-          slideUrls.push(url2);
+
+        if (slideIndex < 0 || slideIndex >= total) {
+          return json({ error: `Slide index out of range (0-${total - 1})` }, 400);
         }
 
-        const updated = { ...stored, slideUrls };
+        const timestamp = Date.now();
+        const slideUrl = await generateAndStoreV2Image(stored, slideIndex, env, "preview", timestamp);
+
+        const slideUrls = stored.slideUrls ?? [];
+        slideUrls[slideIndex] = slideUrl;
+        stored.slideUrls = slideUrls;
+
         await env.DB
           .prepare("UPDATE generated_content SET content_json = ? WHERE id = ?")
-          .bind(JSON.stringify(updated), id)
+          .bind(JSON.stringify(stored), id)
           .run();
 
-        return json({ success: true, slideUrls });
+        return json({ success: true, slideIndex, slideUrl, totalSlides: total });
       }
 
       if (request.method === "POST" && url.pathname.match(/^\/gallery\/\d+\/(approve|skip)$/)) {
