@@ -2,7 +2,6 @@ import { generateSlideImages, generateFirstSlideSvg, generateSingleSlidePng, get
 import { publishCarousel } from "./instagram";
 import { getCaption } from "./captions";
 import { allContent } from "./content-data";
-import { generateContent } from "./content-generator";
 import { generateBaliContent } from "./content-generator-v2";
 import { sendPreview, sendNotification, parsePostback } from "./line-preview";
 import { collectInsights } from "./insights";
@@ -19,7 +18,6 @@ export interface Env {
   IG_ACCESS_TOKEN: string;
   IG_BUSINESS_ACCOUNT_ID: string;
   R2_PUBLIC_URL: string;
-  ANTHROPIC_API_KEY: string;
   LINE_CHANNEL_ACCESS_TOKEN: string;
   LINE_OWNER_USER_ID: string;
   UNSPLASH_ACCESS_KEY: string;
@@ -84,7 +82,6 @@ async function generateAndStoreV2Image(
 // --- V2 Cronハンドラー ---
 async function handleV2GenerateCron(env: Env): Promise<void> {
   const content = await generateBaliContent(
-    env.ANTHROPIC_API_KEY,
     env.UNSPLASH_ACCESS_KEY,
     env.DB,
   );

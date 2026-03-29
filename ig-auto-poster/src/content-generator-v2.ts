@@ -1,5 +1,5 @@
 import { searchPhotosForSpots } from "./unsplash";
-import { fetchKnowledge, fetchGuardrails, incrementUseCount, formatKnowledgeForPrompt } from "./knowledge";
+import { fetchKnowledge, incrementUseCount } from "./knowledge";
 import type { BaliCoverData } from "./templates/bali-cover";
 import type { BaliSpotData } from "./templates/bali-spot";
 import type { BaliSummaryData } from "./templates/bali-summary";
@@ -38,29 +38,18 @@ const CATEGORY_KNOWLEDGE_MAP: Record<string, { categories: string[]; tags: strin
   culture: { categories: ["locale"], tags: ["bali_culture"] },
 };
 
-const CATEGORY_PROMPTS: Record<string, string> = {
-  cafe: "バリ島のおしゃれカフェ",
-  spot: "バリ島の絶景・観光スポット",
-  food: "バリ島のローカルフード・ワルン",
-  beach: "バリ島のビーチ",
-  lifestyle: "バリ島移住・暮らし",
-  cost: "バリ島の物価・コスト",
-  visa: "バリ島のビザ・手続き",
-  culture: "バリ島の文化・お祭り・儀式",
+const CATEGORY_TITLES: Record<string, { catchCopy: string; mainTitle: string; countLabel: string }> = {
+  cafe: { catchCopy: "で行きたい！", mainTitle: "おしゃれカフェ", countLabel: "5選" },
+  spot: { catchCopy: "の絶景！", mainTitle: "観光スポット", countLabel: "5選" },
+  food: { catchCopy: "で食べたい！", mainTitle: "ローカルグルメ", countLabel: "5選" },
+  beach: { catchCopy: "のおすすめ！", mainTitle: "ビーチ", countLabel: "5選" },
+  lifestyle: { catchCopy: "の暮らし！", mainTitle: "移住のリアル", countLabel: "5選" },
+  cost: { catchCopy: "の物価！", mainTitle: "コスト事情", countLabel: "まとめ" },
+  visa: { catchCopy: "に行くなら！", mainTitle: "ビザ情報", countLabel: "まとめ" },
+  culture: { catchCopy: "を知ろう！", mainTitle: "文化・お祭り", countLabel: "5選" },
 };
 
 const AREAS = ["チャングー", "ウブド", "スミニャック", "サヌール", "ヌサドゥア", "クタ", "ジンバラン", "ウルワツ"];
-
-const SYSTEM_PROMPT = `あなたはバリ島在住の語学学校「バリリンガル」のInstagramコンテンツ作成者です。
-バリ島のローカル情報を紹介するカルーセル投稿のテキストを作成します。
-ターゲット: バリ島旅行に興味がある日本人（20-40代女性が中心）
-トーン: カジュアルで親しみやすく、行きたくなるような紹介文
-
-重要ルール:
-- 提供された参考情報に基づいて書いてください
-- 参考情報にないスポットを追加する場合は、実在が確認できるもののみ
-- 営業時間が不明な場合はhoursを空文字にしてください
-- 必ずJSON形式のみで返してください`;
 
 /** カテゴリ比率に基づいてカテゴリを選択 */
 async function selectCategory(db: D1Database): Promise<string> {
@@ -81,66 +70,56 @@ async function selectCategory(db: D1Database): Promise<string> {
   return categories[0].category;
 }
 
-/** Haiku APIでコンテンツ生成 */
-async function generateWithHaiku(
-  apiKey: string,
+/** 知識DBからテンプレートベースでコンテンツ生成 */
+async function generateFromKnowledgeDB(
   category: string,
-  knowledgeContext: string,
-  pastTopics: string[],
+  db: D1Database,
 ): Promise<GeneratedTopic> {
   const area = AREAS[Math.floor(Math.random() * AREAS.length)];
-  const categoryDesc = CATEGORY_PROMPTS[category] ?? "バリ島情報";
+  const mapping = CATEGORY_KNOWLEDGE_MAP[category] ?? { categories: ["locale"], tags: [] };
 
-  const pastList = pastTopics.length > 0
-    ? `\n\n以下は既出テーマです。被らないようにしてください:\n${pastTopics.map((t) => `- ${t}`).join("\n")}`
-    : "";
+  // 知識DBからエントリ取得（use_count低い順=あまり使ってないものを優先）
+  const entries = await fetchKnowledge(db, mapping.categories, mapping.tags, 10);
 
-  const prompt = `「${area}の${categoryDesc}」をテーマにカルーセル投稿を作成してください。
-
-${knowledgeContext ? `参考情報:\n${knowledgeContext}\n\n` : ""}JSON形式:
-{
-  "category": "${category}",
-  "area": "${area}",
-  "catchCopy": "${area}で行きたい！",
-  "mainTitle": "キャッチーなタイトル",
-  "countLabel": "5選",
-  "spots": [
-    {
-      "name": "スポット名（実在するもの）",
-      "area": "${area}",
-      "description": "紹介文（100-150文字、3-4文）",
-      "hours": "営業時間（不明なら空文字）",
-      "oneLiner": "一言紹介（15文字以内）"
+  // 過去のposted_topicsと被らないエントリを選択
+  const pastRows = await db
+    .prepare("SELECT spots_json FROM posted_topics ORDER BY id DESC LIMIT 50")
+    .all<{ spots_json: string }>();
+  const pastSpotNames = new Set<string>();
+  for (const row of pastRows.results) {
+    try {
+      const names = JSON.parse(row.spots_json) as string[];
+      names.forEach(n => pastSpotNames.add(n));
+    } catch {
+      // JSON parse失敗は無視
     }
-  ]
-}
-
-spots は必ず5件。${pastList}`;
-
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 2000,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Haiku API error: ${res.status}`);
   }
 
-  const data = await res.json() as { content: { type: string; text: string }[] };
-  const textBlock = data.content.find((b) => b.type === "text");
-  if (!textBlock) throw new Error("Haiku returned no text");
+  const unused = entries.filter(e => !pastSpotNames.has(e.title));
+  const selected = (unused.length >= 5 ? unused : entries).slice(0, 5);
 
-  return JSON.parse(textBlock.text) as GeneratedTopic;
+  if (selected.length === 0) {
+    throw new Error(`No knowledge entries found for category: ${category}`);
+  }
+
+  const titles = CATEGORY_TITLES[category] ?? { catchCopy: "のおすすめ！", mainTitle: "スポット", countLabel: "5選" };
+
+  const spots: SpotInfo[] = selected.map(entry => ({
+    name: entry.title,
+    area: area,
+    description: entry.content.slice(0, 150),
+    hours: "",
+    oneLiner: entry.title.slice(0, 15),
+  }));
+
+  return {
+    category,
+    area,
+    catchCopy: `${area}${titles.catchCopy}`,
+    mainTitle: titles.mainTitle,
+    countLabel: titles.countLabel,
+    spots,
+  };
 }
 
 function generateCaption(topic: GeneratedTopic, attributions: string[]): string {
@@ -172,41 +151,30 @@ function generateCaption(topic: GeneratedTopic, attributions: string[]): string 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=1080&h=1350&fit=crop";
 
 export async function generateBaliContent(
-  anthropicKey: string,
   unsplashKey: string,
   db: D1Database,
 ): Promise<BaliContentV2> {
   // 1. カテゴリ選択（比率ベース）
   const category = await selectCategory(db);
 
-  // 2. 知識DB参照
+  // 2. 知識DBからテンプレートベースでコンテンツ生成
+  const topic = await generateFromKnowledgeDB(category, db);
+
+  // 3. 使用したナレッジエントリのカウントアップ
   const mapping = CATEGORY_KNOWLEDGE_MAP[category] ?? { categories: ["locale"], tags: [] };
-  const entries = await fetchKnowledge(db, mapping.categories, mapping.tags);
-  const guardrails = await fetchGuardrails(db, "ig");
-  const knowledgeContext = formatKnowledgeForPrompt(entries, guardrails);
-
-  // 3. 過去のテーマ取得（重複回避）
-  const pastRows = await db
-    .prepare("SELECT category || ':' || COALESCE(area,'') || ':' || COALESCE(theme,'') as topic FROM posted_topics ORDER BY id DESC LIMIT 30")
-    .all<{ topic: string }>();
-  const pastTopics = pastRows.results.map((r) => r.topic);
-
-  // 4. Haikuでコンテンツ生成
-  const topic = await generateWithHaiku(anthropicKey, category, knowledgeContext, pastTopics);
-
-  // 5. 使用したナレッジエントリのカウントアップ
+  const entries = await fetchKnowledge(db, mapping.categories, mapping.tags, 10);
   if (entries.length > 0) {
     await incrementUseCount(db, entries.map((e) => e.id));
   }
 
-  // 6. Unsplashで写真取得
+  // 4. Unsplashで写真取得
   const photos = await searchPhotosForSpots(
     topic.spots.map((s) => ({ name: s.name, area: s.area })),
     topic.area || topic.mainTitle,
     unsplashKey,
   );
 
-  // 7. テンプレートデータ組み立て
+  // 5. テンプレートデータ組み立て
   const coverData: BaliCoverData = {
     imageUrl: photos.cover?.imageUrl ?? FALLBACK_IMAGE,
     catchCopy: topic.catchCopy,
@@ -239,7 +207,7 @@ export async function generateBaliContent(
 
   const caption = generateCaption(topic, uniqueAttributions);
 
-  // 8. posted_topicsに記録
+  // 6. posted_topicsに記録
   await db
     .prepare("INSERT INTO posted_topics (category, area, theme, spots_json) VALUES (?, ?, ?, ?)")
     .bind(category, topic.area, topic.mainTitle, JSON.stringify(topic.spots.map((s) => s.name)))
