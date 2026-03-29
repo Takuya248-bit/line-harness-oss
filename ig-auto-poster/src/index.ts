@@ -351,6 +351,7 @@ export default {
           tags?: string;
           source?: string;
           reliability?: string;
+          source_url?: string;
         };
 
         if (!body.category || !body.title || !body.content) {
@@ -359,8 +360,8 @@ export default {
 
         const result = await env.DB
           .prepare(
-            `INSERT INTO knowledge_entries (category, subcategory, title, content, tags, source, reliability)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`
+            `INSERT INTO knowledge_entries (category, subcategory, title, content, tags, source, reliability, source_url)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
           )
           .bind(
             body.category,
@@ -369,7 +370,8 @@ export default {
             body.content,
             body.tags || null,
             body.source || "auto",
-            body.reliability || "unverified"
+            body.reliability || "unverified",
+            body.source_url || null
           )
           .run();
 
