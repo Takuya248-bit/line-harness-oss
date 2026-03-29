@@ -1,0 +1,16 @@
+[
+  {"url":"https://www.linebiz.com/jp/news/","category":"technology","subcategory":"line_api","extract":"LINE公式アカウントの新機能・料金変更・仕様変更"},
+  {"url":"https://developers.line.biz/ja/news/","category":"technology","subcategory":"line_api","extract":"Messaging APIの変更点・新機能"},
+  {"url":"https://blog.google/technology/ai/","category":"ai_news","subcategory":"model_release","extract":"Google AI/Geminiの新モデル・機能リリース"},
+  {"url":"https://www.anthropic.com/news","category":"ai_news","subcategory":"model_release","extract":"Claude/Anthropicの新モデル・API変更・料金"},
+  {"url":"https://openai.com/blog","category":"ai_news","subcategory":"model_release","extract":"OpenAI/GPTの新モデル・機能・料金"},
+  {"url":"https://developers.googleblog.com/en/search/","category":"method","subcategory":"seo","extract":"Google検索アルゴリズム変更・SEOガイドライン"},
+  {"url":"https://about.instagram.com/blog","category":"market","subcategory":"sns_trend","extract":"Instagram機能変更・アルゴリズム・トレンド"},
+  {"url":"https://blog.twitter.com/","category":"market","subcategory":"sns_trend","extract":"X/Twitter機能変更・ポリシー"},
+  {"url":"https://www.bali.go.id/en","category":"locale","subcategory":"bali_visa","extract":"バリ島ビザ・入国規制・観光政策の変更"},
+  {"url":"https://www.id.emb-japan.go.jp/itpr_ja/consular_dps.html","category":"locale","subcategory":"bali_visa","extract":"在デンパサル総領事館の安全情報・渡航注意"},
+  {"url":"https://jaos.or.jp/data/","category":"market","subcategory":"study_abroad","extract":"日本人の留学者数推移・人気国・トレンド"},
+  {"url":"https://www.ef.com/wwen/epi/","category":"market","subcategory":"study_abroad","extract":"EF EPI 各国英語力ランキング・日本の順位"},
+  {"url":"https://linestep.net/news","category":"technology","subcategory":"lstep","extract":"Lstepの新機能・仕様変更・料金改定"},
+  {"url":"https://blog.cloudflare.com/","category":"technology","subcategory":"cloudflare","extract":"Workers/D1/R2の新機能・料金変更"}
+]

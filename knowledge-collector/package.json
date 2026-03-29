@@ -1,0 +1,8 @@
+{
+  "name": "knowledge-collector",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "collect": "node src/collect.js"
+  }
+}
