@@ -299,14 +299,17 @@ def generate_japan_map(df, current_rank, total, reverse=False, highlight_code=No
 # アニメーション付きフレーム生成
 # ============================================================
 def generate_animated_frames(df, current_rank, prev_rank, title, fonts, frame_dir,
-                              W=1920, H=1080, reverse=False, fps=24, sec_per_pref=3.0):
+                              W=1920, H=1080, reverse=False, fps=24, sec_per_pref=5.0,
+                              painted_ranks=None):
     """1県分のアニメーション付きフレーム群を生成
 
     アニメーションフェーズ:
-    - 0.0〜0.3: 地図の新県ハイライト＋情報パネルフェードイン
-    - 0.3〜0.6: 数値カウントアップ＋バーチャートスライドイン
-    - 0.6〜1.0: 完成状態ホールド（微妙なパルス）
+    - 0.0〜0.2: 地図の新県ハイライト＋情報パネルフェードイン
+    - 0.2〜0.4: 数値カウントアップ＋バーチャートスライドイン
+    - 0.4〜1.0: 完成状態ホールド（読む時間を確保）
     """
+    if painted_ranks is None:
+        painted_ranks = []
     total = len(df)
     current_row = df[df['rank'] == current_rank].iloc[0]
     rank_color = get_rank_color(current_rank, total)
@@ -357,26 +360,43 @@ def generate_animated_frames(df, current_rank, prev_rank, title, fonts, frame_di
         map_y = 90
         img.paste(map_img, (map_x, map_y), map_img)
 
-        # ---- 地図上の絵文字画像 ----
-        if current_code and t > 0.15:
-            face_t = ease_out_back(min((t - 0.15) / 0.3, 1.0))
+        # ---- 地図上の絵文字画像（塗り済み全県に表示） ----
+        emoji_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'emoji')
+
+        # 過去の県 + 現在の県を全部表示
+        all_emoji_ranks = list(painted_ranks) + [current_rank]
+        for e_rank in all_emoji_ranks:
+            e_row = df[df['rank'] == e_rank].iloc[0]
+            e_code = PREF_NAME_TO_CODE.get(e_row['pref_code'])
+            if not e_code:
+                continue
+
+            is_current = (e_rank == current_rank)
+
+            # 現在の県はアニメーション付き、過去の県は即表示
+            if is_current:
+                if t <= 0.15:
+                    continue
+                face_t = ease_out_back(min((t - 0.15) / 0.3, 1.0))
+            else:
+                face_t = 1.0
+
             # 順位で絵文字を選択
-            if current_rank <= 5:
+            if e_rank <= 5:
                 emoji_name = 'rank_top'
-            elif current_rank <= 15:
+            elif e_rank <= 15:
                 emoji_name = 'rank_good'
-            elif current_rank <= 30:
+            elif e_rank <= 30:
                 emoji_name = 'rank_neutral'
-            elif current_rank <= 40:
+            elif e_rank <= 40:
                 emoji_name = 'rank_bad'
             else:
                 emoji_name = 'rank_worst'
 
-            emoji_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'emoji')
             emoji_path = os.path.join(emoji_dir, f'{emoji_name}.png')
 
             try:
-                _cmap = {current_code: (254, 1, 1)}
+                _cmap = {e_code: (254, 1, 1)}
                 _raw = japan_picture(_cmap)
                 _pil = Image.fromarray(_raw)
                 _arr = np.array(_pil)
@@ -390,10 +410,10 @@ def generate_animated_frames(df, current_rank, prev_rank, title, fonts, frame_di
                     emoji_size = max(16, int(40 * face_t))
                     emoji_img = Image.open(emoji_path).convert('RGBA')
                     emoji_img = emoji_img.resize((emoji_size, emoji_size), Image.LANCZOS)
-                    # フェードイン
-                    alpha = emoji_img.getchannel('A')
-                    alpha = alpha.point(lambda p: int(p * min(face_t * 1.5, 1.0)))
-                    emoji_img.putalpha(alpha)
+                    if is_current and face_t < 1.0:
+                        alpha = emoji_img.getchannel('A')
+                        alpha = alpha.point(lambda p: int(p * min(face_t * 1.5, 1.0)))
+                        emoji_img.putalpha(alpha)
                     paste_x = fx - emoji_size // 2
                     paste_y = fy - emoji_size // 2
                     img.paste(emoji_img, (paste_x, paste_y), emoji_img)
@@ -463,9 +483,27 @@ def generate_animated_frames(df, current_rank, prev_rank, title, fonts, frame_di
             draw.line([(line_cx - line_w // 2, line_y), (line_cx + line_w // 2, line_y)],
                       fill=(60, 60, 100), width=2)
 
-        # (順位サークル削除済み)
+        # ---- 発表済みランキングリスト ----
+        list_y = panel_y + 245
+        list_font = fonts.bold(22)
+        list_font_sm = fonts.regular(20)
+        max_visible = 6  # 最大表示件数
+        if painted_ranks and val_t > 0.3:
+            list_t = ease_out_cubic(min((val_t - 0.3) / 0.5, 1.0))
+            # 直近のものを下に、古いものを上に（最新が一番下）
+            visible = painted_ranks[-max_visible:]
+            for li, p_rank in enumerate(visible):
+                p_row = df[df['rank'] == p_rank].iloc[0]
+                p_color = get_rank_color(p_rank, total)
+                ly = list_y + li * 28
+                # フェードイン（新しいものほど早く表示）
+                item_alpha = min(list_t * 1.5, 1.0)
+                p_c = tuple(int(c * item_alpha * 0.6) for c in p_color)
+                name_c = tuple(int(180 * item_alpha) for _ in range(3))
+                draw.text((panel_x + 20, ly), f'{p_rank}位', fill=p_c, font=list_font_sm)
+                draw.text((panel_x + 80, ly), p_row['pref_name'], fill=name_c, font=list_font_sm)
 
-        # ---- 右下: 良いところ / 注意点テキスト ----
+        # ---- 右下: 良いところ / 注意点テキスト + 画像 ----
         tips_y = panel_y + 440
         tips_h = H - tips_y - 40
         tips_alpha = int(200 * ease_out_cubic(min(chart_t * 2, 1.0)))
@@ -488,10 +526,10 @@ def generate_animated_frames(df, current_rank, prev_rank, title, fonts, frame_di
                 pref_img = None
 
         if chart_t > 0.1 and good_text and good_text != 'nan':
-            # GOOD（緑）
+            # GOOD（緑）大きめフォント
             good_t = ease_out_cubic(min((chart_t - 0.1) / 0.4, 1.0))
-            good_label_font = fonts.bold(20)
-            good_text_font = fonts.regular(20)
+            good_label_font = fonts.bold(28)
+            good_text_font = fonts.regular(26)
             gy = tips_y + 12
             g_alpha = good_t
 
@@ -500,14 +538,14 @@ def generate_animated_frames(df, current_rank, prev_rank, title, fonts, frame_di
             draw.text((panel_x + 15, gy), 'GOOD', fill=gl_c_a, font=good_label_font)
             g_slide = int(15 * (1 - good_t))
             gt_c = tuple(int(255 * g_alpha) for _ in range(3))
-            draw.text((panel_x + 15, gy + 26 + g_slide), good_text, fill=gt_c, font=good_text_font)
+            draw.text((panel_x + 15, gy + 34 + g_slide), good_text, fill=gt_c, font=good_text_font)
 
         if chart_t > 0.3 and caution_text and caution_text != 'nan':
-            # NG（赤）
+            # NG（赤）大きめフォント
             caut_t = ease_out_cubic(min((chart_t - 0.3) / 0.4, 1.0))
-            caut_label_font = fonts.bold(22)
-            caut_text_font = fonts.bold(22)
-            cy = tips_y + 70
+            caut_label_font = fonts.bold(28)
+            caut_text_font = fonts.bold(26)
+            cy = tips_y + 80
             c_alpha = caut_t
 
             cl_c = (255, 100, 80)
@@ -515,15 +553,14 @@ def generate_animated_frames(df, current_rank, prev_rank, title, fonts, frame_di
             draw.text((panel_x + 15, cy), 'NG', fill=cl_c_a, font=caut_label_font)
             c_slide = int(20 * (1 - caut_t))
             ct_c = tuple(int(c * c_alpha) for c in (255, 220, 180))
-            draw.text((panel_x + 15, cy + 30 + c_slide), caution_text, fill=ct_c, font=caut_text_font)
+            draw.text((panel_x + 15, cy + 34 + c_slide), caution_text, fill=ct_c, font=caut_text_font)
 
-        # NG下に正方形画像（左寄せ、半分サイズ）
+        # NG下に正方形画像（v9と同じ位置・サイズ）
         if pref_img and chart_t > 0.4:
             img_t = ease_out_cubic(min((chart_t - 0.4) / 0.4, 1.0))
-            photo_y = tips_y + 130
-            photo_size = min((panel_w - 30) // 2, tips_h - 145)
+            photo_y = tips_y + 150
+            photo_size = min((panel_w - 30) // 2, tips_h - 165)
             if photo_size > 30:
-                # 正方形にクロップ
                 pw, ph = pref_img.size
                 crop_size = min(pw, ph)
                 left = (pw - crop_size) // 2
@@ -540,6 +577,83 @@ def generate_animated_frames(df, current_rank, prev_rank, title, fonts, frame_di
 
         # 保存
         frame_path = os.path.join(frame_dir, f'frame_{current_rank:03d}_{fi:03d}.png')
+        img.save(frame_path, 'PNG')
+        paths.append(frame_path)
+
+    return paths
+
+
+# ============================================================
+# マイルストーン画面（TOP30! TOP20! TOP10! TOP5!）
+# ============================================================
+def generate_milestone_frames(milestone_text, sub_text, df, painted_ranks, fonts, frame_dir,
+                               W=1920, H=1080, duration_sec=4, fps=24):
+    """マイルストーン: 中央にドーンとテキスト表示"""
+    paths = []
+    total = len(df)
+    total_frames = int(duration_sec * fps)
+
+    # 塗り済み地図を背景に
+    map_base = generate_japan_map(df, painted_ranks[-1] if painted_ranks else total, total, reverse=True)
+
+    for fi in range(total_frames):
+        t = fi / max(total_frames - 1, 1)
+        img = get_gradient_bg(W, H)
+        draw = ImageDraw.Draw(img, 'RGBA')
+
+        # 背景に薄く地図
+        map_h_target = H - 100
+        map_ratio = map_h_target / map_base.height
+        map_w = int(map_base.width * map_ratio)
+        map_h = int(map_base.height * map_ratio)
+        map_img = map_base.resize((map_w, map_h), Image.LANCZOS)
+        # 半透明で重ねる
+        alpha = map_img.getchannel('A')
+        alpha = alpha.point(lambda p: int(p * 0.3))
+        map_img.putalpha(alpha)
+        mx = (W - map_w) // 2
+        img.paste(map_img, (mx, 50), map_img)
+
+        # メインテキスト（ズームイン＋フェード）
+        if t < 0.3:
+            text_t = ease_out_back(t / 0.3)
+        elif t > 0.8:
+            text_t = ease_out_cubic((1.0 - t) / 0.2)
+        else:
+            text_t = 1.0
+
+        # パルスエフェクト
+        pulse = 1.0 + 0.03 * math.sin(t * math.pi * 6)
+        font_size = int(120 * text_t * pulse)
+        if font_size > 10:
+            main_font = fonts.bold(font_size)
+            mc = tuple(int(255 * text_t) for _ in range(3))
+            draw.text((W // 2, H // 2 - 30), milestone_text,
+                      fill=mc, font=main_font, anchor='mm')
+
+        # サブテキスト
+        if t > 0.2:
+            sub_t = ease_out_cubic(min((t - 0.2) / 0.3, 1.0))
+            if t > 0.8:
+                sub_t *= ease_out_cubic((1.0 - t) / 0.2)
+            sub_font = fonts.regular(32)
+            sc = tuple(int(c * sub_t) for c in TEXT_GRAY)
+            draw.text((W // 2, H // 2 + 60), sub_text,
+                      fill=sc, font=sub_font, anchor='mm')
+
+        # 装飾ライン
+        line_t = ease_out_cubic(min(t * 4, 1.0))
+        if t > 0.8:
+            line_t *= ease_out_cubic((1.0 - t) / 0.2)
+        lw = int(350 * line_t)
+        if lw > 5:
+            lc = tuple(int(c * line_t) for c in ACCENT_BLUE)
+            draw.line([(W // 2 - lw, H // 2 - 90), (W // 2 + lw, H // 2 - 90)],
+                      fill=lc, width=3)
+            draw.line([(W // 2 - lw, H // 2 + 100), (W // 2 + lw, H // 2 + 100)],
+                      fill=lc, width=3)
+
+        frame_path = os.path.join(frame_dir, f'frame_milestone_{milestone_text}_{fi:03d}.png')
         img.save(frame_path, 'PNG')
         paths.append(frame_path)
 
@@ -621,9 +735,268 @@ def generate_intro_frames(title, subtitle, disclaimers, fonts, frame_dir,
 
 
 # ============================================================
+# ドラムロール（TOP3発表前の溜め演出）
+# ============================================================
+def generate_drumroll_frames(df, painted_ranks, fonts, frame_dir,
+                              W=1920, H=1080, duration_sec=4, fps=24):
+    """ドラムロール: TOP3発表前の溜め演出"""
+    paths = []
+    total = len(df)
+    total_frames = int(duration_sec * fps)
+
+    # 塗り済み地図を背景に
+    map_base = generate_japan_map(df, painted_ranks[-1] if painted_ranks else total, total, reverse=True)
+
+    for fi in range(total_frames):
+        t = fi / max(total_frames - 1, 1)
+        img = get_gradient_bg(W, H)
+        draw = ImageDraw.Draw(img, 'RGBA')
+
+        # 背景に薄く地図
+        map_h_target = H - 100
+        map_ratio = map_h_target / map_base.height
+        map_w = int(map_base.width * map_ratio)
+        map_h = int(map_base.height * map_ratio)
+        map_img = map_base.resize((map_w, map_h), Image.LANCZOS)
+        alpha_ch = map_img.getchannel('A')
+        alpha_ch = alpha_ch.point(lambda p: int(p * 0.3))
+        map_img.putalpha(alpha_ch)
+        mx = (W - map_w) // 2
+        img.paste(map_img, (mx, 50), map_img)
+
+        # パルスエフェクト（ドラムロール感）
+        pulse = 1.0 + 0.06 * math.sin(t * math.pi * 12)
+        if t < 0.3:
+            text_t = ease_out_back(t / 0.3)
+        elif t > 0.85:
+            text_t = ease_out_cubic((1.0 - t) / 0.15)
+        else:
+            text_t = 1.0
+
+        font_size = int(100 * text_t * pulse)
+        if font_size > 10:
+            main_font = fonts.bold(font_size)
+            mc = tuple(int(255 * text_t) for _ in range(3))
+            draw.text((W // 2, H // 2 - 20), 'いよいよ TOP 3 発表!',
+                      fill=mc, font=main_font, anchor='mm')
+
+        # サブテキスト
+        if t > 0.25:
+            sub_t = ease_out_cubic(min((t - 0.25) / 0.3, 1.0))
+            if t > 0.85:
+                sub_t *= ease_out_cubic((1.0 - t) / 0.15)
+            sub_font = fonts.regular(32)
+            sc = tuple(int(c * sub_t) for c in TEXT_GRAY)
+            draw.text((W // 2, H // 2 + 70), '果たして1位は…?',
+                      fill=sc, font=sub_font, anchor='mm')
+
+        # 装飾ライン（伸縮アニメーション）
+        line_t = ease_out_cubic(min(t * 4, 1.0))
+        if t > 0.85:
+            line_t *= ease_out_cubic((1.0 - t) / 0.15)
+        lw = int(400 * line_t)
+        if lw > 5:
+            lc = tuple(int(c * line_t) for c in GOLD)
+            draw.line([(W // 2 - lw, H // 2 - 80), (W // 2 + lw, H // 2 - 80)],
+                      fill=lc, width=3)
+            draw.line([(W // 2 - lw, H // 2 + 115), (W // 2 + lw, H // 2 + 115)],
+                      fill=lc, width=3)
+
+        safe_name = 'drumroll'
+        frame_path = os.path.join(frame_dir, f'frame_{safe_name}_{fi:03d}.png')
+        img.save(frame_path, 'PNG')
+        paths.append(frame_path)
+
+    return paths
+
+
+# ============================================================
+# TOP3振り返り（メダル付き）
+# ============================================================
+def generate_top3_review_frames(df, fonts, frame_dir,
+                                 W=1920, H=1080, duration_sec=6, fps=24):
+    """TOP3振り返り: メダル付きで3県を並べて表示"""
+    paths = []
+    total = len(df)
+    total_frames = int(duration_sec * fps)
+
+    # 全県塗り済みの地図を背景に
+    color_map = {}
+    for _, row in df.iterrows():
+        code = PREF_NAME_TO_CODE.get(row['pref_code'])
+        if code:
+            color_map[code] = get_rank_color(row['rank'], total)
+    full_map = Image.fromarray(japan_picture(color_map)).convert('RGBA')
+    map_h_target = H - 100
+    map_ratio = map_h_target / full_map.height
+    map_w = int(full_map.width * map_ratio)
+    map_h = int(full_map.height * map_ratio)
+    full_map = full_map.resize((map_w, map_h), Image.LANCZOS)
+    mx = (W - map_w) // 2
+
+    # TOP3データ取得（rank 1, 2, 3）
+    top3 = df[df['rank'].isin([1, 2, 3])].sort_values('rank')
+    medal_colors = {1: GOLD, 2: (192, 192, 192), 3: (205, 127, 50)}
+    medal_labels = {1: '1st', 2: '2nd', 3: '3rd'}
+    # 表示順: 3位→2位→1位（フェードイン遅延で1位が最後）
+    display_order = [3, 2, 1]
+    delays = {3: 0.0, 2: 0.15, 1: 0.3}
+
+    for fi in range(total_frames):
+        t = fi / max(total_frames - 1, 1)
+        img = get_gradient_bg(W, H)
+        draw = ImageDraw.Draw(img, 'RGBA')
+
+        # 背景に薄く完成地図
+        map_alpha_val = ease_out_cubic(min(t * 3, 1.0))
+        if map_alpha_val > 0.01:
+            map_copy = full_map.copy()
+            if map_alpha_val < 1.0:
+                alpha_ch = map_copy.getchannel('A')
+                alpha_ch = alpha_ch.point(lambda p: int(p * map_alpha_val * 0.25))
+                map_copy.putalpha(alpha_ch)
+            else:
+                alpha_ch = map_copy.getchannel('A')
+                alpha_ch = alpha_ch.point(lambda p: int(p * 0.25))
+                map_copy.putalpha(alpha_ch)
+            img.paste(map_copy, (mx, 50), map_copy)
+
+        # タイトル
+        title_t = ease_out_cubic(min(t * 4, 1.0))
+        title_font = fonts.bold(60)
+        tc = tuple(int(c * title_t) for c in GOLD)
+        draw.text((W // 2, 60), 'TOP 3', fill=tc, font=title_font, anchor='mt')
+
+        # 装飾ライン
+        line_t = ease_out_cubic(min(t * 5, 1.0))
+        lw = int(300 * line_t)
+        if lw > 5:
+            lc = tuple(int(c * line_t) for c in GOLD)
+            draw.line([(W // 2 - lw, 130), (W // 2 + lw, 130)], fill=lc, width=2)
+
+        # 各順位カード（横並び）
+        card_w = 380
+        card_h = 300
+        card_y = H // 2 - card_h // 2 + 20
+        positions = {1: W // 2, 2: W // 2 - 420, 3: W // 2 + 420}
+
+        for rank in display_order:
+            delay = delays[rank]
+            card_t = ease_out_back(max(0, min(1, (t - delay) / max(0.3, 1 - delay))))
+            if card_t <= 0.01:
+                continue
+
+            row_data = top3[top3['rank'] == rank]
+            if row_data.empty:
+                continue
+            row = row_data.iloc[0]
+
+            cx = positions[rank]
+            medal_c = medal_colors[rank]
+            panel_alpha = int(200 * card_t)
+            slide_y = int(30 * (1 - card_t))
+
+            # カードパネル
+            safe_rounded_rect(draw,
+                [cx - card_w // 2, card_y + slide_y,
+                 cx + card_w // 2, card_y + card_h + slide_y],
+                radius=16, fill=(30, 30, 60, panel_alpha)
+            )
+
+            # メダル円
+            circle_r = 40
+            circle_c = (cx, card_y + 60 + slide_y)
+            draw.ellipse(
+                [circle_c[0] - circle_r, circle_c[1] - circle_r,
+                 circle_c[0] + circle_r, circle_c[1] + circle_r],
+                fill=tuple(int(c * card_t) for c in medal_c)
+            )
+            medal_font = fonts.bold(36)
+            mc_text = tuple(int(c * card_t) for c in (30, 30, 30))
+            draw.text(circle_c, medal_labels[rank], fill=mc_text, font=medal_font, anchor='mm')
+
+            # 順位
+            rank_font = fonts.bold(28)
+            rc = tuple(int(c * card_t) for c in medal_c)
+            draw.text((cx, card_y + 120 + slide_y), f'{rank}位',
+                      fill=rc, font=rank_font, anchor='mm')
+
+            # 県名
+            pref_font = fonts.bold(36)
+            pc = tuple(int(255 * card_t) for _ in range(3))
+            draw.text((cx, card_y + 170 + slide_y), str(row['pref_name']),
+                      fill=pc, font=pref_font, anchor='mm')
+
+            # 数値
+            val_font = fonts.regular(26)
+            vc = tuple(int(c * card_t) for c in TEXT_GRAY)
+            draw.text((cx, card_y + 220 + slide_y), str(row['value']),
+                      fill=vc, font=val_font, anchor='mm')
+
+        frame_path = os.path.join(frame_dir, f'frame_top3review_{fi:03d}.png')
+        img.save(frame_path, 'PNG')
+        paths.append(frame_path)
+
+    return paths
+
+
+# ============================================================
+# エンドカード（チャンネル登録促進）
+# ============================================================
+def generate_endcard_frames(fonts, frame_dir,
+                             W=1920, H=1080, duration_sec=5, fps=24):
+    """エンドカード: チャンネル登録促進"""
+    paths = []
+    total_frames = int(duration_sec * fps)
+
+    for fi in range(total_frames):
+        t = fi / max(total_frames - 1, 1)
+
+        # 黒背景からフェードイン
+        fade_t = ease_out_cubic(min(t * 3, 1.0))
+        bg_r = int(BG_COLOR[0] * fade_t * 0.5)
+        bg_g = int(BG_COLOR[1] * fade_t * 0.5)
+        bg_b = int(BG_COLOR[2] * fade_t * 0.5)
+        img = Image.new('RGB', (W, H), (bg_r, bg_g, bg_b))
+        draw = ImageDraw.Draw(img, 'RGBA')
+
+        if fade_t > 0.01:
+            # メインテキスト
+            main_t = ease_out_back(min(fade_t * 1.5, 1.0))
+            main_font = fonts.bold(56)
+            mc = tuple(int(255 * main_t) for _ in range(3))
+            draw.text((W // 2, H // 2 - 60), 'ご視聴ありがとうございました',
+                      fill=mc, font=main_font, anchor='mm')
+
+            # サブテキスト（少し遅れて）
+            sub_t = ease_out_cubic(max(0, min(1, (fade_t - 0.2) * 3)))
+            if sub_t > 0.01:
+                sub_font = fonts.regular(34)
+                sc = tuple(int(c * sub_t) for c in ACCENT_BLUE)
+                draw.text((W // 2, H // 2 + 30), '高評価・チャンネル登録お願いします',
+                          fill=sc, font=sub_font, anchor='mm')
+
+            # 装飾ライン（伸びるアニメーション）
+            line_t = ease_out_cubic(min(fade_t * 4, 1.0))
+            lw = int(450 * line_t)
+            if lw > 5:
+                lc = tuple(int(c * line_t) for c in ACCENT_BLUE)
+                draw.line([(W // 2 - lw, H // 2 - 100), (W // 2 + lw, H // 2 - 100)],
+                          fill=lc, width=2)
+                draw.line([(W // 2 - lw, H // 2 + 80), (W // 2 + lw, H // 2 + 80)],
+                          fill=lc, width=2)
+
+        frame_path = os.path.join(frame_dir, f'frame_endcard_{fi:03d}.png')
+        img.save(frame_path, 'PNG')
+        paths.append(frame_path)
+
+    return paths
+
+
+# ============================================================
 # アウトロ（フェードイン付き）
 # ============================================================
-def generate_outro_frames(title, df, fonts, frame_dir, W=1920, H=1080, duration_sec=6, fps=24):
+def generate_outro_frames(title, df, fonts, frame_dir, W=1920, H=1080, duration_sec=7, fps=24):
     """アウトロ: 完成マップ + TOP5/WORST5（フェードイン）"""
     paths = []
     total = len(df)
@@ -738,7 +1111,7 @@ def main():
     parser.add_argument('--title', required=True, help='動画タイトル')
     parser.add_argument('--subtitle', default='旅行者のリアルな声を集計', help='サブタイトル')
     parser.add_argument('--output', default='output/ranking.mp4', help='出力パス')
-    parser.add_argument('--sec-per-pref', type=float, default=3.0, help='1県あたりの秒数')
+    parser.add_argument('--sec-per-pref', type=float, default=7.0, help='1県あたりの秒数')
     parser.add_argument('--bgm', default=None, help='BGMファイル')
     parser.add_argument('--width', type=int, default=1920)
     parser.add_argument('--height', type=int, default=1080)
@@ -781,18 +1154,61 @@ def main():
                                       fonts, frame_dir, args.width, args.height, fps=args.fps)
             )
 
+        # マイルストーン定義
+        milestones = {
+            45: ('TOP 45!', '残り45県'),
+            40: ('TOP 40!', '序盤戦クリア'),
+            35: ('TOP 35!', 'まだまだ続く…'),
+            30: ('TOP 30!', 'ここから上位30県'),
+            25: ('TOP 25!', '折り返し地点'),
+            20: ('TOP 20!', '旅好きが認めるエリアへ'),
+            15: ('TOP 15!', '上位グループ突入'),
+            10: ('TOP 10!', 'いよいよベスト10'),
+            5:  ('TOP 5!', '頂点が近づく…'),
+        }
+
         # 各県（アニメーション付き）
         prev_rank = None
+        painted_ranks = []
         for i, rank in enumerate(ranks):
-            print(f'\rフレーム生成: {i+1}/{total} ({rank}位)', end='', flush=True)
+            # マイルストーン挿入
+            if rank in milestones:
+                ms_text, ms_sub = milestones[rank]
+                # TOP30,20,10,5は4秒、それ以外は3秒
+                ms_dur = 4 if rank in (30, 20, 10, 5) else 3
+                print(f'\n  ★ マイルストーン: {ms_text}')
+                frame_paths.extend(
+                    generate_milestone_frames(ms_text, ms_sub, df, painted_ranks, fonts, frame_dir,
+                                              args.width, args.height, duration_sec=ms_dur, fps=args.fps)
+                )
+
+            # ドラムロール（TOP3発表直前）
+            if rank == 3:
+                print('\n  ★ ドラムロール!')
+                frame_paths.extend(
+                    generate_drumroll_frames(df, painted_ranks, fonts, frame_dir,
+                                             args.width, args.height, duration_sec=4, fps=args.fps)
+                )
+
+            # 全県一律の秒数
+            print(f'\rフレーム生成: {i+1}/{total} ({rank}位, {args.sec_per_pref:.0f}秒)', end='', flush=True)
             pref_frames = generate_animated_frames(
                 df, rank, prev_rank, args.title, fonts, frame_dir,
                 args.width, args.height, args.reverse,
-                fps=args.fps, sec_per_pref=args.sec_per_pref
+                fps=args.fps, sec_per_pref=args.sec_per_pref,
+                painted_ranks=painted_ranks
             )
             frame_paths.extend(pref_frames)
+            painted_ranks.append(rank)
             prev_rank = rank
         print()
+
+        # TOP3振り返り
+        print("TOP3振り返り生成中...")
+        frame_paths.extend(
+            generate_top3_review_frames(df, fonts, frame_dir,
+                                         args.width, args.height, fps=args.fps)
+        )
 
         # アウトロ
         if not args.no_outro:
@@ -801,6 +1217,13 @@ def main():
                 generate_outro_frames(args.title, df, fonts, frame_dir,
                                       args.width, args.height, fps=args.fps)
             )
+
+        # エンドカード
+        print("エンドカード生成中...")
+        frame_paths.extend(
+            generate_endcard_frames(fonts, frame_dir,
+                                     args.width, args.height, fps=args.fps)
+        )
 
         # 動画合成
         total_sec = len(frame_paths) / args.fps
