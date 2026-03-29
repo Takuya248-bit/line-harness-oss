@@ -10,6 +10,10 @@ import { buildSituationNode } from "./situation";
 import { buildStoryNode } from "./story";
 import { buildStudentNode } from "./student";
 import { buildBaliReportNode } from "./bali-report";
+import { buildBaliCoverNode, type BaliCoverData } from "./bali-cover";
+import { buildBaliSpotNode, type BaliSpotData } from "./bali-spot";
+import { buildBaliSummaryNode, type BaliSummaryData } from "./bali-summary";
+import { buildBaliCtaNode } from "./bali-cta";
 
 function buildContentNode(
   content: ContentItem,
@@ -57,5 +61,27 @@ export function buildSlides(content: ContentItem): SatoriNode[] {
     }
   }
 
+  return nodes;
+}
+
+export interface BaliContentV2 {
+  category: string;
+  area: string;
+  title: string;
+  coverData: BaliCoverData;
+  spotsData: BaliSpotData[];
+  summaryData: BaliSummaryData;
+  caption: string;
+  attributions: string[];
+}
+
+export function buildV2Slides(content: BaliContentV2): SatoriNode[] {
+  const nodes: SatoriNode[] = [];
+  nodes.push(buildBaliCoverNode(content.coverData));
+  for (const spot of content.spotsData) {
+    nodes.push(buildBaliSpotNode(spot));
+  }
+  nodes.push(buildBaliSummaryNode(content.summaryData));
+  nodes.push(buildBaliCtaNode());
   return nodes;
 }
