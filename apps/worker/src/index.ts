@@ -40,6 +40,7 @@ import { surveys } from './routes/surveys.js';
 import { bookings } from './routes/bookings.js';
 import { tagFolders } from './routes/tag-folders.js';
 import { processXPosting } from './services/x-posting.js';
+import { collectAiSources } from './services/x-ai-source-collector.js';
 import { friendFields } from './routes/friend-fields.js';
 import { savedFilters } from './routes/saved-filters.js';
 import { processPhaseTransitions } from './services/phase-cron.js';
@@ -234,6 +235,20 @@ async function scheduled(
 
   jobs.push(checkAccountHealth(env.DB));
   jobs.push(refreshLineAccessTokens(env.DB));
+
+  // AI source collection (6時間に1回)
+  const currentHour = new Date().getUTCHours();
+  const baliHour = (currentHour + 8) % 24; // UTC+8 (WITA)
+  if ([0, 6, 12, 18].includes(baliHour)) {
+    const minute = new Date().getUTCMinutes();
+    if (minute < 5) {
+      jobs.push(
+        collectAiSources(env.DB).then((r) =>
+          console.log(`[ai-sources] Collected: HN=${r.hackernews}, RSS=${r.rss}`),
+        ),
+      );
+    }
+  }
 
   // X auto-posting (runs independently of LINE accounts)
   if (env.X_API_KEY && env.X_ACCESS_TOKEN) {
