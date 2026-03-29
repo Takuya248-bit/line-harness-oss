@@ -23,23 +23,22 @@ export async function fetchKnowledgeForSEO(
   db: D1Database,
   keyword: string,
 ): Promise<{ entries: KnowledgeEntry[]; guardrails: Guardrail[] }> {
-  // SEO記事はLINE構築系が多い → barilingual, evidence カテゴリを優先
-  // キーワードに応じてカテゴリを動的選択
   const categories: string[] = [];
   const kw = keyword.toLowerCase();
 
   if (kw.includes("バリ") || kw.includes("留学") || kw.includes("英語")) {
-    categories.push("bali_area", "study_faq", "barilingual", "english_learning", "evidence");
+    categories.push("locale", "method", "case", "people");
   }
   if (kw.includes("line") || kw.includes("公式") || kw.includes("crm")) {
-    // LINE系記事は現時点で知識DBにカテゴリなし → 空で返す
+    categories.push("technology", "method", "case");
   }
 
   if (categories.length === 0) {
     return { entries: [], guardrails: [] };
   }
 
-  const placeholders = categories.map(() => "?").join(", ");
+  const unique = [...new Set(categories)];
+  const placeholders = unique.map(() => "?").join(", ");
   const entries = await db
     .prepare(
       `SELECT id, category, subcategory, title, content, tags
@@ -48,7 +47,7 @@ export async function fetchKnowledgeForSEO(
        ORDER BY CASE reliability WHEN 'verified' THEN 0 ELSE 1 END, use_count ASC
        LIMIT 15`
     )
-    .bind(...categories)
+    .bind(...unique)
     .all<KnowledgeEntry>();
 
   const guardrails = await db
