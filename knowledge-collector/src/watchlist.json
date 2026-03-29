@@ -12,5 +12,11 @@
   {"url":"https://jaos.or.jp/data/","category":"market","subcategory":"study_abroad","extract":"日本人の留学者数推移・人気国・トレンド"},
   {"url":"https://www.ef.com/wwen/epi/","category":"market","subcategory":"study_abroad","extract":"EF EPI 各国英語力ランキング・日本の順位"},
   {"url":"https://linestep.net/news","category":"technology","subcategory":"lstep","extract":"Lstepの新機能・仕様変更・料金改定"},
-  {"url":"https://blog.cloudflare.com/","category":"technology","subcategory":"cloudflare","extract":"Workers/D1/R2の新機能・料金変更"}
+  {"url":"https://blog.cloudflare.com/","category":"technology","subcategory":"cloudflare","extract":"Workers/D1/R2の新機能・料金変更"},
+  {"url":"https://www.balinavigator.com/","category":"locale","subcategory":"bali_cafe","extract":"バリ島のカフェ・レストラン・観光スポット情報（店名、エリア、特徴、営業時間）"},
+  {"url":"https://bali-club.jp/blog/","category":"locale","subcategory":"bali_area","extract":"バリ島のローカル情報・おすすめスポット・現地レポート"},
+  {"url":"https://www.thebalibible.com/","category":"locale","subcategory":"bali_cafe","extract":"Bali cafes, restaurants, beach clubs, spas - names, areas, features"},
+  {"url":"https://www.tripadvisor.com/Attractions-g294226-Activities-Bali.html","category":"locale","subcategory":"bali_area","extract":"バリ島の人気アトラクション・観光スポットランキング"},
+  {"url":"https://www.klook.com/ja/city/14-bali/","category":"locale","subcategory":"bali_area","extract":"バリ島のアクティビティ・ツアー・人気スポット"},
+  {"url":"https://id.imigrasi.go.id/","category":"regulation","subcategory":"bali_visa","extract":"インドネシアのビザ種類・申請方法・料金・規制変更"}
 ]
