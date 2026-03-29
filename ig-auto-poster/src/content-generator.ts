@@ -16,23 +16,23 @@ const SYSTEM_PROMPT = `あなたはバリ島の語学学校「バリリンガル
 
 /** テンプレタイプに関連するknowledge_entriesのcategoryをマッピング */
 const TYPE_CATEGORIES: Record<ContentType, string[]> = {
-  list: ["english_learning"],
-  quiz: ["english_learning"],
-  before_after: ["english_learning"],
-  situation: ["english_learning", "bali_area"],
-  story: ["barilingual", "evidence"],
-  student_mistake: ["english_learning", "evidence"],
-  bali_report: ["bali_area", "barilingual"],
+  list: ["method"],
+  quiz: ["method"],
+  before_after: ["method"],
+  situation: ["method", "locale"],
+  story: ["case", "people"],
+  student_mistake: ["method", "case"],
+  bali_report: ["locale", "case"],
 };
 
 const TYPE_TAGS: Record<ContentType, string[]> = {
-  list: ["phrases", "vocabulary"],
-  quiz: ["grammar", "vocabulary"],
-  before_after: ["natural_english", "mistakes"],
-  situation: ["speaking", "real_scene"],
-  story: ["student_change", "experience"],
-  student_mistake: ["beginner_mistakes", "common_errors"],
-  bali_report: ["cafe", "lifestyle", "location"],
+  list: ["english_phrases", "english_vocabulary"],
+  quiz: ["english_grammar", "english_vocabulary"],
+  before_after: ["english_natural", "english_mistakes"],
+  situation: ["english_speaking", "bali_cafe"],
+  story: ["barilingual_student", "experience"],
+  student_mistake: ["english_beginner", "common_errors"],
+  bali_report: ["bali_area", "bali_cafe", "bali_lifestyle"],
 };
 
 function buildPromptForType(
