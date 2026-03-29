@@ -28,6 +28,7 @@ export * from './tag-folders';
 export * from './cross-analysis';
 export * from './friend-fields';
 export * from './saved-filters';
+export * from './x-ai-sources.js';
 
 /**
  * Thin wrapper around D1Database.
