@@ -16,14 +16,14 @@ import type { XApiConfig } from '../lib/x-api.js';
 // ---------------------------------------------------------------------------
 
 /**
- * 日次投稿上限: 環境変数 X_MAX_DAILY_POSTS で制御（デフォルト3）
+ * 日次投稿上限: 環境変数 X_MAX_DAILY_POSTS で制御（デフォルト5）
  * 問題なければ段階的に上げる: 3 → 8 → 15 → 20
  * X Free tier上限: 月1,500（1日50が理論値）
  */
-const DEFAULT_MAX_DAILY_POSTS = 3;
+const DEFAULT_MAX_DAILY_POSTS = 5;
 
 /** 1回のcron実行で処理する最大投稿数 */
-const MAX_POSTS_PER_RUN = 3;
+const MAX_POSTS_PER_RUN = 5;
 
 /** 連続投稿間の最小ウェイト（ms） - Bot検出回避 */
 const MIN_INTER_POST_DELAY = 30_000; // 30秒
