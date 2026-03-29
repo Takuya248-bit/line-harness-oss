@@ -1,10 +1,15 @@
-import { generateSlideImages, generateFirstSlideSvg, generateSingleSlidePng, getSlideCount } from "./image-generator";
+import { generateSlideImages, generateFirstSlideSvg, generateSingleSlidePng, getSlideCount, generateV2SlideImages, generateV2SinglePng, getV2SlideCount } from "./image-generator";
 import { publishCarousel } from "./instagram";
 import { getCaption } from "./captions";
 import { allContent } from "./content-data";
 import { generateContent } from "./content-generator";
+import { generateBaliContent } from "./content-generator-v2";
 import { sendPreview, sendNotification, parsePostback } from "./line-preview";
+import { collectInsights } from "./insights";
+import { optimizeWeights, sendWeeklyReport } from "./optimizer";
+import { renderGalleryList, renderGalleryDetail } from "./gallery";
 import type { ContentItem } from "./content-data";
+import type { BaliContentV2 } from "./templates/index";
 import { fetchKnowledge, fetchGuardrails, formatKnowledgeForPrompt } from "./knowledge";
 import type { KnowledgeEntry } from "./knowledge";
 
@@ -35,7 +40,16 @@ async function updateContentIndex(db: D1Database, newIndex: number): Promise<voi
     .run();
 }
 
-// --- PNG画像1枚生成+R2保存 ---
+// --- 設定取得ヘルパー ---
+async function getSetting(db: D1Database, key: string): Promise<string | null> {
+  const row = await db
+    .prepare("SELECT value FROM ig_settings WHERE key = ?")
+    .bind(key)
+    .first<{ value: string }>();
+  return row?.value ?? null;
+}
+
+// --- PNG画像1枚生成+R2保存（v1用） ---
 async function generateAndStoreSingleImage(
   content: ContentItem,
   slideIndex: number,
@@ -51,39 +65,66 @@ async function generateAndStoreSingleImage(
   return `${env.R2_PUBLIC_URL}/${key}`;
 }
 
-
-// --- Cronハンドラー ---
-async function handleGenerateCron(env: Env): Promise<void> {
-  const { content, caption } = await generateContent(env.ANTHROPIC_API_KEY, env.DB);
-  const timestamp = Date.now();
-
-  // プレビュー用: カバー1枚だけPNG変換（CPU節約）
-  const coverUrl = await generateAndStoreSingleImage(content, 0, env, "preview", timestamp);
-
-  // コンテンツをDBに保存（画像は投稿時に全枚生成）
-  await env.DB
-    .prepare("UPDATE generated_content SET content_json = ? WHERE id = (SELECT MAX(id) FROM generated_content)")
-    .bind(JSON.stringify({ ...content, coverUrl, caption }))
-    .run();
-
-  await sendPreview(
-    [coverUrl],
-    content.id,
-    content.type,
-    content.title,
-    env.LINE_OWNER_USER_ID,
-    env.LINE_CHANNEL_ACCESS_TOKEN,
-  );
-  console.log(`Preview sent for: ${content.title}`);
+// --- V2 PNG画像1枚生成+R2保存 ---
+async function generateAndStoreV2Image(
+  content: BaliContentV2,
+  slideIndex: number,
+  env: Env,
+  prefix: string,
+  timestamp: number,
+): Promise<string> {
+  const png = await generateV2SinglePng(content, slideIndex);
+  const key = `${prefix}/${timestamp}/slide-${slideIndex + 1}.png`;
+  await env.IMAGES.put(key, png, {
+    httpMetadata: { contentType: "image/png" },
+  });
+  return `${env.R2_PUBLIC_URL}/${key}`;
 }
 
-async function handlePostCron(env: Env): Promise<void> {
+// --- V2 Cronハンドラー ---
+async function handleV2GenerateCron(env: Env): Promise<void> {
+  const content = await generateBaliContent(
+    env.ANTHROPIC_API_KEY,
+    env.UNSPLASH_ACCESS_KEY,
+    env.DB,
+  );
+  const timestamp = Date.now();
+
+  // プレビュー用カバー1枚
+  const coverUrl = await generateAndStoreV2Image(content, 0, env, "preview", timestamp);
+
+  // DBに保存
+  await env.DB
+    .prepare("INSERT INTO generated_content (template_type, content_json, caption, status, category) VALUES ('bali_v2', ?, ?, ?, ?)")
+    .bind(
+      JSON.stringify({ ...content, coverUrl }),
+      content.caption,
+      (await getSetting(env.DB, "auto_approve")) === "true" ? "approved" : "pending_review",
+      content.category,
+    )
+    .run();
+
+  const autoApprove = await getSetting(env.DB, "auto_approve");
+  if (autoApprove !== "true") {
+    // Phase 1: LINE通知（ギャラリーへ誘導）
+    await sendNotification(
+      `新しい投稿が生成されました\nテーマ: ${content.title}\nカテゴリ: ${content.category}\nギャラリーで確認: /gallery`,
+      env.LINE_OWNER_USER_ID,
+      env.LINE_CHANNEL_ACCESS_TOKEN,
+    );
+  }
+
+  console.log(`V2 content generated: ${content.title} (${content.category})`);
+}
+
+async function handleV2PostCron(env: Env): Promise<void> {
   const row = await env.DB
-    .prepare("SELECT id, content_json, caption FROM generated_content WHERE status = 'approved' ORDER BY id ASC LIMIT 1")
-    .first<{ id: number; content_json: string; caption: string }>();
+    .prepare("SELECT id, content_json, caption, category FROM generated_content WHERE status = 'approved' AND template_type = 'bali_v2' ORDER BY id ASC LIMIT 1")
+    .first<{ id: number; content_json: string; caption: string; category: string }>();
 
   if (!row) {
-    console.log("No approved content. Using fallback from content-data.ts");
+    // v2承認済みなし → v1フォールバック
+    console.log("No approved v2 content. Using v1 fallback.");
     const contentIndex = await getContentIndex(env.DB);
     const content = allContent[contentIndex % allContent.length];
     const timestamp = Date.now();
@@ -96,32 +137,44 @@ async function handlePostCron(env: Env): Promise<void> {
     const caption = getCaption(content.title.replaceAll("\n", " "), contentIndex);
     await publishCarousel(imageUrls, caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
     await updateContentIndex(env.DB, (contentIndex + 1) % allContent.length);
-    console.log(`Fallback posted: ${content.title}`);
+    console.log(`V1 fallback posted: ${content.title}`);
     return;
   }
 
-  const stored = JSON.parse(row.content_json) as ContentItem & { coverUrl: string; caption: string };
-  // 承認済みコンテンツ: 全スライドPNG生成
+  const stored = JSON.parse(row.content_json) as BaliContentV2 & { coverUrl: string };
   const timestamp = Date.now();
-  const total = getSlideCount(stored);
+  const total = getV2SlideCount(stored);
   const imageUrls: string[] = [];
   for (let i = 0; i < total; i++) {
-    const url = await generateAndStoreSingleImage(stored, i, env, "post", timestamp);
+    const url = await generateAndStoreV2Image(stored, i, env, "post", timestamp);
     imageUrls.push(url);
   }
-  await publishCarousel(imageUrls, row.caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
+  const publishedId = await publishCarousel(imageUrls, row.caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
 
   await env.DB
-    .prepare("UPDATE generated_content SET status = 'posted', posted_at = datetime('now') WHERE id = ?")
-    .bind(row.id)
+    .prepare("UPDATE generated_content SET status = 'posted', posted_at = datetime('now'), ig_media_id = ? WHERE id = ?")
+    .bind(publishedId, row.id)
     .run();
 
   await sendNotification(
-    `投稿完了: ${stored.title.replaceAll("\\n", " ")}`,
+    `投稿完了: ${stored.title}\nカテゴリ: ${row.category}`,
     env.LINE_OWNER_USER_ID,
     env.LINE_CHANNEL_ACCESS_TOKEN,
   );
-  console.log(`Posted: ${stored.title}`);
+  console.log(`V2 posted: ${stored.title} (${row.category}) ig_media_id=${publishedId}`);
+}
+
+// --- 週次Insights + 最適化 ---
+async function handleWeeklyInsightsCron(env: Env): Promise<void> {
+  console.log("Weekly insights collection started");
+
+  const metrics = await collectInsights(env.DB, env.IG_ACCESS_TOKEN);
+  console.log(`Collected insights for ${metrics.length} posts`);
+
+  const scores = await optimizeWeights(env.DB);
+  await sendWeeklyReport(scores, env.LINE_OWNER_USER_ID, env.LINE_CHANNEL_ACCESS_TOKEN);
+
+  console.log("Weekly insights and optimization complete");
 }
 
 // --- LINE Webhookハンドラー ---
@@ -156,7 +209,7 @@ async function handleLineWebhook(request: Request, env: Env): Promise<Response> 
           .prepare("UPDATE generated_content SET status = 'rejected' WHERE id = ?")
           .bind(parsed.id)
           .run();
-        await handleGenerateCron(env);
+        await handleV2GenerateCron(env);
         break;
       }
       case "skip": {
@@ -175,30 +228,6 @@ async function handleLineWebhook(request: Request, env: Env): Promise<Response> 
   });
 }
 
-// --- 既存プレビューAPI（後方互換） ---
-interface PreviewResult {
-  contentIndex: number;
-  content: { id: number; type: string; title: string; subtitle: string };
-  caption: string;
-  imageUrls: string[];
-}
-
-async function generatePreview(env: Env, indexOverride?: number): Promise<PreviewResult> {
-  const contentIndex = indexOverride ?? await getContentIndex(env.DB);
-  const content = allContent[contentIndex % allContent.length];
-  const timestamp = Date.now();
-  // カバー1枚のみPNG変換（CPU節約）
-  const coverUrl = await generateAndStoreSingleImage(content, 0, env, "preview", timestamp);
-  const caption = getCaption(content.title.replaceAll("\n", " "), contentIndex);
-
-  return {
-    contentIndex,
-    content: { id: content.id, type: content.type, title: content.title, subtitle: content.subtitle },
-    caption,
-    imageUrls: [coverUrl],
-  };
-}
-
 // --- メインエクスポート ---
 export default {
   async scheduled(
@@ -207,11 +236,21 @@ export default {
     _ctx: ExecutionContext,
   ): Promise<void> {
     const hour = new Date(controller.scheduledTime).getUTCHours();
+    const dayOfWeek = new Date(controller.scheduledTime).getUTCDay();
 
+    // 毎週月曜 UTC 2:00 (バリ時間10:00) → Insights + 最適化
+    if (dayOfWeek === 1 && hour === 2) {
+      await handleWeeklyInsightsCron(env);
+      return;
+    }
+
+    // 日次: UTC 0,8 → V2コンテンツ生成
     if (hour === 0 || hour === 8) {
-      await handleGenerateCron(env);
-    } else if (hour === 1 || hour === 10) {
-      await handlePostCron(env);
+      await handleV2GenerateCron(env);
+    }
+    // 日次: UTC 1,10 → V2投稿
+    else if (hour === 1 || hour === 10) {
+      await handleV2PostCron(env);
     }
   },
 
@@ -226,12 +265,44 @@ export default {
         status,
         headers: { "Content-Type": "application/json" },
       });
+    const html = (body: string, status = 200) =>
+      new Response(body, {
+        status,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
 
     try {
+      // --- LINE Webhook ---
       if (request.method === "POST" && url.pathname === "/line-webhook") {
         return handleLineWebhook(request, env);
       }
 
+      // --- Gallery ---
+      if (request.method === "GET" && url.pathname === "/gallery") {
+        const filter = url.searchParams.get("filter") ?? undefined;
+        return html(await renderGalleryList(env.DB, filter));
+      }
+
+      if (request.method === "GET" && url.pathname.match(/^\/gallery\/\d+$/)) {
+        const id = parseInt(url.pathname.split("/")[2], 10);
+        const page = await renderGalleryDetail(env.DB, id);
+        if (!page) return html("<p>Not found</p>", 404);
+        return html(page);
+      }
+
+      if (request.method === "POST" && url.pathname.match(/^\/gallery\/\d+\/(approve|skip)$/)) {
+        const parts = url.pathname.split("/");
+        const id = parseInt(parts[2], 10);
+        const action = parts[3];
+        const newStatus = action === "approve" ? "approved" : "skipped";
+        await env.DB
+          .prepare("UPDATE generated_content SET status = ? WHERE id = ?")
+          .bind(newStatus, id)
+          .run();
+        return Response.redirect(`${url.origin}/gallery`, 303);
+      }
+
+      // --- Status ---
       if (request.method === "GET" && url.pathname === "/status") {
         const index = await getContentIndex(env.DB);
         const row = await env.DB
@@ -243,45 +314,44 @@ export default {
         const approvedCount = await env.DB
           .prepare("SELECT COUNT(*) as count FROM generated_content WHERE status = 'approved'")
           .first<{ count: number }>();
+        const weights = await env.DB
+          .prepare("SELECT category, weight, avg_saves, total_posts FROM category_weights ORDER BY weight DESC")
+          .all<{ category: string; weight: number; avg_saves: number; total_posts: number }>();
+        const autoApprove = await getSetting(env.DB, "auto_approve");
         return json({
+          version: "v2.1",
           contentIndex: index,
-          totalContent: allContent.length,
-          nextContent: allContent[index % allContent.length].title.replaceAll("\n", " "),
+          totalFallbackContent: allContent.length,
           lastPostedAt: row?.last_posted_at,
           pendingReview: pendingCount?.count ?? 0,
           approved: approvedCount?.count ?? 0,
+          autoApprove: autoApprove === "true",
+          categoryWeights: weights.results,
         });
       }
 
-      if (request.method === "POST" && url.pathname === "/preview") {
-        const body = await request.json().catch(() => ({})) as Record<string, unknown>;
-        const indexOverride = typeof body.index === "number" ? body.index : undefined;
-        const preview = await generatePreview(env, indexOverride);
-        return json({ success: true, ...preview });
-      }
-
+      // --- Manual triggers ---
       if (request.method === "POST" && url.pathname === "/generate") {
-        await handleGenerateCron(env);
-        return json({ success: true, message: "Content generated and preview sent to LINE" });
+        await handleV2GenerateCron(env);
+        return json({ success: true, message: "V2 content generated" });
       }
 
-      if (request.method === "POST" && url.pathname === "/publish") {
-        const body = await request.json() as {
-          imageUrls: string[];
-          caption: string;
-          contentIndex: number;
-        };
-        if (!body.imageUrls || !body.caption) {
-          return json({ error: "imageUrls and caption are required." }, 400);
-        }
-        const publishedId = await publishCarousel(
-          body.imageUrls, body.caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID,
-        );
-        const nextIndex = (body.contentIndex + 1) % allContent.length;
-        await updateContentIndex(env.DB, nextIndex);
-        return json({ success: true, id: publishedId });
+      if (request.method === "POST" && url.pathname === "/collect-insights") {
+        await handleWeeklyInsightsCron(env);
+        return json({ success: true, message: "Insights collected and weights optimized" });
       }
 
+      // --- Settings ---
+      if (request.method === "POST" && url.pathname === "/settings/auto-approve") {
+        const body = await request.json() as { enabled: boolean };
+        await env.DB
+          .prepare("UPDATE ig_settings SET value = ? WHERE key = 'auto_approve'")
+          .bind(body.enabled ? "true" : "false")
+          .run();
+        return json({ success: true, autoApprove: body.enabled });
+      }
+
+      // --- R2 images ---
       if (request.method === "GET" && url.pathname.startsWith("/images/")) {
         const key = url.pathname.replace("/images/", "");
         const object = await env.IMAGES.get(key);
@@ -294,48 +364,22 @@ export default {
         });
       }
 
-      if (request.method === "GET" && url.pathname === "/content") {
-        const list = allContent.map((c) => ({
-          id: c.id, type: c.type, title: c.title.replaceAll("\n", " "),
-        }));
-        return json({ total: list.length, content: list });
-      }
-
-      if (request.method === "POST" && url.pathname === "/preview-all") {
-        const results: { index: number; title: string; svg: string }[] = [];
-        for (let i = 0; i < allContent.length; i++) {
-          const content = allContent[i];
-          const svg = await generateFirstSlideSvg(content);
-          results.push({
-            index: i,
-            title: content.title.replaceAll("\n", " "),
-            svg,
-          });
-        }
-        return json(results);
-      }
-
-      // --- Knowledge DB API ---
+      // --- Knowledge DB API (unchanged) ---
       if (request.method === "GET" && url.pathname === "/api/knowledge") {
         const category = url.searchParams.get("category");
         const tagsParam = url.searchParams.get("tags");
         const limit = parseInt(url.searchParams.get("limit") || "20");
-
         const categories = category ? category.split(",") : [];
         const tags = tagsParam ? tagsParam.split(",") : [];
 
         if (categories.length === 0) {
-          // カテゴリ未指定: 全カテゴリの件数を返す
           const counts = await env.DB
             .prepare("SELECT category, COUNT(*) as count FROM knowledge_entries GROUP BY category")
             .all<{ category: string; count: number }>();
           const guardrailCount = await env.DB
             .prepare("SELECT COUNT(*) as count FROM content_guardrails")
             .first<{ count: number }>();
-          return json({
-            categories: counts.results,
-            guardrails: guardrailCount?.count ?? 0,
-          });
+          return json({ categories: counts.results, guardrails: guardrailCount?.count ?? 0 });
         }
 
         const entries = await fetchKnowledge(env.DB, categories, tags, limit);
@@ -379,17 +423,28 @@ export default {
         return json({ success: true, id: result.meta.last_row_id });
       }
 
+      // --- V1 legacy endpoints ---
+      if (request.method === "GET" && url.pathname === "/content") {
+        const list = allContent.map((c) => ({
+          id: c.id, type: c.type, title: c.title.replaceAll("\n", " "),
+        }));
+        return json({ total: list.length, content: list });
+      }
+
       return json({
         endpoints: [
-          "GET  /status       - 現在の状態",
-          "GET  /content      - 既存ネタリスト",
-          "POST /preview      - 既存データでプレビュー生成",
-          "POST /preview-all  - 全コンテンツ1枚目プレビュー(SVG)",
-          "POST /generate     - AI生成+LINEプレビュー送信",
-          "POST /publish      - 手動投稿",
-          "POST /line-webhook - LINE Webhook",
-          "GET  /api/knowledge - 知識エントリ取得(?category=X&tags=Y&platform=Z&limit=N)",
-          "POST /api/knowledge - 知識エントリ追加(JSON: category,title,content,tags?,source?,reliability?)",
+          "GET  /status             - 現在の状態（v2.1）",
+          "GET  /gallery            - コンテンツギャラリー",
+          "GET  /gallery/:id        - コンテンツ詳細",
+          "POST /gallery/:id/approve - 承認",
+          "POST /gallery/:id/skip   - スキップ",
+          "POST /generate           - V2コンテンツ手動生成",
+          "POST /collect-insights   - Insights手動収集+最適化",
+          "POST /settings/auto-approve - 自動承認切替 {enabled:bool}",
+          "POST /line-webhook       - LINE Webhook",
+          "GET  /api/knowledge      - 知識エントリ取得",
+          "POST /api/knowledge      - 知識エントリ追加",
+          "GET  /content            - V1ネタリスト（レガシー）",
         ],
       }, 404);
     } catch (err) {
