@@ -2,8 +2,8 @@ import { jstNow } from './utils.js';
 
 export type XPostType = 'single' | 'thread' | 'reply';
 export type XPostStatus = 'draft' | 'scheduled' | 'posting' | 'posted' | 'failed';
-export type XPostCategory = 'tips' | 'case_study' | 'cost_comparison' | 'tool_guide' | 'engagement';
-export type XPostCtaType = 'none' | 'line' | 'coconala' | 'both';
+export type XPostCategory = 'ai_news' | 'ai_tips' | 'ai_insight' | 'ai_tutorial' | 'engagement';
+export type XPostCtaType = 'none' | 'line';
 
 export interface XPost {
   id: string;
