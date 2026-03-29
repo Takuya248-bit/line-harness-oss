@@ -177,17 +177,16 @@ xPosts.post('/api/x-posts/generate', async (c) => {
       if (!apiKey) {
         return c.json({ success: false, error: 'ANTHROPIC_API_KEY not configured' }, 500);
       }
-      const content = await generateAIContent(
+      const { content } = await generateAIContent(
         c.env.DB,
         apiKey,
-        (body.category || 'tips') as XPostCategory,
+        (body.category || 'ai_tips') as XPostCategory,
       );
       return c.json({ success: true, data: { content, aiGenerated: true } });
     }
 
     const result = await generateXPostContent(c.env.DB, {
       category: body.category as XPostCategory | undefined,
-      withCta: body.ctaType as XPostCtaType | undefined,
     });
     return c.json({ success: true, data: result });
   } catch (err) {
