@@ -104,12 +104,17 @@ async function generateFromKnowledgeDB(
 
   const titles = CATEGORY_TITLES[category] ?? { catchCopy: "のおすすめ！", mainTitle: "スポット", countLabel: "5選" };
 
+  function extractOneLiner(content: string): string {
+    const firstSentence = content.split(/[。！\n]/)[0];
+    return firstSentence.length <= 15 ? firstSentence : firstSentence.slice(0, 15);
+  }
+
   const spots: SpotInfo[] = selected.map(entry => ({
     name: entry.title,
     area: area,
     description: entry.content.slice(0, 150),
     hours: "",
-    oneLiner: entry.title.slice(0, 15),
+    oneLiner: extractOneLiner(entry.content),
   }));
 
   return {
