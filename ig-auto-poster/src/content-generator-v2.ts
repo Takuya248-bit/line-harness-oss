@@ -1,4 +1,4 @@
-import { searchPhotosForSpots } from "./unsplash";
+import { searchPhotosForSpots } from "./photo-search";
 import { fetchKnowledge, incrementUseCount } from "./knowledge";
 import type { BaliCoverData } from "./templates/bali-cover";
 import type { BaliSpotData } from "./templates/bali-spot";
@@ -147,7 +147,7 @@ function generateCaption(topic: GeneratedTopic, attributions: string[]): string 
   const hashtags = `#バリ島 #バリ旅行 ${catTag} ${areaTag} #バリ島留学 #バリリンガル #海外旅行 #インドネシア #バリ島情報 #バリ島おすすめ`;
 
   const attrLine = attributions.length > 0
-    ? `\n\n📷 ${attributions.join(" / ")}`
+    ? `\n\n📷 ${topic.spots.map(s => s.name).join(" / ")}`
     : "";
 
   return `${topic.catchCopy}${topic.mainTitle}${topic.countLabel}\n\n${spotList}\n\n保存してバリ旅行の参考にしてね！\n友達にもシェアしてね\n\n${hashtags}${attrLine}`;
@@ -158,6 +158,7 @@ const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1537996194471-e657df97
 export async function generateBaliContent(
   unsplashKey: string,
   db: D1Database,
+  serperKey: string,
 ): Promise<BaliContentV2> {
   // 1. カテゴリ選択（比率ベース）
   const category = await selectCategory(db);
@@ -172,10 +173,12 @@ export async function generateBaliContent(
     await incrementUseCount(db, entries.map((e) => e.id));
   }
 
-  // 4. Unsplashで写真取得
+  // 4. Serper優先 + Unsplashフォールバックで写真取得
   const photos = await searchPhotosForSpots(
     topic.spots.map((s) => ({ name: s.name, area: s.area })),
     topic.area || topic.mainTitle,
+    category,
+    serperKey,
     unsplashKey,
   );
 

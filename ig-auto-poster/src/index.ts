@@ -21,6 +21,7 @@ export interface Env {
   LINE_CHANNEL_ACCESS_TOKEN: string;
   LINE_OWNER_USER_ID: string;
   UNSPLASH_ACCESS_KEY: string;
+  SERPER_API_KEY: string;
 }
 
 // --- 既存データ用ヘルパー（フォールバック） ---
@@ -84,6 +85,7 @@ async function handleV2GenerateCron(env: Env): Promise<void> {
   const content = await generateBaliContent(
     env.UNSPLASH_ACCESS_KEY,
     env.DB,
+    env.SERPER_API_KEY,
   );
   const timestamp = Date.now();
 

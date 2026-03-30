@@ -50,6 +50,7 @@ export function buildBaliCoverNode(data: BaliCoverData): SatoriNode {
           borderRadius: 12,
           padding: "40px 60px",
           gap: 12,
+          backgroundColor: "rgba(0,0,0,0.4)",
         },
       },
         h("div", {

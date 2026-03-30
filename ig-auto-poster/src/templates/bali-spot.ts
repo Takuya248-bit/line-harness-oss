@@ -12,13 +12,13 @@ export interface BaliSpotData {
 
 export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
   const descLines = wrapText(data.description, {
-    fontSize: 34,
+    fontSize: 30,
     fontWeight: 700,
     color: "white",
     fontFamily: FONT_FAMILY,
     textShadow: "0 2px 6px rgba(0,0,0,0.7)",
-    lineHeight: 1.5,
-  }, 22);
+    lineHeight: 1.6,
+  }, 24);
 
   const nameLines = wrapText(data.spotName, {
     fontSize: 56,
@@ -49,7 +49,7 @@ export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
         display: "flex",
         flexDirection: "column",
         padding: "32px 40px 40px 40px",
-        background: "linear-gradient(transparent, rgba(0,0,0,0.7) 20%)",
+        background: "linear-gradient(transparent, rgba(0,0,0,0.85) 10%)",
       },
     },
       h("div", {
