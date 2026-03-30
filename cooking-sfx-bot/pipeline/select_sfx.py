@@ -19,6 +19,13 @@ EVENT_VOLUME = {
     "text_emphasis": 0, "reaction": 0,
 }
 
+# デフォルトのリピート上限（カテゴリ別）
+DEFAULT_MAX_REPEATS = {
+    "mixing": 1,     # かき混ぜは1回まで（過剰になりやすい）
+    "cutting": 2,
+    "pouring": 1,
+}
+
 # misc をフォールバックに使うときの音量
 FALLBACK_VOLUME = 0
 MIN_INTERVAL = 1.5
@@ -50,7 +57,26 @@ def _can_place(timeline, ts):
     return (ts - timeline[-1]["timestamp"]) >= MIN_INTERVAL
 
 
-def select_sfx(events, sfx_dir, scene_changes=None, video_duration=None):
+def _get_max_repeats(event_type, learned_rules):
+    """学習ルールまたはデフォルトからリピート上限を取得。"""
+    category = EVENT_TO_CATEGORY.get(event_type, "")
+    # 学習ルール優先
+    if event_type in learned_rules and "max_repeats" in learned_rules[event_type]:
+        return learned_rules[event_type]["max_repeats"]
+    if category in learned_rules and "max_repeats" in learned_rules[category]:
+        return learned_rules[category]["max_repeats"]
+    # デフォルト
+    return DEFAULT_MAX_REPEATS.get(category, 2)
+
+
+def _get_volume(event_type, base_vol, learned_rules):
+    """学習ルールで音量を調整。"""
+    if event_type in learned_rules and "volume_adjust" in learned_rules[event_type]:
+        return learned_rules[event_type]["volume_adjust"]
+    return base_vol
+
+
+def select_sfx(events, sfx_dir, scene_changes=None, video_duration=None, learned_rules=None):
     """シーン分類+シーン切り替えからSEタイムラインを生成する。
 
     Args:
@@ -58,7 +84,11 @@ def select_sfx(events, sfx_dir, scene_changes=None, video_duration=None):
         sfx_dir: SE素材ルート
         scene_changes: detect_scene_changesの出力（シーン切り替えポイント）
         video_duration: 動画の長さ（秒）
+        learned_rules: 学習済みルール辞書（LearningStore.load_rules()の返値）
     """
+    if learned_rules is None:
+        learned_rules = {}
+
     timeline = []
     recent_sfx = []
 
@@ -66,14 +96,15 @@ def select_sfx(events, sfx_dir, scene_changes=None, video_duration=None):
     for event in events:
         if event.get("confidence", 1.0) < CONFIDENCE_THRESHOLD:
             continue
-        category = EVENT_TO_CATEGORY.get(event.get("event", ""))
+        event_type = event.get("event", "")
+        category = EVENT_TO_CATEGORY.get(event_type)
         if not category:
             continue
 
         start = event["start"]
         end = event["end"]
         duration = end - start
-        vol = EVENT_VOLUME.get(event.get("event", ""), 0)
+        vol = _get_volume(event_type, EVENT_VOLUME.get(event_type, 0), learned_rules)
 
         if not _can_place(timeline, start):
             continue
@@ -87,16 +118,19 @@ def select_sfx(events, sfx_dir, scene_changes=None, video_duration=None):
         timeline.append({"timestamp": start, "sfx": sfx, "volume_db": vol})
         recent_sfx.append(sfx)
 
-        # 長いシーン（3秒以上）→ リピート
-        if duration >= 3.0:
+        # 長いシーン（3秒以上）→ リピート（学習ルールで上限制御）
+        max_repeats = _get_max_repeats(event_type, learned_rules)
+        if duration >= 3.0 and max_repeats > 0:
             repeat_interval = 2.0
+            repeat_count = 0
             t = start + repeat_interval
-            while t < end - 1.0:
+            while t < end - 1.0 and repeat_count < max_repeats:
                 if _can_place(timeline, t):
                     sfx2 = _pick_sfx(sfx_dir, category, recent_sfx)
                     if sfx2:
                         timeline.append({"timestamp": round(t, 2), "sfx": sfx2, "volume_db": vol - 1})
                         recent_sfx.append(sfx2)
+                        repeat_count += 1
                 t += repeat_interval
 
     # --- Phase 2: シーン切り替えポイントでSEがない箇所を埋める ---

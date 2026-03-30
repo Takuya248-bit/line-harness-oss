@@ -21,6 +21,7 @@ from pipeline.run_pipeline import run_pipeline, rerender
 from session import SessionManager
 from adjust import parse_adjustment, apply_operations
 from sfx_manager import list_all_sfx, add_sfx, resolve_category
+from learning import LearningStore
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,7 +35,10 @@ SESSIONS_DIR = os.environ.get("SESSIONS_DIR", "/tmp/sessions")
 
 parser = WebhookParser(CHANNEL_SECRET)
 config = Configuration(access_token=CHANNEL_TOKEN)
+LEARNING_DIR = os.environ.get("LEARNING_DIR", "/tmp/learning")
+
 sessions = SessionManager(SESSIONS_DIR)
+learning = LearningStore(LEARNING_DIR)
 user_states: dict[str, dict] = {}
 
 
@@ -73,7 +77,7 @@ def process_video_async(user_id: str, message_id: str):
             f.write(content)
 
         output_dir = os.path.join(user_dir, "out")
-        result = run_pipeline(video_path, SFX_DIR, output_dir)
+        result = run_pipeline(video_path, SFX_DIR, output_dir, learned_rules=learning.load_rules())
 
         sessions.save(user_id, {
             "video_path": video_path,
@@ -172,12 +176,25 @@ async def webhook(request: Request):
                     messages=[TextMessage(text=sfx_list)],
                 ))
 
+            elif text == "学習状況":
+                stats = learning.get_stats()
+                api.reply_message(ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=stats)],
+                ))
+
             else:
                 session = sessions.load(user_id)
                 if session:
                     try:
                         ops = parse_adjustment(text, session["timeline"], SFX_DIR)
                         if ops:
+                            # 学習データに記録
+                            learning.record_adjustment(
+                                user_id, ops,
+                                session["timeline"],
+                                session.get("events", []),
+                            )
                             new_timeline = apply_operations(session["timeline"], ops, SFX_DIR)
                             session["timeline"] = new_timeline
                             sessions.save(user_id, session)
