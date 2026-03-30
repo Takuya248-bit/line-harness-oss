@@ -76,6 +76,30 @@ def _get_volume(event_type, base_vol, learned_rules):
     return base_vol
 
 
+MAX_EVENT_DURATION = 3.0  # イベント区間の最大長（超えたら分割）
+
+
+def _split_long_events(events):
+    """3秒超のイベントを分割する（classify_scenesのバックストップ）。"""
+    result = []
+    for event in events:
+        duration = event["end"] - event["start"]
+        if duration <= MAX_EVENT_DURATION:
+            result.append(event)
+        else:
+            t = event["start"]
+            while t < event["end"]:
+                end = min(t + MAX_EVENT_DURATION, event["end"])
+                result.append({
+                    "start": round(t, 2),
+                    "end": round(end, 2),
+                    "event": event.get("event", ""),
+                    "confidence": event.get("confidence", 1.0),
+                })
+                t = end
+    return result
+
+
 def select_sfx(events, sfx_dir, scene_changes=None, video_duration=None, learned_rules=None):
     """シーン分類+シーン切り替えからSEタイムラインを生成する。
 
@@ -89,10 +113,13 @@ def select_sfx(events, sfx_dir, scene_changes=None, video_duration=None, learned
     if learned_rules is None:
         learned_rules = {}
 
+    events = _split_long_events(events)
     timeline = []
     recent_sfx = []
+    category_count = {}  # 同カテゴリの連続配置を追跡
 
     # --- Phase 1: 分類結果からSE配置 ---
+    prev_event_type = None
     for event in events:
         if event.get("confidence", 1.0) < CONFIDENCE_THRESHOLD:
             continue
@@ -100,6 +127,16 @@ def select_sfx(events, sfx_dir, scene_changes=None, video_duration=None, learned
         category = EVENT_TO_CATEGORY.get(event_type)
         if not category:
             continue
+
+        # 同カテゴリの連続区間はmax_repeats+1回まで（初回+リピート分）
+        if event_type == prev_event_type:
+            max_rep = _get_max_repeats(event_type, learned_rules)
+            category_count[event_type] = category_count.get(event_type, 1) + 1
+            if category_count[event_type] > max_rep + 1:
+                continue
+        else:
+            prev_event_type = event_type
+            category_count[event_type] = 1
 
         start = event["start"]
         end = event["end"]
