@@ -30,6 +30,12 @@ curl -s -X POST https://ig-auto-poster.archbridge24.workers.dev/api/knowledge \
   -d '{"category":"...","subcategory":"...","title":"...","content":"...","tags":"...","source":"...","reliability":"..."}'
 ```
 
+## 投入ルール
+
+- 3件以下の単発投入はエージェント起動しない。Bashで直接curl実行
+- 4件以上はJSONファイルに書き出し→一括投入スクリプトで実行
+- エージェント起動が許容されるのは「リサーチ+投入」セットの場合のみ
+
 ## カテゴリ体系（知識の性質ベース、事業非依存）
 
 | category | 何の知識か | subcategory例 |
