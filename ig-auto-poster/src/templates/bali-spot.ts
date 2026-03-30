@@ -42,14 +42,25 @@ export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
         paddingTop: 16,
         gap: 4,
       },
-    }, ...nameLines),
+    },
+      h("div", {
+        style: {
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          backgroundColor: "rgba(0,0,0,0.4)",
+          borderRadius: 12,
+          padding: "8px 24px",
+        },
+      }, ...nameLines),
+    ),
     h("div", { style: { display: "flex", flex: 1 } }),
     h("div", {
       style: {
         display: "flex",
         flexDirection: "column",
         padding: "32px 40px 40px 40px",
-        background: "linear-gradient(transparent, rgba(0,0,0,0.85) 10%)",
+        background: "linear-gradient(transparent, rgba(0,0,0,0.9) 15%)",
       },
     },
       h("div", {

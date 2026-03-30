@@ -176,7 +176,7 @@ export async function generateBaliContent(
   // 4. Serper優先 + Unsplashフォールバックで写真取得
   const photos = await searchPhotosForSpots(
     topic.spots.map((s) => ({ name: s.name, area: s.area })),
-    topic.area || topic.mainTitle,
+    topic.spots[0]?.name ?? topic.area,
     category,
     serperKey,
     unsplashKey,

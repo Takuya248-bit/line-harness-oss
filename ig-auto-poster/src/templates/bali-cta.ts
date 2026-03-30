@@ -16,15 +16,17 @@ export function buildBaliCtaNode(): SatoriNode {
         padding: "0 60px",
       },
     },
-      h("span", {
+      h("div", {
         style: {
-          fontSize: 48,
-          fontWeight: 900,
-          color: "white",
-          fontFamily: FONT_FAMILY,
-          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 4,
         },
-      }, "保存してバリ旅行の\n参考にしてね！"),
+      },
+        h("span", { style: { fontSize: 48, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY, textAlign: "center" } }, "保存してバリ旅行の"),
+        h("span", { style: { fontSize: 48, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY, textAlign: "center" } }, "参考にしてね！"),
+      ),
       h("div", {
         style: {
           display: "flex",
@@ -44,15 +46,17 @@ export function buildBaliCtaNode(): SatoriNode {
           },
         }, "フォローで最新情報をGET"),
       ),
-      h("span", {
+      h("div", {
         style: {
-          fontSize: 30,
-          fontWeight: 700,
-          color: "rgba(255,255,255,0.8)",
-          fontFamily: FONT_FAMILY,
-          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 4,
         },
-      }, "バリ島のおすすめスポットを\n毎日配信中！"),
+      },
+        h("span", { style: { fontSize: 30, fontWeight: 700, color: "rgba(255,255,255,0.8)", fontFamily: FONT_FAMILY, textAlign: "center" } }, "バリ島のおすすめスポットを"),
+        h("span", { style: { fontSize: 30, fontWeight: 700, color: "rgba(255,255,255,0.8)", fontFamily: FONT_FAMILY, textAlign: "center" } }, "毎日配信中！"),
+      ),
     ),
   );
 }

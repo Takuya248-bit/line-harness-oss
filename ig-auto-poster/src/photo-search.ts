@@ -30,8 +30,16 @@ async function searchSerper(
   const data = await res.json() as { images?: { imageUrl: string; title: string; source: string }[] };
   if (!data.images || data.images.length === 0) return null;
 
-  // ランダムに上位5件から選択
-  const img = data.images[Math.floor(Math.random() * Math.min(5, data.images.length))];
+  // ブロックドメインをスキップ
+  const BLOCKED_DOMAINS = ["instagram.com", "facebook.com", "fbsbx.com", "fbcdn.net", "pinimg.com"];
+  function isBlockedUrl(url: string): boolean {
+    return BLOCKED_DOMAINS.some(d => url.includes(d));
+  }
+  const validImages = data.images.filter(img => !isBlockedUrl(img.imageUrl));
+  if (validImages.length === 0) return null;
+
+  // ランダムに上位3件から選択
+  const img = validImages[Math.floor(Math.random() * Math.min(3, validImages.length))];
   return {
     imageUrl: img.imageUrl,
     attribution: img.source || "",

@@ -152,6 +152,7 @@ export function photoBackground(
         width: WIDTH,
         height: HEIGHT,
         position: "relative",
+        background: "rgba(0,0,0,0.3)",
       },
     }, ...children),
   );
