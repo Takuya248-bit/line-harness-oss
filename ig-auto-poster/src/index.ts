@@ -87,27 +87,22 @@ async function handleV2GenerateCron(env: Env): Promise<void> {
     env.DB,
     env.SERPER_API_KEY,
   );
-  const timestamp = Date.now();
 
-  // プレビュー用カバー1枚
-  const coverUrl = await generateAndStoreV2Image(content, 0, env, "preview", timestamp);
-
-  // DBに保存
+  // DBに保存（PNG生成なし）
+  const autoApprove = await getSetting(env.DB, "auto_approve");
   await env.DB
     .prepare("INSERT INTO generated_content (template_type, content_json, caption, status, category) VALUES ('bali_v2', ?, ?, ?, ?)")
     .bind(
-      JSON.stringify({ ...content, coverUrl }),
+      JSON.stringify(content),
       content.caption,
-      (await getSetting(env.DB, "auto_approve")) === "true" ? "approved" : "pending_review",
+      autoApprove === "true" ? "approved" : "pending_review",
       content.category,
     )
     .run();
 
-  const autoApprove = await getSetting(env.DB, "auto_approve");
   if (autoApprove !== "true") {
-    // Phase 1: LINE通知（ギャラリーへ誘導）
     await sendNotification(
-      `新しい投稿が生成されました\nテーマ: ${content.title}\nカテゴリ: ${content.category}\nギャラリーで確認: /gallery`,
+      `新しい投稿が生成されました\nテーマ: ${content.title}\nカテゴリ: ${content.category}\nギャラリーで確認してください`,
       env.LINE_OWNER_USER_ID,
       env.LINE_CHANNEL_ACCESS_TOKEN,
     );
