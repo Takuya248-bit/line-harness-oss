@@ -3,9 +3,11 @@ from __future__ import annotations
 import os
 import tempfile
 import logging
+import hashlib
 import threading
 
 from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import FileResponse
 from linebot.v3 import WebhookParser
 from linebot.v3.messaging import (
     ApiClient, Configuration, MessagingApi, MessagingApiBlob,
@@ -63,23 +65,26 @@ def process_video_async(user_id: str, message_id: str):
         blob_api = get_blob_api()
         content = blob_api.get_message_content(message_id)
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            video_path = os.path.join(tmpdir, "input.mp4")
-            with open(video_path, "wb") as f:
-                f.write(content)
+        # 動画を永続ディレクトリに保存（再生成時に必要）
+        user_dir = os.path.join(SESSIONS_DIR, f"video_{user_id}")
+        os.makedirs(user_dir, exist_ok=True)
+        video_path = os.path.join(user_dir, "input.mp4")
+        with open(video_path, "wb") as f:
+            f.write(content)
 
-            output_dir = os.path.join(tmpdir, "out")
-            result = run_pipeline(video_path, SFX_DIR, output_dir)
+        output_dir = os.path.join(user_dir, "out")
+        result = run_pipeline(video_path, SFX_DIR, output_dir)
 
-            sessions.save(user_id, {
-                "video_path": video_path,
-                "timeline": result["timeline"],
-                "duration": result["duration"],
-                "events": result["events"],
-            })
+        sessions.save(user_id, {
+            "video_path": video_path,
+            "timeline": result["timeline"],
+            "duration": result["duration"],
+            "events": result["events"],
+        })
 
-            timeline_text = format_timeline(result["timeline"])
-            push_text(user_id, f"SE挿入完了!\n\n{timeline_text}\n\n調整したい場合はメッセージで指示してください。")
+        timeline_text = format_timeline(result["timeline"])
+        dl_url = get_download_url(user_id)
+        push_text(user_id, f"SE挿入完了!\n\nダウンロード:\n{dl_url}\n\n{timeline_text}\n\n調整したい場合はメッセージで指示してください。")
 
     except Exception as e:
         logger.exception("Video processing failed")
@@ -182,10 +187,12 @@ async def webhook(request: Request):
                             ))
                             def _rerender():
                                 try:
-                                    with tempfile.TemporaryDirectory() as tmpdir:
-                                        result = rerender(session["video_path"], new_timeline, session["duration"], tmpdir)
-                                        tl = format_timeline(new_timeline)
-                                        push_text(user_id, f"更新しました!\n\n{tl}")
+                                    output_dir = os.path.join(SESSIONS_DIR, f"video_{user_id}", "out")
+                                    os.makedirs(output_dir, exist_ok=True)
+                                    result = rerender(session["video_path"], new_timeline, session["duration"], output_dir)
+                                    tl = format_timeline(new_timeline)
+                                    dl_url = get_download_url(user_id)
+                                    push_text(user_id, f"更新しました!\n\nダウンロード:\n{dl_url}\n\n{tl}")
                                 except Exception as e:
                                     push_text(user_id, f"再生成エラー: {str(e)[:100]}")
                             threading.Thread(target=_rerender).start()
@@ -207,6 +214,27 @@ async def webhook(request: Request):
                     ))
 
     return {"status": "ok"}
+
+
+@app.get("/download/{token}")
+async def download_video(token: str):
+    """トークンで動画をダウンロード"""
+    # tokenからuser_dirを逆引き
+    for name in os.listdir(SESSIONS_DIR):
+        if name.startswith("video_"):
+            user_id = name.replace("video_", "")
+            expected = hashlib.md5(user_id.encode()).hexdigest()[:12]
+            if token == expected:
+                video_path = os.path.join(SESSIONS_DIR, name, "out", "output.mp4")
+                if os.path.exists(video_path):
+                    return FileResponse(video_path, media_type="video/mp4", filename="se_output.mp4")
+    raise HTTPException(status_code=404, detail="Not found")
+
+
+def get_download_url(user_id: str) -> str:
+    token = hashlib.md5(user_id.encode()).hexdigest()[:12]
+    host = os.environ.get("PUBLIC_URL", "")
+    return f"{host}/download/{token}"
 
 
 @app.get("/health")

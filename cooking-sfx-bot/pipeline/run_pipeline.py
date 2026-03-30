@@ -31,7 +31,7 @@ def run_pipeline(video_path: str, sfx_dir: str, output_dir: str) -> dict:
         frames = extract_frames(video_path, frames_dir, fps=4, width=128)
         scene_changes = detect_scene_changes(frames, fps=4, threshold=25)
         events = classify_scenes(frames, fps=4)
-        timeline = select_sfx(events, sfx_dir)
+        timeline = select_sfx(events, sfx_dir, scene_changes=scene_changes, video_duration=duration)
 
     sfx_wav = os.path.join(output_dir, "sfx_track.wav")
     render_sfx_track(timeline, duration, sfx_wav)

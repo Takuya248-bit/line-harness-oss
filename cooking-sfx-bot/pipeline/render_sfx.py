@@ -58,6 +58,9 @@ def merge_video_sfx(video_path: str, sfx_wav: str, output_mp4: str, sfx_volume_d
         f"[1:a]volume={sfx_volume_db}dB[se];"
         f"[0:a][se]amix=inputs=2:duration=first:normalize=0[aout]",
         "-map", "0:v", "-map", "[aout]",
-        "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", output_mp4,
+        "-c:v", "libx264", "-crf", "28", "-preset", "fast",
+        "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
+        output_mp4,
     ], capture_output=True, check=True)
     return output_mp4

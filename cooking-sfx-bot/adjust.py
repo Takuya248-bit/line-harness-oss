@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import json
 import os
-import google.generativeai as genai
+
+import anthropic
 
 ADJUST_PROMPT = """あなたはSEタイムライン編集アシスタントです。
 ユーザーの指示をタイムライン操作に変換してください。
@@ -42,8 +43,8 @@ def list_sfx_files(sfx_dir: str) -> str:
     return "\n".join(lines)
 
 def parse_adjustment(instruction: str, timeline: list[dict], sfx_dir: str) -> list[dict]:
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-    model = genai.GenerativeModel("gemini-2.0-flash")
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    client = anthropic.Anthropic(api_key=api_key)
     display_timeline = []
     for entry in timeline:
         display_timeline.append({
@@ -56,8 +57,12 @@ def parse_adjustment(instruction: str, timeline: list[dict], sfx_dir: str) -> li
         sfx_list=list_sfx_files(sfx_dir),
         instruction=instruction,
     )
-    response = model.generate_content(prompt)
-    text = response.text.strip()
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = response.content[0].text.strip()
     if text.startswith("```"):
         text = text.split("\n", 1)[1].rsplit("```", 1)[0]
     result = json.loads(text)
