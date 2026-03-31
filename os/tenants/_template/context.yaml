@@ -1,0 +1,20 @@
+# テナントコンテキストテンプレート
+# 新事業追加時: cp -r os/tenants/_template os/tenants/{事業名}
+
+business:
+  name: ""          # 事業名
+  type: ""          # 事業種別（語学学校, LINE構築代行, オンライン講座 等）
+  location: ""      # 拠点
+  channels: []      # [line, instagram, web, email]
+  url: ""           # メインURL
+
+pricing:
+  # 事業固有の料金体系を定義
+
+faq:
+  # - q: ""
+  #   a: ""
+
+prohibited:
+  # audit.tsで検出する禁止ワード
+  # - "旧ブランド名"

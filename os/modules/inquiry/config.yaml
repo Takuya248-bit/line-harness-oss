@@ -1,0 +1,30 @@
+# inquiry モジュールデフォルト設定
+# テナント固有値は os/tenants/{事業名}/inquiry.yaml で上書き
+
+module: inquiry
+description: "問い合わせ対応。入力解析→コンテキスト取得→返信ドラフト生成"
+
+# デフォルトトーン（テナントで上書き）
+tone:
+  style: "丁寧語ベース"
+  emoji: "最小限"
+  approach: "質問には即答。提案は1つに絞る"
+
+# パイプライン設定
+pipeline:
+  approval_required: true    # 送信前に人間確認
+  knowledge_auto_save: true  # 対応後に知識DBへ自動投入
+  archive: true              # notes/に記録
+
+# 返信フォーマット
+output:
+  format: "テキスト + CTA1つ"
+  max_length: 500  # 文字数目安
+  cta_required: true
+
+# 知識DB参照カテゴリ
+knowledge_categories:
+  - people      # 顧客の声・FAQ
+  - case        # 事例・実績
+  - locale      # 地域情報
+  - method      # ノウハウ

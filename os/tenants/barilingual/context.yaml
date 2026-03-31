@@ -1,0 +1,133 @@
+# バリリンガル事業コンテキスト
+# 業務OSのテナント設定。全モジュールがこのファイルを参照する。
+
+business:
+  name: バリリンガル
+  type: 語学学校
+  location: バリ島チャングー
+  channels: [line, instagram, web]
+  url: https://balilingual.pages.dev
+
+# 料金（税込・円）
+pricing:
+  enrollment_fee: 30000  # 入学金（別途）
+  included: [授業料, 食事(朝/昼), 空港送迎, 卒業証書, 学習コミュニティ, カリキュラム相談, 移住キャリア相談, ツアーイベント紹介]
+  not_included: [入学金, 航空券, ビザ代, 現地お小遣い]
+
+  plans:
+    single:  # 1人部屋
+      1w: 119800
+      2w: 219800
+      3w: 289000
+      4w: 349800
+      5w: 429800
+      6w: 499800
+      7w: 559000
+      8w: 629000
+      12w: 899000
+      16w: 1149000
+      20w: 1390000
+      24w: 1620000
+    pair:  # ペア留学（2人以上）
+      1w: 98000
+      2w: 189000
+      3w: 249000
+      4w: 320000
+      8w: 539000
+      12w: 768000
+      16w: 980000
+      24w: 1370000
+    external:  # 外泊（自己手配宿泊）
+      1w: 85000
+      2w: 163000
+      3w: 210000
+      4w: 246000
+      8w: 435000
+      12w: 612000
+      16w: 772000
+      24w: 1058000
+
+  highlights:
+    cheapest: "外泊1週間 85,000円（宿泊は自己手配）"
+    popular: "1人部屋4週間 349,800円"
+    pair_appeal: "2人以上で割安"
+
+  options:
+    surfing: "1回8,000円（チケット制、5回4万円等）"
+
+# 授業
+lessons:
+  daily_classes: 4  # 50分x4コマ
+  format: "マンツーマン3コマ + グループ1コマ（最大3名）"
+  instructors: "インドネシア人講師（授業中は日本語なし・英語漬け）"
+  schedule: "月〜金 9:00〜17:00"
+  level: "初級・初心者からOK"
+  graduates: "200名以上"
+
+# コース
+courses:
+  - name: 日常英会話
+    target: "英語をほぼ使ってこなかった方、旅行・移住希望者"
+  - name: TOEIC対策
+    target: "就職・転職でTOEICスコアが必要な方"
+    goal: "3ヶ月集中で200点アップ"
+  - name: TOEFL対策
+    target: "海外大学・大学院進学希望者"
+  - name: 英検対策
+    target: "準2級〜1級が必要な方"
+  - name: ワーホリ準備
+    target: "ワーキングホリデー渡航希望者"
+    durations: [4w, 8w, 12w]
+  - name: サーフィン×英語
+    target: "サーフィン初心者〜、チャングーエリア"
+    best_season: "4〜10月（乾季）、特に5〜9月"
+  - name: ヨガ×英語（RYT200）
+    target: "ヨガインストラクター資格取得希望者"
+    certification: "全米ヨガアライアンス対応200時間"
+  - name: ピラティス×英語
+    target: "ピラティス愛好者"
+  - name: 副業スキル×英語
+    target: "副業スキル習得希望者"
+    skills: [動画編集, SNS運用, Webライティング, グラフィックデザイン]
+  - name: 親子留学
+    target: "お子さんと一緒に留学したい方"
+
+# 宿泊
+accommodation:
+  - plan: シングル寮（1人部屋）
+    meals: 平日3食付き
+    note: 学校と同敷地
+  - plan: ペア寮（2人部屋）
+    meals: 平日3食付き
+    note: 費用削減
+  - plan: 外泊プラン
+    meals: 平日ランチのみ
+    note: 自己手配
+
+# FAQ
+faq:
+  - q: 費用は？
+    a: "85,000円〜。期間・コースで変動。見積もり無料"
+  - q: 英語力は？
+    a: "初心者歓迎。レベル別クラス分け"
+  - q: 期間は？
+    a: "最短1週間〜。1〜2週間が人気"
+  - q: ビザは？
+    a: "30日以内なら不要（日本国籍）"
+  - q: 治安は？
+    a: "バリ島は観光地で比較的安全"
+  - q: 対象年齢は？
+    a: "18歳以上（上限なし）"
+
+# 禁止事項（audit.tsで検証）
+prohibited:
+  - "スタッフ常駐"  # 寮にスタッフ常駐していない
+  - "ココナラ"       # CTA削除済み
+  - "9,500円"        # 旧料金
+  - "LINE Harness"   # ブランド名はLカスタム
+
+# 診断ツール・シミュレーター
+tools:
+  diagnose: "https://balilingual.pages.dev/diagnose.html"
+  simulate: "https://balilingual.pages.dev/simulate.html"
+  courses: "https://balilingual.pages.dev/courses"

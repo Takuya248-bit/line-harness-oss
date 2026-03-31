@@ -1,0 +1,193 @@
+# バリリンガル問い合わせモジュール設定
+# os/modules/inquiry/config.yaml のデフォルトをテナント固有値で上書き
+
+tone:
+  style: "親しみやすいが信頼感あり。フランクすぎない丁寧語ベース"
+  emoji: "最小限（LINEらしさ維持）"
+  exclamation: true
+  approach: "押し売りしない。相手の状況を聞き出す→提案"
+  uncertain: "確認してお伝えしますね"
+
+# 顧客フェーズ（Lステップ v3.1 Final3 準拠）
+phases:
+  "01":
+    name: 未相談（S_01実行中）
+    scenario: S_01
+    menu: メニュー_01
+    tone: "気軽さ重視。質問しやすい雰囲気づくり"
+    duration: 5d
+  "02":
+    name: パーソナライズ配信中（S_02実行中）
+    scenario: S_02_xxx
+    menu: メニュー_02
+    tone: "具体的な提案。プランに合わせた訴求"
+    duration: 4d
+  "03":
+    name: チャット相談中（S_chat並走）
+    scenario: S_chat
+    menu: メニュー_03
+    tone: "寄り添い。ペースを合わせる"
+    implementation: "リマインダ配信（シナリオ禁止）"
+  "06":
+    name: 見積送付済（S_03実行中）
+    scenario: S_03
+    menu: メニュー_03
+    tone: "不安解消。体験談・FAQ活用"
+    duration: 7d
+  "08":
+    name: 面談後（S_04実行中）
+    scenario: S_04
+    menu: メニュー_04
+    tone: "決断の後押し。申込みCTA最上部"
+    duration: 5d
+  "99":
+    name: 休眠/ナーチャリング（S_05実行中）
+    scenario: S_05
+    menu: メニュー_05
+    tone: "再活性。新情報や季節ネタで接点"
+    duration: 42d
+  "10":
+    name: 入金済（S_06実行中）
+    scenario: S_06
+    menu: メニュー_06
+    tone: "渡航準備の案内。期待感醸成"
+
+# シナリオフロー（v3.1 Final3）
+scenarios:
+  S_01:
+    name: アンケート誘導
+    trigger: 友だち追加
+    duration: 5d
+    messages:
+      - day: 0
+        time: 即時
+        template: v3_01_Day0_登録お礼
+        content: "登録お礼 + アンケート誘導"
+        pack: [テキスト, CTAバナー(アンケートURL), メニュー_01]
+      - day: 1
+        time: "12:00"
+        template: v3_01_Day1_リマインド
+        content: "アンケートリマインド"
+      - day: 3
+        time: "20:00"
+        template: v3_01_Day3_バリ魅力
+        content: "チャングー紹介 + コース詳細CTA"
+        action: "3日後評価: [アンケート_回答済]なし → S_01停止 + フェーズ99 + S_05開始 + メニュー_05"
+      - day: 5
+        time: "12:00"
+        template: v3_01_Day5_最終
+        ab_test: true
+        content: "最終アンケート誘導"
+        completion: "フェーズ99 / メニュー_05 / 未分岐者のみカルーセル送付"
+
+  S_02:
+    name: パーソナライズ配信
+    trigger: カルーセルでプラン選択
+    duration: 4d
+    variants:
+      - 日常英会話 (1184669)
+      - 試験対策 (1184670)
+      - ワーホリ準備 (1184671)
+      - サーフィン×英語 (1184672)
+      - ヨガ英語 (1184673)
+      - 副業スキル (1184674)
+      - 親子留学 (1184675)
+    messages:
+      - day: 0
+        content: "コース紹介URL即時送付"
+      - day: 1
+        time: "07:00"
+        content: "1日の流れ紹介"
+      - day: 2
+        time: "07:00"
+        content: "卒業生の声"
+      - day: 3
+        time: "07:00"
+        content: "費用と障壁解消"
+      - day: 4
+        time: "20:00"
+        content: "最終CTA（入学金無料特典）"
+        completion: "フェーズ99 / S_05開始 / メニュー_05"
+
+  S_03:
+    name: 見積送付後フォロー
+    trigger: 見積送付
+    duration: 7d
+    completion: "フェーズ99 / S_05開始 / メニュー_05"
+
+  S_04:
+    name: 面談後フォロー
+    trigger: 面談参加
+    duration: 5d
+    completion: "フェーズ99 / S_05開始 / メニュー_05"
+
+  S_05:
+    name: 長期ナーチャリング（42日版）
+    trigger: "各シナリオ完了後"
+    duration: 42d
+    messages_at: [Day1, Day7, Day14, Day21, Day35, Day42]
+    completion: "タグ[配信停止] / フェーズ99"
+
+  S_chat:
+    name: チャット相談フォロー
+    implementation: "リマインダ配信（シナリオ禁止）"
+    trigger: "タグ[チャット相談開始]付与"
+    parallel: true  # 元シナリオと並走
+    cancel_on: [見積送付, 面談参加, 入金確認]
+
+# カルーセル
+carousels:
+  comparison:
+    trigger: "アンケート「まだ迷っている」選択直後"
+    purpose: "7プランから興味あるものを選ばせてS_02へ誘導"
+  rescue:
+    trigger: "S_01 Day5完了時、4分岐タグ全未付与の場合のみ"
+    purpose: "迷っている人への最後の分岐機会"
+    exclude_tags: [見積希望, チャット相談希望, ビデオ相談希望, まだ迷っている]
+
+# リッチメニュー
+rich_menus:
+  メニュー_01:
+    phase: "01"
+    buttons: [アンケートに答える(全幅), バリリンガルとは, 料金シミュ]
+  メニュー_02:
+    phase: "02"
+    buttons: [無料見積り, 無料相談予約, コース詳細, LINEで質問]
+  メニュー_03:
+    phase: "03/06"
+    buttons: [見積り確認/依頼(全幅), 無料相談予約, 追加で質問]
+  メニュー_04:
+    phase: "08"
+    buttons: [お申し込みはこちら(全幅), 見積り再確認, もう一度相談]
+  メニュー_05:
+    phase: "99"
+    buttons: [無料見積り, 無料相談, コース一覧, 気軽に質問]
+  メニュー_06:
+    phase: "10"
+    buttons: [渡航前チェックリスト(全幅), 授業スケジュール, 現地サポートLINE]
+
+# 返信作成フロー
+reply_flow:
+  1: "顧客の現在フェーズ・タグを確認"
+  2: "過去のやり取り・問い合わせ内容を把握"
+  3: "フェーズに応じたトーンで返信作成"
+  4: "CTA（次のアクション）を1つ明示する"
+  5: "必要に応じてFAQ・体験談を添える"
+
+# 承認が必要なケース
+approval_required:
+  - "料金に関する回答（金額の正確性チェック）"
+  - "入金確認・予約確定に関する返信"
+  - "キャンセル・返金に関する対応"
+  - "契約条件の変更"
+
+# AB テスト
+ab_test:
+  enabled: true
+  groups: [AB_1, AB_2]
+  assignment: "友だち追加時にランダム付与"
+  affected_messages:
+    - S_01 Day5
+    - S_03 Day7
+    - S_04 Day5
+    - S_05 Day42
