@@ -70,6 +70,8 @@ export type Env = {
     GOOGLE_SERVICE_ACCOUNT_EMAIL?: string;
     GOOGLE_SERVICE_ACCOUNT_KEY?: string;
     GOOGLE_CALENDAR_ID?: string;
+    // Lステップ proxy forwarding
+    LSTEP_WEBHOOK_URL?: string;
   };
 };
 

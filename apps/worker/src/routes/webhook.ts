@@ -83,6 +83,12 @@ webhook.post('/webhook', async (c) => {
 
   const lineClient = new LineClient(channelAccessToken);
 
+  // Lステップ転送 — 元のペイロードをそのまま転送（シナリオ実行はLステップに委任）
+  if (c.env.LSTEP_WEBHOOK_URL) {
+    const forwardPromise = forwardToLstep(c.env.LSTEP_WEBHOOK_URL, rawBody, signature);
+    c.executionCtx.waitUntil(forwardPromise);
+  }
+
   // 非同期処理 — LINE は ~1s 以内のレスポンスを要求
   const processingPromise = (async () => {
     for (const event of body.events) {
@@ -1013,6 +1019,28 @@ function buildScoreResultFlex(score: number, maxScore: number) {
       paddingAll: '20px',
     },
   };
+}
+
+/**
+ * Lステップ webhook 転送
+ * LINE からの生ペイロードをそのまま転送し、Lステップのシナリオ実行を維持する。
+ */
+async function forwardToLstep(url: string, rawBody: string, signature: string): Promise<void> {
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Line-Signature': signature,
+      },
+      body: rawBody,
+    });
+    if (!res.ok) {
+      console.error(`Lstep forward failed: ${res.status} ${res.statusText}`);
+    }
+  } catch (err) {
+    console.error('Lstep forward error:', err);
+  }
 }
 
 export { webhook };
