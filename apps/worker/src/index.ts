@@ -44,6 +44,8 @@ import { collectAiSources } from './services/x-ai-source-collector.js';
 import { friendFields } from './routes/friend-fields.js';
 import { savedFilters } from './routes/saved-filters.js';
 import { processPhaseTransitions } from './services/phase-cron.js';
+import { osDashboard } from './routes/os-dashboard.js';
+import { checkDormantFriends, sendWeeklyReport } from './services/os-cron.js';
 
 export type Env = {
   Bindings: {
@@ -157,6 +159,7 @@ app.route('/', bookings);
 app.route('/', tagFolders);
 app.route('/', friendFields);
 app.route('/', savedFilters);
+app.route('/', osDashboard);
 
 // Short link: /r/:ref → landing page with LINE open button
 app.get('/r/:ref', (c) => {
@@ -265,6 +268,19 @@ async function scheduled(
         maxDailyPosts: env.X_MAX_DAILY_POSTS ? parseInt(env.X_MAX_DAILY_POSTS, 10) : undefined,
       }),
     );
+  }
+
+  // Business OS: 休眠アラート（毎朝9時JST = 0時UTC）+ 週次レポート（月曜のみ）
+  const now = new Date();
+  const jstHour = (now.getUTCHours() + 9) % 24;
+  const utcMinute = now.getUTCMinutes();
+  if (jstHour === 9 && utcMinute < 5) {
+    jobs.push(checkDormantFriends(env.DB, env.DISCORD_WEBHOOK_URL));
+    // 月曜日（getUTCDay() === 1、ただしJSTでの月曜判定）
+    const jstDay = new Date(now.getTime() + 9 * 60 * 60 * 1000).getUTCDay();
+    if (jstDay === 1) {
+      jobs.push(sendWeeklyReport(env.DB, env.DISCORD_WEBHOOK_URL));
+    }
   }
 
   await Promise.allSettled(jobs);

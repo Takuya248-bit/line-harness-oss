@@ -33,6 +33,7 @@ import {
 } from '@line-crm/db';
 import type { SurveyChoice } from '@line-crm/db';
 import { classify } from '../../../../os/core/classifier.js';
+import { handleInquiry, tryQuickAnswer } from '../../../../os/modules/inquiry/handler.js';
 import { notifyDiscord } from '../services/discord-notify.js';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
@@ -606,8 +607,11 @@ async function handleEvent(
       }
     }
 
-    // OS: classify, log, and notify
-    try {
+    // OS: classify, log, and notify (バリリンガルのみ)
+    const OS_ACCOUNT_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8'; // バリリンガル
+    if (lineAccountId && lineAccountId !== OS_ACCOUNT_ID) {
+      // バリリンガル以外のアカウントはOS処理をスキップ
+    } else try {
       const classResult = classify({
         text: incomingText,
         channel: 'line',
@@ -623,6 +627,43 @@ async function handleEvent(
         'received'
       ).run();
 
+      // ドラフト生成（inquiry のみ）
+      let draft: string | undefined;
+      if (classResult.module === 'inquiry') {
+        const quickDraft = tryQuickAnswer(incomingText);
+        if (quickDraft) {
+          draft = quickDraft;
+        } else if (env?.ANTHROPIC_API_KEY) {
+          try {
+            const handlerResult = handleInquiry({
+              message: incomingText,
+              tenant: 'barilingual',
+              phase: '99',
+              tags: [],
+            });
+            const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': env.ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01',
+              },
+              body: JSON.stringify({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 500,
+                messages: [{ role: 'user', content: handlerResult.draft }],
+              }),
+            });
+            if (apiRes.ok) {
+              const data = await apiRes.json() as { content: { text: string }[] };
+              draft = data.content?.[0]?.text;
+            }
+          } catch (err) {
+            console.error('Draft generation error:', err);
+          }
+        }
+      }
+
       // Discord通知（inquiry のみ。全メッセージ通知は騒がしいため）
       if (classResult.module === 'inquiry' && env?.DISCORD_WEBHOOK_URL) {
         await notifyDiscord(env.DISCORD_WEBHOOK_URL, {
@@ -630,6 +671,7 @@ async function handleEvent(
           message: incomingText,
           module: classResult.module,
           confidence: classResult.confidence,
+          draft,
         });
       }
     } catch (err) {

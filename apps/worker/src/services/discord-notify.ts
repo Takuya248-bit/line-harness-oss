@@ -9,6 +9,7 @@ interface NotifyOptions {
   module: string;
   confidence: number;
   phase?: string;
+  draft?: string;
 }
 
 export async function notifyDiscord(
@@ -26,16 +27,26 @@ export async function notifyDiscord(
   const emoji = moduleEmoji[options.module] ?? '📨';
   const phaseText = options.phase ? ` | Phase: ${options.phase}` : '';
 
+  const fields: { name: string; value: string; inline: boolean }[] = [
+    { name: 'ユーザー', value: options.username, inline: true },
+    { name: '確信度', value: `${(options.confidence * 100).toFixed(0)}%`, inline: true },
+  ];
+
+  if (options.draft) {
+    fields.push({
+      name: '💬 返信ドラフト',
+      value: options.draft.length > 1000 ? options.draft.slice(0, 1000) + '...' : options.draft,
+      inline: false,
+    });
+  }
+
   const embed = {
     title: `${emoji} ${options.module.toUpperCase()}`,
     description: options.message.length > 200
       ? options.message.slice(0, 200) + '...'
       : options.message,
     color: options.module === 'inquiry' ? 0x3b82f6 : 0x6b7280,
-    fields: [
-      { name: 'ユーザー', value: options.username, inline: true },
-      { name: '確信度', value: `${(options.confidence * 100).toFixed(0)}%`, inline: true },
-    ],
+    fields,
     timestamp: new Date().toISOString(),
     footer: { text: `Business OS${phaseText}` },
   };
