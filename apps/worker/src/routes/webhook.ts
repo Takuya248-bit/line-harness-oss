@@ -609,8 +609,8 @@ async function handleEvent(
 
     // OS: classify, log, and notify (バリリンガルのみ)
     const OS_ACCOUNT_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8'; // バリリンガル
-    if (lineAccountId && lineAccountId !== OS_ACCOUNT_ID) {
-      // バリリンガル以外のアカウントはOS処理をスキップ
+    if (lineAccountId !== OS_ACCOUNT_ID) {
+      // バリリンガル以外のアカウント（null含む）はOS処理をスキップ
     } else try {
       const classResult = classify({
         text: incomingText,
@@ -635,12 +635,52 @@ async function handleEvent(
           draft = quickDraft;
         } else if (env?.ANTHROPIC_API_KEY) {
           try {
-            const handlerResult = handleInquiry({
-              message: incomingText,
-              tenant: 'barilingual',
-              phase: '99',
-              tags: [],
-            });
+            // D1から友だち情報+タグ+直近履歴を取得
+            const friendTags = friend ? await getFriendTags(db, friend.id) : [];
+            const tagNames = friendTags.map((t: any) => t.name || t.tag_name).join(', ');
+            const history = friend ? await db.prepare(
+              `SELECT direction, content, created_at FROM messages_log WHERE friend_id = ? ORDER BY created_at DESC LIMIT 5`
+            ).bind(friend.id).all() : { results: [] };
+            const historyText = (history.results as any[]).reverse()
+              .map((m) => `${m.direction === 'incoming' ? '友だち' : 'こちら'}: ${m.content}`)
+              .join('\n');
+
+            const systemPrompt = `あなたはバリリンガル（バリ島の英語留学学校）のLINE返信担当です。
+
+## 料金表
+【1人部屋】1週119,800円/2週219,800円/3週289,000円/4週349,800円(人気)/8週629,000円/12週899,000円
+【ペア留学】1週98,000円/2週189,000円/4週320,000円/8週539,000円
+【外泊】1週85,000円(最安)/2週163,000円/4週246,000円/8週435,000円
+※入学金30,000円が別途かかる。料金に含む:授業料・食事(朝昼)・空港送迎・卒業証書
+
+## 授業
+1日4コマ(50分×4)、マンツーマン3+グループ1(最大3名)、月〜金9:00-17:00
+インドネシア人講師(英語漬け)、初心者OK、卒業生200名以上、場所:バリ島チャングー
+
+## コース
+日常英会話/TOEIC対策(3ヶ月で200点UP)/TOEFL対策/英検対策/ワーホリ準備(1-3ヶ月)/サーフィン×英語(4-10月)/ヨガRYT200/副業スキル×英語/親子留学
+
+## 返信ルール
+- 親しみやすいが信頼感あり。丁寧語ベース
+- 「!」OK、絵文字は最小限
+- 押し売りしない。相手の状況を聞き出す→提案
+- CTAを1つ含める
+- 「スタッフ常駐」と書かない(寮にスタッフ常駐していない)
+- 入学金30,000円は別途かかることを必ず伝える`;
+
+            const userPrompt = `## 友だち情報
+名前: ${friend?.display_name ?? '不明'}
+タグ: ${tagNames || 'なし'}
+登録日: ${friend?.created_at ?? '不明'}
+
+## 直近のやり取り
+${historyText || 'なし'}
+
+## 今回のメッセージ
+${incomingText}
+
+上記を踏まえて返信ドラフトを作成してください。`;
+
             const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
               method: 'POST',
               headers: {
@@ -651,7 +691,8 @@ async function handleEvent(
               body: JSON.stringify({
                 model: 'claude-haiku-4-5-20251001',
                 max_tokens: 500,
-                messages: [{ role: 'user', content: handlerResult.draft }],
+                system: systemPrompt,
+                messages: [{ role: 'user', content: userPrompt }],
               }),
             });
             if (apiRes.ok) {
