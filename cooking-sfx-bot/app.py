@@ -22,6 +22,7 @@ from session import SessionManager
 from adjust import parse_adjustment, apply_operations
 from sfx_manager import list_all_sfx, add_sfx, resolve_category
 from learning import LearningStore
+from conversation_log import ConversationLog
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,6 +40,8 @@ LEARNING_DIR = os.environ.get("LEARNING_DIR", "/tmp/learning")
 
 sessions = SessionManager(SESSIONS_DIR)
 learning = LearningStore(LEARNING_DIR)
+CONV_LOG_DIR = os.environ.get("CONV_LOG_DIR", os.path.join(os.path.dirname(__file__), "data", "conversations"))
+conv_log = ConversationLog(CONV_LOG_DIR)
 user_states: dict[str, dict] = {}
 
 
@@ -148,10 +151,12 @@ async def webhook(request: Request):
 
             if text == "SE追加":
                 user_states[user_id] = {"mode": "se_add"}
+                resp = "音声ファイルか動画を送ってください。"
                 api.reply_message(ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text="音声ファイルか動画を送ってください。")],
+                    messages=[TextMessage(text=resp)],
                 ))
+                conv_log.log_message(user_id, text, resp)
 
             elif user_states.get(user_id, {}).get("mode") == "se_add_category":
                 state = user_states[user_id]
@@ -159,15 +164,19 @@ async def webhook(request: Request):
                 if category:
                     result = add_sfx(state["file"], SFX_DIR, category)
                     user_states.pop(user_id, None)
+                    resp = f"{result} として追加しました!"
                     api.reply_message(ReplyMessageRequest(
                         reply_token=event.reply_token,
-                        messages=[TextMessage(text=f"{result} として追加しました!")],
+                        messages=[TextMessage(text=resp)],
                     ))
+                    conv_log.log_message(user_id, text, resp)
                 else:
+                    resp = "カテゴリを選んでください:\n切る / 混ぜる / 注ぐ / 演出 / リアクション / 転換 / その他"
                     api.reply_message(ReplyMessageRequest(
                         reply_token=event.reply_token,
-                        messages=[TextMessage(text="カテゴリを選んでください:\n切る / 混ぜる / 注ぐ / 演出 / リアクション / 転換 / その他")],
+                        messages=[TextMessage(text=resp)],
                     ))
+                    conv_log.log_message(user_id, text, resp, understood=False)
 
             elif text == "SE一覧":
                 sfx_list = list_all_sfx(SFX_DIR)
@@ -175,12 +184,28 @@ async def webhook(request: Request):
                     reply_token=event.reply_token,
                     messages=[TextMessage(text=sfx_list)],
                 ))
+                conv_log.log_message(user_id, text, sfx_list)
 
             elif text == "学習状況":
                 stats = learning.get_stats()
                 api.reply_message(ReplyMessageRequest(
                     reply_token=event.reply_token,
                     messages=[TextMessage(text=stats)],
+                ))
+                conv_log.log_message(user_id, text, stats)
+
+            elif text == "未理解ログ":
+                summary = conv_log.get_misunderstood_summary()
+                api.reply_message(ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=summary)],
+                ))
+
+            elif text == "会話履歴":
+                history = conv_log.get_recent_log(user_id)
+                api.reply_message(ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=history[:4500])],
                 ))
 
             else:
@@ -198,10 +223,18 @@ async def webhook(request: Request):
                             new_timeline = apply_operations(session["timeline"], ops, SFX_DIR)
                             session["timeline"] = new_timeline
                             sessions.save(user_id, session)
+                            resp = "調整して再生成中..."
                             api.reply_message(ReplyMessageRequest(
                                 reply_token=event.reply_token,
-                                messages=[TextMessage(text="調整して再生成中...")],
+                                messages=[TextMessage(text=resp)],
                             ))
+                            conv_log.log_message(user_id, text, resp, context={
+                                "operations": ops,
+                                "timeline_before": [
+                                    {"ts": e["timestamp"], "sfx": os.path.basename(e["sfx"])}
+                                    for e in timeline
+                                ] if (timeline := session.get("timeline")) else [],
+                            })
                             def _rerender():
                                 try:
                                     output_dir = os.path.join(SESSIONS_DIR, f"video_{user_id}", "out")
@@ -214,21 +247,32 @@ async def webhook(request: Request):
                                     push_text(user_id, f"再生成エラー: {str(e)[:100]}")
                             threading.Thread(target=_rerender).start()
                         else:
+                            resp = "指示を理解できませんでした。例: 「5秒の音消して」「25秒にぷにぷに追加」"
                             api.reply_message(ReplyMessageRequest(
                                 reply_token=event.reply_token,
-                                messages=[TextMessage(text="指示を理解できませんでした。例: 「5秒の音消して」「25秒にぷにぷに追加」")],
+                                messages=[TextMessage(text=resp)],
                             ))
+                            conv_log.log_message(user_id, text, resp, understood=False, context={
+                                "timeline": [
+                                    {"ts": e["timestamp"], "sfx": os.path.basename(e["sfx"])}
+                                    for e in session.get("timeline", [])
+                                ],
+                            })
                     except Exception as e:
                         logger.exception("Adjustment failed")
+                        resp = f"調整エラー: {str(e)[:100]}"
                         api.reply_message(ReplyMessageRequest(
                             reply_token=event.reply_token,
-                            messages=[TextMessage(text=f"調整エラー: {str(e)[:100]}")],
+                            messages=[TextMessage(text=resp)],
                         ))
+                        conv_log.log_message(user_id, text, resp, understood=False, context={"error": str(e)})
                 else:
+                    resp = "動画を送ってください。SE自動挿入します!"
                     api.reply_message(ReplyMessageRequest(
                         reply_token=event.reply_token,
-                        messages=[TextMessage(text="動画を送ってください。SE自動挿入します!")],
+                        messages=[TextMessage(text=resp)],
                     ))
+                    conv_log.log_message(user_id, text, resp)
 
     return {"status": "ok"}
 
@@ -248,9 +292,19 @@ async def download_video(token: str):
     raise HTTPException(status_code=404, detail="Not found")
 
 
+def _read_public_url() -> str:
+    """PUBLIC_URL をファイルから読み取る（start.sh がトンネル確立後に書き込む）"""
+    url_file = os.path.join(os.path.dirname(__file__), "logs", "public_url.txt")
+    try:
+        with open(url_file) as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return os.environ.get("PUBLIC_URL", "")
+
+
 def get_download_url(user_id: str) -> str:
     token = hashlib.md5(user_id.encode()).hexdigest()[:12]
-    host = os.environ.get("PUBLIC_URL", "")
+    host = _read_public_url()
     return f"{host}/download/{token}"
 
 
