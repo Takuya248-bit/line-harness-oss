@@ -22,6 +22,7 @@ export async function renderGalleryList(db: D1Database, filter?: string): Promis
     const parsed = JSON.parse(row.content_json);
     const title = parsed.title ?? parsed.coverData?.catchCopy ?? "Untitled";
     const statusBadge: Record<string, string> = {
+      pending_images: "⏳ 画像生成中",
       pending_review: "🟡 レビュー待ち",
       approved: "🟢 承認済み",
       posted: "✅ 投稿済み",
@@ -50,7 +51,7 @@ export async function renderGalleryList(db: D1Database, filter?: string): Promis
     </div>`;
   }).join("");
 
-  const filterLinks = ["all", "pending_review", "approved", "posted", "skipped"]
+  const filterLinks = ["all", "pending_images", "pending_review", "approved", "posted", "skipped"]
     .map((f) => `<a href="/gallery${f === "all" ? "" : `?filter=${f}`}" style="margin-right:12px;${filter === f || (!filter && f === "all") ? "font-weight:bold" : ""}">${f}</a>`)
     .join("");
 
@@ -79,44 +80,12 @@ export async function renderGalleryDetail(db: D1Database, id: number): Promise<s
   const coverUrl = parsed.coverUrl ?? "";
   const slideUrls: string[] = Array.isArray(parsed.slideUrls) ? parsed.slideUrls : [];
 
+  const allSlideUrls: string[] = parsed.slideUrls ?? [];
   const slidesHtml = `<h2>スライドプレビュー</h2>
-<div id="slides">
-  ${coverUrl ? `<div id="slide-0"><p>Slide 1 (カバー)</p><img src="${escapeHtml(coverUrl)}" style="max-width:100%"></div>` : ""}
-  ${slideUrls.slice(1).map((u: string, i: number) => `<div id="slide-${i + 1}"><p>Slide ${i + 2}</p><img src="${escapeHtml(u)}" style="max-width:100%;border-radius:8px;margin-bottom:8px"></div>`).join("\n  ")}
-</div>
-<button id="genBtn" onclick="generateSlides()" style="background:#E67E22;color:#fff;border:none;padding:12px 32px;border-radius:8px;cursor:pointer;font-size:16px">
-  全スライド生成（1枚ずつ）
-</button>
-<p id="genStatus" style="color:#666"></p>
-<script>
-async function generateSlides() {
-  const btn = document.getElementById('genBtn');
-  const status = document.getElementById('genStatus');
-  const container = document.getElementById('slides');
-  btn.disabled = true;
-
-  for (let i = 0; i < 8; i++) {
-    status.textContent = 'スライド ' + (i+1) + ' 生成中...';
-    try {
-      const res = await fetch('/gallery/${row.id}/preview/' + i, { method: 'POST' });
-      const data = await res.json();
-      if (!data.success) { status.textContent = 'エラー: ' + (data.error || ''); break; }
-
-      let slideDiv = document.getElementById('slide-' + i);
-      if (!slideDiv) {
-        slideDiv = document.createElement('div');
-        slideDiv.id = 'slide-' + i;
-        container.appendChild(slideDiv);
-      }
-      slideDiv.innerHTML = '<p>Slide ' + (i+1) + '</p><img src="' + data.slideUrl + '" style="max-width:100%;border-radius:8px;margin-bottom:8px">';
-
-      if (i >= data.totalSlides - 1) break;
-    } catch(e) { status.textContent = 'エラー: ' + e.message; break; }
-  }
-  status.textContent = '完了！';
-  btn.style.display = 'none';
-}
-</script>`;
+${allSlideUrls.length > 0
+    ? allSlideUrls.map((url: string, i: number) => `<div style="margin:8px 0"><p style="color:#666;font-size:14px">Slide ${i + 1}</p><img src="${escapeHtml(url)}" style="max-width:100%;border-radius:8px"></div>`).join("")
+    : `<p style="color:#999">⏳ 画像生成待ち... GitHub Actionsで自動生成されます</p>`
+  }`;
 
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
