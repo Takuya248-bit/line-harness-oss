@@ -608,9 +608,11 @@ async function handleEvent(
     }
 
     // OS: classify, log, and notify (バリリンガルのみ)
-    const OS_ACCOUNT_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8'; // バリリンガル
-    if (lineAccountId !== OS_ACCOUNT_ID) {
-      // バリリンガル以外のアカウント（null含む）はOS処理をスキップ
+    // matchedAccountId=null はデフォルトアカウント（=バリリンガル）を意味する
+    const OS_ACCOUNT_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
+    const isBarilingual = lineAccountId === null || lineAccountId === OS_ACCOUNT_ID;
+    if (!isBarilingual) {
+      // バリリンガル以外のアカウントはOS処理をスキップ
     } else try {
       const classResult = classify({
         text: incomingText,
