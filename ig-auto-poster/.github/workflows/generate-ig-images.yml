@@ -1,0 +1,35 @@
+name: Generate IG Images
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: ig-auto-poster
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download fonts
+        run: |
+          mkdir -p scripts/fonts
+          curl -sL "https://raw.githubusercontent.com/googlefonts/zen-marugothic/main/fonts/ttf/ZenMaruGothic-Black.ttf" -o scripts/fonts/ZenMaruGothic-Black.ttf
+          curl -sL "https://raw.githubusercontent.com/googlefonts/zen-marugothic/main/fonts/ttf/ZenMaruGothic-Bold.ttf" -o scripts/fonts/ZenMaruGothic-Bold.ttf
+
+      - name: Install dependencies
+        run: npm install sharp canvas
+
+      - name: Generate images
+        run: node scripts/generate-images.mjs
+        env:
+          WORKER_URL: https://ig-auto-poster.archbridge24.workers.dev
