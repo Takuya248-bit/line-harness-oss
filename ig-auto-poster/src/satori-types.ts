@@ -1,4 +1,5 @@
-// Satoriが受け取るノードの型定義
+// Satoriノード型定義（テンプレート互換用スタブ）
+// Satori本体は除去済み。テンプレートの型チェック用に残存。
 export interface SatoriNode {
   type: string;
   props: {

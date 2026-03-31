@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="810" viewBox="0 0 1200 810">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#009688"/>
+      <stop offset="100%" style="stop-color:#00796B"/>
+    </linearGradient>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="rgba(0,0,0,0.15)"/>
+    </filter>
+  </defs>
+  <rect width="1200" height="810" fill="url(#bg)"/>
+  <!-- トロピカル装飾: ヤシの木 -->
+  <g opacity="0.08" fill="white">
+    <path d="M50,810 Q60,650 80,600 Q40,580 20,500 Q60,520 90,580 Q85,540 100,480 Q100,550 95,590 Q120,560 160,540 Q120,580 90,600 Q100,700 90,810Z"/>
+    <path d="M1150,810 Q1140,650 1120,600 Q1160,580 1180,500 Q1140,520 1110,580 Q1115,540 1100,480 Q1100,550 1105,590 Q1080,560 1040,540 Q1080,580 1110,600 Q1100,700 1110,810Z"/>
+  </g>
+  <!-- 波 -->
+  <path d="M0,790 Q150,770 300,790 Q450,810 600,790 Q750,770 900,790 Q1050,810 1200,790 L1200,810 L0,810Z" fill="white" opacity="0.06"/>
+  <path d="M0,800 Q150,780 300,800 Q450,820 600,800 Q750,780 900,800 Q1050,820 1200,800 L1200,810 L0,810Z" fill="white" opacity="0.04"/>
+  <!-- 花柄アクセント -->
+  <circle cx="100" cy="50" r="8" fill="#E0F2F1" opacity="0.3"/>
+  <circle cx="130" cy="35" r="5" fill="#E0F2F1" opacity="0.2"/>
+  <circle cx="1100" cy="50" r="8" fill="#E0F2F1" opacity="0.3"/>
+  <circle cx="1070" cy="35" r="5" fill="#E0F2F1" opacity="0.2"/>
+  <circle cx="80" cy="760" r="6" fill="#E0F2F1" opacity="0.2"/>
+  <circle cx="1120" cy="760" r="6" fill="#E0F2F1" opacity="0.2"/>
+  <rect x="15" y="15" width="383" height="385" rx="18" fill="white" opacity="0.17" filter="url(#shadow)"/>
+  <rect x="17" y="17" width="379" height="381" rx="16" fill="none" stroke="white" stroke-width="1.5" opacity="0.28"/>
+  <text x="206" y="217" font-family="Hiragino Sans, Noto Sans JP, sans-serif" font-weight="700" font-size="32" fill="white" text-anchor="middle">見積もり依頼</text>
+  <rect x="408" y="15" width="383" height="385" rx="18" fill="white" opacity="0.17" filter="url(#shadow)"/>
+  <rect x="410" y="17" width="379" height="381" rx="16" fill="none" stroke="white" stroke-width="1.5" opacity="0.28"/>
+  <text x="599" y="217" font-family="Hiragino Sans, Noto Sans JP, sans-serif" font-weight="700" font-size="30" fill="white" text-anchor="middle">面談を予約する</text>
+  <rect x="801" y="15" width="383" height="385" rx="18" fill="white" opacity="0.17" filter="url(#shadow)"/>
+  <rect x="803" y="17" width="379" height="381" rx="16" fill="none" stroke="white" stroke-width="1.5" opacity="0.28"/>
+  <text x="992" y="217" font-family="Hiragino Sans, Noto Sans JP, sans-serif" font-weight="700" font-size="30" fill="white" text-anchor="middle">チャットで相談</text>
+  <rect x="15" y="410" width="383" height="385" rx="18" fill="white" opacity="0.17" filter="url(#shadow)"/>
+  <rect x="17" y="412" width="379" height="381" rx="16" fill="none" stroke="white" stroke-width="1.5" opacity="0.28"/>
+  <text x="206" y="612" font-family="Hiragino Sans, Noto Sans JP, sans-serif" font-weight="700" font-size="32" fill="white" text-anchor="middle">プランを見る</text>
+  <rect x="408" y="410" width="383" height="385" rx="18" fill="white" opacity="0.17" filter="url(#shadow)"/>
+  <rect x="410" y="412" width="379" height="381" rx="16" fill="none" stroke="white" stroke-width="1.5" opacity="0.28"/>
+  <text x="599" y="612" font-family="Hiragino Sans, Noto Sans JP, sans-serif" font-weight="700" font-size="32" fill="white" text-anchor="middle">卒業生の声</text>
+  <rect x="801" y="410" width="383" height="385" rx="18" fill="white" opacity="0.17" filter="url(#shadow)"/>
+  <rect x="803" y="412" width="379" height="381" rx="16" fill="none" stroke="white" stroke-width="1.5" opacity="0.28"/>
+  <text x="992" y="612" font-family="Hiragino Sans, Noto Sans JP, sans-serif" font-weight="700" font-size="32" fill="white" text-anchor="middle">よくある質問</text>
+</svg>

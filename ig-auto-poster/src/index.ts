@@ -1,14 +1,9 @@
-import { generateSlideImages, generateFirstSlideSvg, generateSingleSlidePng, getSlideCount, generateV2SlideImages, generateV2SinglePng, getV2SlideCount } from "./image-generator";
 import { publishCarousel } from "./instagram";
-import { getCaption } from "./captions";
-import { allContent } from "./content-data";
 import { generateBaliContent } from "./content-generator-v2";
 import { sendPreview, sendNotification, parsePostback } from "./line-preview";
 import { collectInsights } from "./insights";
 import { optimizeWeights, sendWeeklyReport } from "./optimizer";
 import { renderGalleryList, renderGalleryDetail } from "./gallery";
-import type { ContentItem } from "./content-data";
-import type { BaliContentV2 } from "./templates/index";
 import { fetchKnowledge, fetchGuardrails, formatKnowledgeForPrompt } from "./knowledge";
 import type { KnowledgeEntry } from "./knowledge";
 
@@ -24,21 +19,6 @@ export interface Env {
   SERPER_API_KEY: string;
 }
 
-// --- 既存データ用ヘルパー（フォールバック） ---
-async function getContentIndex(db: D1Database): Promise<number> {
-  const row = await db
-    .prepare("SELECT content_index FROM ig_post_state WHERE id = 1")
-    .first<{ content_index: number }>();
-  return row?.content_index ?? 0;
-}
-
-async function updateContentIndex(db: D1Database, newIndex: number): Promise<void> {
-  await db
-    .prepare("UPDATE ig_post_state SET content_index = ?, last_posted_at = datetime('now') WHERE id = 1")
-    .bind(newIndex)
-    .run();
-}
-
 // --- 設定取得ヘルパー ---
 async function getSetting(db: D1Database, key: string): Promise<string | null> {
   const row = await db
@@ -46,38 +26,6 @@ async function getSetting(db: D1Database, key: string): Promise<string | null> {
     .bind(key)
     .first<{ value: string }>();
   return row?.value ?? null;
-}
-
-// --- PNG画像1枚生成+R2保存（v1用） ---
-async function generateAndStoreSingleImage(
-  content: ContentItem,
-  slideIndex: number,
-  env: Env,
-  prefix: string,
-  timestamp: number,
-): Promise<string> {
-  const png = await generateSingleSlidePng(content, slideIndex);
-  const key = `${prefix}/${timestamp}/slide-${slideIndex + 1}.png`;
-  await env.IMAGES.put(key, png, {
-    httpMetadata: { contentType: "image/png" },
-  });
-  return `${env.R2_PUBLIC_URL}/${key}`;
-}
-
-// --- V2 PNG画像1枚生成+R2保存 ---
-async function generateAndStoreV2Image(
-  content: BaliContentV2,
-  slideIndex: number,
-  env: Env,
-  prefix: string,
-  timestamp: number,
-): Promise<string> {
-  const png = await generateV2SinglePng(content, slideIndex);
-  const key = `${prefix}/${timestamp}/slide-${slideIndex + 1}.png`;
-  await env.IMAGES.put(key, png, {
-    httpMetadata: { contentType: "image/png" },
-  });
-  return `${env.R2_PUBLIC_URL}/${key}`;
 }
 
 // --- V2 Cronハンドラー ---
@@ -88,25 +36,22 @@ async function handleV2GenerateCron(env: Env): Promise<void> {
     env.SERPER_API_KEY,
   );
 
-  // DBに保存（PNG生成なし）
-  const autoApprove = await getSetting(env.DB, "auto_approve");
+  // DBに保存（画像生成はGitHub Actionsで実行）
   await env.DB
     .prepare("INSERT INTO generated_content (template_type, content_json, caption, status, category) VALUES ('bali_v2', ?, ?, ?, ?)")
     .bind(
       JSON.stringify(content),
       content.caption,
-      autoApprove === "true" ? "approved" : "pending_review",
+      "pending_images",
       content.category,
     )
     .run();
 
-  if (autoApprove !== "true") {
-    await sendNotification(
-      `新しい投稿が生成されました\nテーマ: ${content.title}\nカテゴリ: ${content.category}\nギャラリーで確認してください`,
-      env.LINE_OWNER_USER_ID,
-      env.LINE_CHANNEL_ACCESS_TOKEN,
-    );
-  }
+  await sendNotification(
+    `新しい投稿が生成されました\nテーマ: ${content.title}\nカテゴリ: ${content.category}\n画像生成後にギャラリーで確認できます`,
+    env.LINE_OWNER_USER_ID,
+    env.LINE_CHANNEL_ACCESS_TOKEN,
+  );
 
   console.log(`V2 content generated: ${content.title} (${content.category})`);
 }
@@ -117,33 +62,17 @@ async function handleV2PostCron(env: Env): Promise<void> {
     .first<{ id: number; content_json: string; caption: string; category: string }>();
 
   if (!row) {
-    // v2承認済みなし → v1フォールバック
-    console.log("No approved v2 content. Using v1 fallback.");
-    const contentIndex = await getContentIndex(env.DB);
-    const content = allContent[contentIndex % allContent.length];
-    const timestamp = Date.now();
-    const total = getSlideCount(content);
-    const imageUrls: string[] = [];
-    for (let i = 0; i < total; i++) {
-      const url = await generateAndStoreSingleImage(content, i, env, "auto", timestamp);
-      imageUrls.push(url);
-    }
-    const caption = getCaption(content.title.replaceAll("\n", " "), contentIndex);
-    await publishCarousel(imageUrls, caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
-    await updateContentIndex(env.DB, (contentIndex + 1) % allContent.length);
-    console.log(`V1 fallback posted: ${content.title}`);
+    console.log("No approved v2 content.");
     return;
   }
 
-  const stored = JSON.parse(row.content_json) as BaliContentV2 & { coverUrl: string };
-  const timestamp = Date.now();
-  const total = getV2SlideCount(stored);
-  const imageUrls: string[] = [];
-  for (let i = 0; i < total; i++) {
-    const url = await generateAndStoreV2Image(stored, i, env, "post", timestamp);
-    imageUrls.push(url);
+  const stored = JSON.parse(row.content_json) as { title: string; slideUrls?: string[] };
+  if (!stored.slideUrls || stored.slideUrls.length === 0) {
+    console.log("Approved content has no slide images yet.");
+    return;
   }
-  const publishedId = await publishCarousel(imageUrls, row.caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
+
+  const publishedId = await publishCarousel(stored.slideUrls, row.caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
 
   await env.DB
     .prepare("UPDATE generated_content SET status = 'posted', posted_at = datetime('now'), ig_media_id = ? WHERE id = ?")
@@ -155,7 +84,7 @@ async function handleV2PostCron(env: Env): Promise<void> {
     env.LINE_OWNER_USER_ID,
     env.LINE_CHANNEL_ACCESS_TOKEN,
   );
-  console.log(`V2 posted: ${stored.title} (${row.category}) ig_media_id=${publishedId}`);
+  console.log(`V2 posted: ${stored.title} (${row.category})`);
 }
 
 // --- 週次Insights + 最適化 ---
@@ -284,40 +213,6 @@ export default {
         return html(page);
       }
 
-      if (request.method === "POST" && url.pathname.match(/^\/gallery\/\d+\/preview\/\d+$/)) {
-        const parts = url.pathname.split("/");
-        const id = parseInt(parts[2], 10);
-        const slideIndex = parseInt(parts[4], 10);
-
-        const row = await env.DB
-          .prepare("SELECT content_json, template_type FROM generated_content WHERE id = ?")
-          .bind(id)
-          .first<{ content_json: string; template_type: string }>();
-
-        if (!row) return json({ error: "Not found" }, 404);
-
-        const stored = JSON.parse(row.content_json) as BaliContentV2 & { coverUrl?: string; slideUrls?: string[] };
-        const total = getV2SlideCount(stored);
-
-        if (slideIndex < 0 || slideIndex >= total) {
-          return json({ error: `Slide index out of range (0-${total - 1})` }, 400);
-        }
-
-        const timestamp = Date.now();
-        const slideUrl = await generateAndStoreV2Image(stored, slideIndex, env, "preview", timestamp);
-
-        const slideUrls = stored.slideUrls ?? [];
-        slideUrls[slideIndex] = slideUrl;
-        stored.slideUrls = slideUrls;
-
-        await env.DB
-          .prepare("UPDATE generated_content SET content_json = ? WHERE id = ?")
-          .bind(JSON.stringify(stored), id)
-          .run();
-
-        return json({ success: true, slideIndex, slideUrl, totalSlides: total });
-      }
-
       if (request.method === "POST" && url.pathname.match(/^\/gallery\/\d+\/(approve|skip)$/)) {
         const parts = url.pathname.split("/");
         const id = parseInt(parts[2], 10);
@@ -330,27 +225,70 @@ export default {
         return Response.redirect(`${url.origin}/gallery`, 303);
       }
 
+      // --- Image Pipeline API ---
+      if (request.method === "GET" && url.pathname === "/api/pending-images") {
+        const rows = await env.DB
+          .prepare("SELECT id, content_json, caption, category FROM generated_content WHERE status = 'pending_images' ORDER BY id ASC LIMIT 5")
+          .all<{ id: number; content_json: string; caption: string; category: string }>();
+        return json({ items: rows.results });
+      }
+
+      if (request.method === "POST" && url.pathname === "/api/slides") {
+        const body = await request.json() as {
+          contentId: number;
+          slides: { index: number; imageBase64: string }[];
+        };
+        if (!body.contentId || !body.slides?.length) {
+          return json({ error: "contentId and slides are required" }, 400);
+        }
+        const row = await env.DB
+          .prepare("SELECT content_json FROM generated_content WHERE id = ?")
+          .bind(body.contentId)
+          .first<{ content_json: string }>();
+        if (!row) return json({ error: "Content not found" }, 404);
+
+        const stored = JSON.parse(row.content_json);
+        const slideUrls: string[] = stored.slideUrls ?? [];
+        const timestamp = Date.now();
+
+        for (const slide of body.slides) {
+          const binary = Uint8Array.from(atob(slide.imageBase64), c => c.charCodeAt(0));
+          const key = `slides/${body.contentId}/${timestamp}/slide-${slide.index + 1}.jpg`;
+          await env.IMAGES.put(key, binary, {
+            httpMetadata: { contentType: "image/jpeg" },
+          });
+          slideUrls[slide.index] = `${env.R2_PUBLIC_URL}/${key}`;
+        }
+
+        stored.slideUrls = slideUrls;
+        const autoApprove = await getSetting(env.DB, "auto_approve");
+        const newStatus = autoApprove === "true" ? "approved" : "pending_review";
+        await env.DB
+          .prepare("UPDATE generated_content SET content_json = ?, status = ? WHERE id = ?")
+          .bind(JSON.stringify(stored), newStatus, body.contentId)
+          .run();
+
+        return json({ success: true, contentId: body.contentId, slideCount: body.slides.length, slideUrls });
+      }
+
       // --- Status ---
       if (request.method === "GET" && url.pathname === "/status") {
-        const index = await getContentIndex(env.DB);
-        const row = await env.DB
-          .prepare("SELECT last_posted_at FROM ig_post_state WHERE id = 1")
-          .first<{ last_posted_at: string | null }>();
         const pendingCount = await env.DB
           .prepare("SELECT COUNT(*) as count FROM generated_content WHERE status = 'pending_review'")
           .first<{ count: number }>();
         const approvedCount = await env.DB
           .prepare("SELECT COUNT(*) as count FROM generated_content WHERE status = 'approved'")
           .first<{ count: number }>();
+        const pendingImagesCount = await env.DB
+          .prepare("SELECT COUNT(*) as count FROM generated_content WHERE status = 'pending_images'")
+          .first<{ count: number }>();
         const weights = await env.DB
           .prepare("SELECT category, weight, avg_saves, total_posts FROM category_weights ORDER BY weight DESC")
           .all<{ category: string; weight: number; avg_saves: number; total_posts: number }>();
         const autoApprove = await getSetting(env.DB, "auto_approve");
         return json({
-          version: "v2.1",
-          contentIndex: index,
-          totalFallbackContent: allContent.length,
-          lastPostedAt: row?.last_posted_at,
+          version: "v3.0",
+          pendingImages: pendingImagesCount?.count ?? 0,
           pendingReview: pendingCount?.count ?? 0,
           approved: approvedCount?.count ?? 0,
           autoApprove: autoApprove === "true",
@@ -392,7 +330,7 @@ export default {
         });
       }
 
-      // --- Knowledge DB API (unchanged) ---
+      // --- Knowledge DB API ---
       if (request.method === "GET" && url.pathname === "/api/knowledge") {
         const category = url.searchParams.get("category");
         const tagsParam = url.searchParams.get("tags");
@@ -451,28 +389,21 @@ export default {
         return json({ success: true, id: result.meta.last_row_id });
       }
 
-      // --- V1 legacy endpoints ---
-      if (request.method === "GET" && url.pathname === "/content") {
-        const list = allContent.map((c) => ({
-          id: c.id, type: c.type, title: c.title.replaceAll("\n", " "),
-        }));
-        return json({ total: list.length, content: list });
-      }
-
       return json({
         endpoints: [
-          "GET  /status             - 現在の状態（v2.1）",
+          "GET  /status             - 現在の状態（v3.0）",
           "GET  /gallery            - コンテンツギャラリー",
           "GET  /gallery/:id        - コンテンツ詳細",
           "POST /gallery/:id/approve - 承認",
           "POST /gallery/:id/skip   - スキップ",
+          "GET  /api/pending-images - 画像生成待ちコンテンツ取得",
+          "POST /api/slides         - スライド画像アップロード",
           "POST /generate           - V2コンテンツ手動生成",
           "POST /collect-insights   - Insights手動収集+最適化",
           "POST /settings/auto-approve - 自動承認切替 {enabled:bool}",
           "POST /line-webhook       - LINE Webhook",
           "GET  /api/knowledge      - 知識エントリ取得",
           "POST /api/knowledge      - 知識エントリ追加",
-          "GET  /content            - V1ネタリスト（レガシー）",
         ],
       }, 404);
     } catch (err) {

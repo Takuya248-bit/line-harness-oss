@@ -13,9 +13,5 @@
     "typescript": "^5.9.3",
     "wrangler": "^3.30.0"
   },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
-    "@resvg/resvg-wasm": "^2.6.2",
-    "satori": "^0.26.0"
-  }
+  "dependencies": {}
 }
