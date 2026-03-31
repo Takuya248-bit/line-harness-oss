@@ -43,40 +43,13 @@ secretary(常設), marketing, research, sales, qa, pm, cs
 同じ指摘2回 → `.claude/rules/` にルール昇格を秘書が提案。詳細は `.claude/rules/feedback-promotion.md` 参照。
 
 ## 週次セルフレビュー
-毎週月曜に過去7日分のprogress/decisionsを集計し `notes/YYYY-WXX-review.md` を作成。詳細は `.claude/rules/weekly-review.md` 参照。
+毎週月曜に過去7日分のprogress/decisionsを集計し `notes/YYYY-WXX-review.md` を作成。詳細は `.claude/rules/review-workflow.md` 参照。
 
-## プラン・タスクフォーマット
-タスクは「Done when → Verified by → Approach」の順。基準が先、手法が後。詳細は `.claude/rules/plan-format.md` 参照。
+## プラン・タスクフォーマット / スコープクリープ検出 / プラン段階並列検証
+詳細は `.claude/rules/planning.md` 参照。
 
-## スコープクリープ検出
-サブタスク15超で警告。全サブタスクに出自を明記。詳細は `.claude/rules/scope-creep-detection.md` 参照。
-
-## コンテキスト効率
-サブエージェントは結論のみ返す。参照ファイル同時ロード2つまで。詳細は `.claude/rules/context-efficiency.md` 参照。
-
-## プラン段階並列検証
-50行以上のコード変更プランは実装前に3+エージェントで検証（要件トレーサビリティ/技術健全性/セキュリティ）。詳細は `.claude/rules/plan-verification.md` 参照。
-
-## コンテキスト予算
-スキルインデックス100行、参照200行、リサーチ合成200行。CLAUDE.md 60行推奨。詳細は `.claude/rules/context-budget.md` 参照。
+## コンテキスト効率・コンテキスト予算
+サブエージェントは結論のみ返す。参照ファイル同時ロード2つまで。詳細は `.claude/rules/context-management.md` 参照。
 
 ## 作業ログルール（全作業者必須）
-
-全てのエージェント・サブエージェントは作業完了時に `.company/secretary/notes/YYYY-MM-DD-progress.md` に作業ログを追記すること。
-
-### ログ形式
-```
-## HH:MM [作業者名/エージェント種別]
-- 作業内容: （何をしたか）
-- 対象: （ファイルパス、サービス名等）
-- 結果: 完了 / 部分完了 / 失敗
-- 変更点: （主な変更の箇条書き）
-- 備考: （次のアクション、注意点等。なければ省略）
-```
-
-### ルール
-1. メインエージェントもサブエージェントも全員がログを残す
-2. コミット・push を行った場合はコミットハッシュを記載する
-3. エラーや失敗した場合も必ず記録する（原因と対処を含める）
-4. 同日のprogress.mdが既にある場合は末尾に追記する（上書き厳禁）
-5. ログを残さない作業は「やっていない」と同じ。例外なし
+全エージェントは作業完了時に `.company/secretary/notes/YYYY-MM-DD-progress.md` に追記すること。詳細は `.claude/rules/agent-operations.md` 参照。
