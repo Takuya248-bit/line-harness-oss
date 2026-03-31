@@ -9,6 +9,8 @@
 import { classify } from "./classifier";
 import { audit } from "./audit";
 import { handleInquiry, tryQuickAnswer } from "../modules/inquiry/handler";
+import { handleResearch } from "../modules/research/handler";
+import { handleContent } from "../modules/content/handler";
 import type {
   ClassifyInput,
   ClassifyResult,
@@ -44,6 +46,32 @@ export function runPipeline(
   const classification = classify(classifyInput);
 
   // 2. module dispatch
+  if (classification.module === "research") {
+    const fullInput: HandlerInput = {
+      ...handlerInput,
+      phase: handlerInput.phase ?? "99",
+    };
+    const handlerResult = handleResearch(fullInput);
+    return {
+      classification,
+      handler: handlerResult,
+      status: "draft_ready",
+    };
+  }
+
+  if (classification.module === "content") {
+    const fullInput: HandlerInput = {
+      ...handlerInput,
+      phase: handlerInput.phase ?? "99",
+    };
+    const handlerResult = handleContent(fullInput);
+    return {
+      classification,
+      handler: handlerResult,
+      status: "approval_needed",
+    };
+  }
+
   if (classification.module !== "inquiry") {
     return {
       classification,

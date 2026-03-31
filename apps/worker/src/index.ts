@@ -72,6 +72,7 @@ export type Env = {
     GOOGLE_CALENDAR_ID?: string;
     // Lステップ proxy forwarding
     LSTEP_WEBHOOK_URL?: string;
+    DISCORD_WEBHOOK_URL?: string;
   };
 };
 

@@ -607,4 +607,23 @@ CREATE TABLE IF NOT EXISTS form_submissions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_form_submissions_form ON form_submissions (form_id);
+
+-- ============================================================
+-- OS Inquiry Log
+-- ============================================================
+CREATE TABLE IF NOT EXISTS os_inquiry_log (
+  id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+  friend_id TEXT,
+  line_user_id TEXT NOT NULL,
+  message TEXT NOT NULL,
+  module TEXT NOT NULL,
+  confidence REAL NOT NULL,
+  phase TEXT,
+  tags TEXT,
+  quick_answer TEXT,
+  status TEXT NOT NULL DEFAULT 'received',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_os_inquiry_log_created ON os_inquiry_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_os_inquiry_log_module ON os_inquiry_log(module);
 CREATE INDEX IF NOT EXISTS idx_form_submissions_friend ON form_submissions (friend_id);

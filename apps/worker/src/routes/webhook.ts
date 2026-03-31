@@ -32,6 +32,8 @@ import {
   recordActionDate,
 } from '@line-crm/db';
 import type { SurveyChoice } from '@line-crm/db';
+import { classify } from '../../../../os/core/classifier.js';
+import { notifyDiscord } from '../services/discord-notify.js';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import { buildSurveyQuestionFlex } from '../services/survey-flex.js';
@@ -602,6 +604,36 @@ async function handleEvent(
           console.error('Failed to process automation rule', err);
         }
       }
+    }
+
+    // OS: classify, log, and notify
+    try {
+      const classResult = classify({
+        text: incomingText,
+        channel: 'line',
+        tenant: 'barilingual',
+      });
+      await db.prepare(
+        'INSERT INTO os_inquiry_log (line_user_id, message, module, confidence, status) VALUES (?, ?, ?, ?, ?)'
+      ).bind(
+        event.source?.userId ?? 'unknown',
+        incomingText,
+        classResult.module,
+        classResult.confidence,
+        'received'
+      ).run();
+
+      // Discord通知（inquiry のみ。全メッセージ通知は騒がしいため）
+      if (classResult.module === 'inquiry' && env?.DISCORD_WEBHOOK_URL) {
+        await notifyDiscord(env.DISCORD_WEBHOOK_URL, {
+          username: friend?.display_name ?? event.source?.userId ?? 'unknown',
+          message: incomingText,
+          module: classResult.module,
+          confidence: classResult.confidence,
+        });
+      }
+    } catch (err) {
+      console.error('OS classify/log error:', err);
     }
 
     // イベントバス発火: message_received

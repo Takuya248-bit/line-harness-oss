@@ -33,13 +33,34 @@ describe("pipeline", () => {
     expect(result.status).toBe("draft_ready");
   });
 
-  it("inquiry以外のモジュールは unsupported_module を返す", () => {
+  it("research モジュールは draft_ready を返す", () => {
     const result = runPipeline(
       { text: "競合を調べてリサーチして", channel: "manual", tenant: "barilingual" },
       { message: "競合を調べてリサーチして", tenant: "barilingual", tags: [] },
       prohibited,
     );
     expect(result.classification.module).toBe("research");
+    expect(result.status).toBe("draft_ready");
+    expect(result.handler).toBeDefined();
+  });
+
+  it("content モジュールは approval_needed を返す", () => {
+    const result = runPipeline(
+      { text: "SEO記事を書いて", channel: "manual", tenant: "barilingual" },
+      { message: "SEO記事を書いて", tenant: "barilingual", tags: [] },
+      prohibited,
+    );
+    expect(result.classification.module).toBe("content");
+    expect(result.status).toBe("approval_needed");
+  });
+
+  it("未対応モジュールは unsupported_module を返す", () => {
+    const result = runPipeline(
+      { text: "プロジェクトのスケジュールを確認", channel: "manual", tenant: "barilingual" },
+      { message: "プロジェクトのスケジュールを確認", tenant: "barilingual", tags: [] },
+      prohibited,
+    );
+    expect(result.classification.module).toBe("project");
     expect(result.status).toBe("unsupported_module");
   });
 

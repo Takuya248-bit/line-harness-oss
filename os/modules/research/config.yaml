@@ -1,0 +1,16 @@
+# research モジュールデフォルト設定
+# テナント固有値は os/tenants/{事業名}/research.yaml で上書き
+
+module: research
+description: "調査・分析。サブエージェント起動→結果統合→知識DB投入"
+
+output:
+  format: "結論 + 根拠 + ネクストアクション"
+  max_length: 1000
+
+knowledge_auto_save: true
+max_sources: 5
+
+pipeline:
+  approval_required: false
+  archive: true

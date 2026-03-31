@@ -1,0 +1,20 @@
+# content モジュールデフォルト設定
+# テナント固有値は os/tenants/{事業名}/content.yaml で上書き
+
+module: content
+description: "コンテンツ作成。記事・SNS・LP・メール等"
+
+types: [article, sns_post, lp, email]
+
+output:
+  format: "本文 + メタ情報"
+  max_length: 2000
+
+pipeline:
+  approval_required: true
+  seo_check: true
+  archive: true
+
+tone:
+  style: "読者の行動変容を意識"
+  first_person_data: true
