@@ -7,7 +7,7 @@ import hashlib
 import threading
 
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from linebot.v3 import WebhookParser
 from linebot.v3.messaging import (
     ApiClient, Configuration, MessagingApi, MessagingApiBlob,
@@ -91,7 +91,8 @@ def process_video_async(user_id: str, message_id: str):
 
         timeline_text = format_timeline(result["timeline"])
         dl_url = get_download_url(user_id)
-        push_text(user_id, f"SE挿入完了!\n\nダウンロード:\n{dl_url}\n\n{timeline_text}\n\n調整したい場合はメッセージで指示してください。")
+        review_url = get_review_url(user_id)
+        push_text(user_id, f"SE挿入完了!\n\nレビュー(動画見ながら調整):\n{review_url}\n\nダウンロード:\n{dl_url}\n\n{timeline_text}")
 
     except Exception as e:
         logger.exception("Video processing failed")
@@ -306,6 +307,234 @@ def get_download_url(user_id: str) -> str:
     token = hashlib.md5(user_id.encode()).hexdigest()[:12]
     host = _read_public_url()
     return f"{host}/download/{token}"
+
+
+def get_review_url(user_id: str) -> str:
+    token = hashlib.md5(user_id.encode()).hexdigest()[:12]
+    host = _read_public_url()
+    return f"{host}/review/{token}"
+
+
+def _resolve_token(token: str) -> str | None:
+    """tokenからuser_idを逆引きする。"""
+    for name in os.listdir(SESSIONS_DIR):
+        if name.startswith("video_"):
+            uid = name.replace("video_", "")
+            if hashlib.md5(uid.encode()).hexdigest()[:12] == token:
+                return uid
+    return None
+
+
+@app.get("/review/{token}", response_class=HTMLResponse)
+async def review_page(token: str):
+    """動画プレーヤー + SE調整UIを1画面で表示する。"""
+    user_id = _resolve_token(token)
+    if not user_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    session = sessions.load(user_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="No session")
+
+    import json as _json
+    timeline_json = _json.dumps([
+        {"timestamp": e["timestamp"], "sfx": os.path.basename(e["sfx"]).replace(".wav", ""), "volume_db": e.get("volume_db", 0)}
+        for e in session.get("timeline", [])
+    ], ensure_ascii=False)
+
+    html = f"""<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SE Review</title>
+<style>
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+body {{ font-family:-apple-system,sans-serif; background:#111; color:#eee; height:100dvh; display:flex; flex-direction:column; }}
+.video-wrap {{ position:relative; background:#000; flex:1; min-height:0; display:flex; align-items:center; justify-content:center; }}
+video {{ max-width:100%; max-height:100%; }}
+.time-badge {{ position:absolute; top:8px; left:8px; background:rgba(0,0,0,.7); padding:4px 10px; border-radius:12px; font-size:14px; font-variant-numeric:tabular-nums; }}
+.panel {{ background:#1a1a1a; padding:8px 12px; max-height:45dvh; overflow-y:auto; }}
+.timeline {{ display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px; }}
+.se-chip {{ background:#333; padding:4px 8px; border-radius:8px; font-size:12px; cursor:pointer; transition:background .15s; }}
+.se-chip:hover {{ background:#555; }}
+.se-chip.active {{ background:#f59e0b; color:#000; }}
+.input-row {{ display:flex; gap:6px; padding:4px 0; }}
+.input-row input {{ flex:1; background:#222; border:1px solid #444; color:#eee; padding:8px 12px; border-radius:8px; font-size:15px; }}
+.input-row button {{ background:#f59e0b; color:#000; border:none; padding:8px 16px; border-radius:8px; font-weight:bold; font-size:15px; }}
+.input-row button:disabled {{ opacity:.5; }}
+.status {{ font-size:12px; color:#888; min-height:18px; padding:2px 0; }}
+.log {{ font-size:12px; color:#aaa; margin-top:4px; max-height:80px; overflow-y:auto; }}
+.log div {{ padding:2px 0; border-bottom:1px solid #222; }}
+</style>
+</head>
+<body>
+<div class="video-wrap">
+  <video id="vid" src="/download/{token}" controls playsinline></video>
+  <div class="time-badge" id="timeBadge">0:00.0</div>
+</div>
+<div class="panel">
+  <div class="timeline" id="timeline"></div>
+  <div class="input-row">
+    <input id="cmd" placeholder="例: この音消して / 5秒にぷにぷに追加" autocomplete="off">
+    <button id="send" onclick="sendCmd()">送信</button>
+  </div>
+  <div class="status" id="status"></div>
+  <div class="log" id="log"></div>
+</div>
+<script>
+const token = "{token}";
+let timeline = {timeline_json};
+const vid = document.getElementById("vid");
+const badge = document.getElementById("timeBadge");
+const tlEl = document.getElementById("timeline");
+const cmdEl = document.getElementById("cmd");
+const statusEl = document.getElementById("status");
+const logEl = document.getElementById("log");
+const sendBtn = document.getElementById("send");
+
+function fmt(t) {{
+  const m = Math.floor(t/60), s = (t%60).toFixed(1).padStart(4,"0");
+  return m+":"+s;
+}}
+
+vid.addEventListener("timeupdate", () => {{
+  badge.textContent = fmt(vid.currentTime);
+  document.querySelectorAll(".se-chip").forEach(c => {{
+    const ts = parseFloat(c.dataset.ts);
+    c.classList.toggle("active", Math.abs(vid.currentTime - ts) < 0.5);
+  }});
+}});
+
+function renderTimeline() {{
+  tlEl.innerHTML = timeline.map(e =>
+    `<span class="se-chip" data-ts="${{e.timestamp}}" onclick="vid.currentTime=${{e.timestamp}}">${{e.timestamp.toFixed(1)}}s ${{e.sfx}}</span>`
+  ).join("");
+}}
+renderTimeline();
+
+cmdEl.addEventListener("keydown", e => {{ if(e.key==="Enter") sendCmd(); }});
+
+async function sendCmd() {{
+  const text = cmdEl.value.trim();
+  if(!text) return;
+  const curTime = vid.currentTime;
+  sendBtn.disabled = true;
+  statusEl.textContent = "処理中...";
+  try {{
+    const res = await fetch("/api/adjust/"+token, {{
+      method:"POST",
+      headers:{{"Content-Type":"application/json"}},
+      body:JSON.stringify({{instruction:text, current_time:curTime}})
+    }});
+    const data = await res.json();
+    if(data.ok) {{
+      timeline = data.timeline;
+      renderTimeline();
+      statusEl.textContent = "調整完了! 再生成中...";
+      logEl.innerHTML = `<div>${{text}} → OK</div>` + logEl.innerHTML;
+      cmdEl.value = "";
+      pollVideo();
+    }} else {{
+      statusEl.textContent = data.error || "理解できませんでした";
+      logEl.innerHTML = `<div>${{text}} → NG</div>` + logEl.innerHTML;
+    }}
+  }} catch(e) {{
+    statusEl.textContent = "通信エラー";
+  }}
+  sendBtn.disabled = false;
+}}
+
+async function pollVideo() {{
+  for(let i=0;i<30;i++) {{
+    await new Promise(r=>setTimeout(r,2000));
+    try {{
+      const r = await fetch("/api/status/"+token);
+      const d = await r.json();
+      if(d.ready) {{
+        const cur = vid.currentTime;
+        vid.src = "/download/"+token+"?t="+Date.now();
+        vid.currentTime = cur;
+        statusEl.textContent = "更新完了";
+        return;
+      }}
+    }} catch(e) {{}}
+  }}
+  statusEl.textContent = "タイムアウト。ページを更新してください";
+}}
+</script>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
+@app.post("/api/adjust/{token}")
+async def api_adjust(token: str, request: Request):
+    """Webレビュー画面からのSE調整API。"""
+    user_id = _resolve_token(token)
+    if not user_id:
+        raise HTTPException(status_code=404, detail="Not found")
+    session = sessions.load(user_id)
+    if not session:
+        return JSONResponse({"ok": False, "error": "セッションなし"})
+
+    body = await request.json()
+    instruction = body.get("instruction", "").strip()
+    current_time = body.get("current_time")
+    if not instruction:
+        return JSONResponse({"ok": False, "error": "指示が空です"})
+
+    # 再生位置をコンテキストとして付加
+    if current_time is not None:
+        instruction_with_ctx = f"(現在の再生位置: {current_time:.1f}秒) {instruction}"
+    else:
+        instruction_with_ctx = instruction
+
+    try:
+        ops = parse_adjustment(instruction_with_ctx, session["timeline"], SFX_DIR)
+    except Exception as e:
+        conv_log.log_message(user_id, instruction, f"調整エラー: {e}", understood=False, context={"source": "web_review", "error": str(e)})
+        return JSONResponse({"ok": False, "error": f"解析エラー: {str(e)[:80]}"})
+
+    if not ops:
+        conv_log.log_message(user_id, instruction, "理解できず", understood=False, context={"source": "web_review", "current_time": current_time})
+        return JSONResponse({"ok": False, "error": "指示を理解できませんでした"})
+
+    learning.record_adjustment(user_id, ops, session["timeline"], session.get("events", []))
+    new_timeline = apply_operations(session["timeline"], ops, SFX_DIR)
+    session["timeline"] = new_timeline
+    sessions.save(user_id, session)
+
+    conv_log.log_message(user_id, instruction, f"調整OK: {len(ops)}件", context={"source": "web_review", "operations": ops, "current_time": current_time})
+
+    # バックグラウンドで再レンダリング
+    def _bg_rerender():
+        try:
+            output_dir = os.path.join(SESSIONS_DIR, f"video_{user_id}", "out")
+            os.makedirs(output_dir, exist_ok=True)
+            rerender(session["video_path"], new_timeline, session["duration"], output_dir)
+        except Exception as e:
+            logger.exception("Web rerender failed")
+    threading.Thread(target=_bg_rerender).start()
+
+    return JSONResponse({"ok": True, "timeline": [
+        {"timestamp": e["timestamp"], "sfx": os.path.basename(e["sfx"]).replace(".wav", ""), "volume_db": e.get("volume_db", 0)}
+        for e in new_timeline
+    ]})
+
+
+@app.get("/api/status/{token}")
+async def api_status(token: str):
+    """再レンダリング完了チェック。"""
+    user_id = _resolve_token(token)
+    if not user_id:
+        return JSONResponse({"ready": False})
+    video_path = os.path.join(SESSIONS_DIR, f"video_{user_id}", "out", "output.mp4")
+    if os.path.exists(video_path):
+        mtime = os.path.getmtime(video_path)
+        import time as _time
+        ready = (_time.time() - mtime) < 5
+        return JSONResponse({"ready": ready})
+    return JSONResponse({"ready": False})
 
 
 @app.get("/health")
