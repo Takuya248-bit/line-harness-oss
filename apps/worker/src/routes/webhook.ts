@@ -40,6 +40,7 @@ import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import { buildSurveyQuestionFlex } from '../services/survey-flex.js';
 import { getAccessToken, getAvailableSlots, createCalendarEvent, deleteCalendarEvent } from '../services/google-calendar-sa.js';
 import { buildDateSelectionFlex, buildAvailableSlotsFlex, buildBookingConfirmFlex, buildBookingCancelledFlex } from '../services/booking-flex.js';
+import { extractCSKnowledge } from '../services/cs-knowledge-extractor.js';
 import type { Env } from '../index.js';
 
 const webhook = new Hono<Env>();
@@ -99,8 +100,37 @@ webhook.post('/webhook', async (c) => {
 
   if (isLstepManaged) {
     // OS処理のみ（Lステップと競合する handleEvent は実行しない）
+    // ただし friends + messages_log への保存は行う（請求書システム等で参照するため）
     const osPromise = (async () => {
       for (const event of body.events) {
+        // friend保存（follow/message両方で実行）
+        const eventUserId = (event as any).source?.userId;
+        if (eventUserId) {
+          try {
+            let profile;
+            try { profile = await lineClient.getProfile(eventUserId); } catch { /* ignore */ }
+            const friend = await upsertFriend(db, {
+              lineUserId: eventUserId,
+              displayName: profile?.displayName ?? null,
+              pictureUrl: profile?.pictureUrl ?? null,
+              statusMessage: profile?.statusMessage ?? null,
+            });
+            if (matchedAccountId) {
+              await db.prepare('UPDATE friends SET line_account_id = ? WHERE id = ? AND line_account_id IS NULL')
+                .bind(matchedAccountId, friend.id).run();
+            }
+            // messages_log保存（テキストメッセージのみ）
+            if (event.type === 'message' && (event as any).message?.type === 'text') {
+              const msgId = crypto.randomUUID();
+              await db.prepare(
+                'INSERT OR IGNORE INTO messages_log (id, friend_id, direction, message_type, content, created_at) VALUES (?, ?, ?, ?, ?, ?)'
+              ).bind(msgId, friend.id, 'incoming', 'text', (event as any).message.text, new Date().toISOString()).run();
+            }
+          } catch (err) {
+            console.error('Lstep-managed friend/message save error:', err);
+          }
+        }
+
         if (event.type === 'message' && (event as any).message?.type === 'text') {
           const text = (event as any).message.text as string;
           const userId = (event as any).source?.userId ?? 'unknown';
@@ -639,6 +669,18 @@ async function handleEvent(
           const replyMsg = buildMessage(rule.response_type, expandedContent);
           await lineClient.replyMessage(event.replyToken, [replyMsg]);
 
+          // CS→ナレッジ自動投入 (fire-and-forget)
+          if (env?.NOTION_API_KEY && env?.NOTION_KNOWLEDGE_DB_ID) {
+            try {
+              extractCSKnowledge(incomingText, rule.response_content, {
+                apiKey: env.NOTION_API_KEY,
+                dbId: env.NOTION_KNOWLEDGE_DB_ID,
+              }).catch((e) => console.error('extractCSKnowledge error:', e));
+            } catch (e) {
+              console.error('extractCSKnowledge setup error:', e);
+            }
+          }
+
           const outLogId = crypto.randomUUID();
           await db
             .prepare(
@@ -680,6 +722,18 @@ async function handleEvent(
                 } catch (replyErr) {
                   console.error('replyMessage failed, trying pushMessage:', replyErr);
                   await lineClient.pushMessage(event.source.userId!, [replyMsg]);
+                }
+
+                // CS→ナレッジ自動投入 (fire-and-forget)
+                if (env?.NOTION_API_KEY && env?.NOTION_KNOWLEDGE_DB_ID) {
+                  try {
+                    extractCSKnowledge(incomingText, action.content, {
+                      apiKey: env.NOTION_API_KEY,
+                      dbId: env.NOTION_KNOWLEDGE_DB_ID,
+                    }).catch((e) => console.error('extractCSKnowledge error:', e));
+                  } catch (e) {
+                    console.error('extractCSKnowledge setup error:', e);
+                  }
                 }
 
                 const outLogId = crypto.randomUUID();

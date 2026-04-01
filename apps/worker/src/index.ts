@@ -40,6 +40,7 @@ import { surveys } from './routes/surveys.js';
 import { bookings } from './routes/bookings.js';
 import { tagFolders } from './routes/tag-folders.js';
 import { processXPosting } from './services/x-posting.js';
+import { trackEngagement } from './services/x-engagement-tracker.js';
 import { collectAiSources } from './services/x-ai-source-collector.js';
 import { friendFields } from './routes/friend-fields.js';
 import { savedFilters } from './routes/saved-filters.js';
@@ -263,15 +264,22 @@ async function scheduled(
 
   // X auto-posting (runs independently of LINE accounts)
   if (env.X_API_KEY && env.X_ACCESS_TOKEN) {
+    const xConfig = {
+      apiKey: env.X_API_KEY,
+      apiSecret: env.X_API_SECRET,
+      accessToken: env.X_ACCESS_TOKEN,
+      accessSecret: env.X_ACCESS_SECRET,
+    };
     jobs.push(
-      processXPosting(env.DB, {
-        apiKey: env.X_API_KEY,
-        apiSecret: env.X_API_SECRET,
-        accessToken: env.X_ACCESS_TOKEN,
-        accessSecret: env.X_ACCESS_SECRET,
-      }, {
+      processXPosting(env.DB, xConfig, {
         maxDailyPosts: env.X_MAX_DAILY_POSTS ? parseInt(env.X_MAX_DAILY_POSTS, 10) : undefined,
       }),
+    );
+    // Engagement tracking — エラーでcron全体を止めない
+    jobs.push(
+      trackEngagement(env.DB, xConfig).then((r) =>
+        console.log(`[x-engagement] tracked=${r.tracked} failed=${r.failed}`),
+      ).catch((e) => console.error('[x-engagement] error:', e)),
     );
   }
 
