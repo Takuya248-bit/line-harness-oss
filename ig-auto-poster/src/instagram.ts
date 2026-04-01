@@ -63,6 +63,57 @@ export async function createCarouselContainer(
   return res.id;
 }
 
+interface ContainerStatusResponse {
+  status_code?: string;
+  error?: { message: string };
+}
+
+/** Reels container creation (Instagram Graph API v19.0) */
+export async function createReelsContainer(
+  videoUrl: string,
+  caption: string,
+  accessToken: string,
+  accountId: string,
+): Promise<string> {
+  const res = await graphPost<MediaResponse>(
+    `${GRAPH_API_BASE}/${accountId}/media`,
+    {
+      media_type: "REELS",
+      video_url: videoUrl,
+      caption,
+      access_token: accessToken,
+    },
+  );
+  return res.id;
+}
+
+async function waitForProcessing(
+  containerId: string,
+  accessToken: string,
+  maxRetries: number = 30,
+): Promise<void> {
+  const url = `${GRAPH_API_BASE}/${containerId}`;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, 5000));
+    }
+    const statusUrl = `${url}?fields=${encodeURIComponent("status_code")}&access_token=${encodeURIComponent(accessToken)}`;
+    const res = await fetch(statusUrl);
+    const json = (await res.json()) as ContainerStatusResponse;
+    if (json.error) {
+      throw new Error(`Instagram API error: ${json.error.message}`);
+    }
+    const code = json.status_code;
+    if (code === "FINISHED") return;
+    if (code === "ERROR") {
+      throw new Error("Instagram Reels container processing failed: status_code ERROR");
+    }
+  }
+  throw new Error(
+    `Instagram Reels container processing timed out after ${maxRetries} polls`,
+  );
+}
+
 /** Publish a media container */
 export async function publishMedia(
   containerId: string,
@@ -77,6 +128,23 @@ export async function publishMedia(
     },
   );
   return res.id;
+}
+
+/** Full Reels publish flow */
+export async function publishReel(
+  videoUrl: string,
+  caption: string,
+  accessToken: string,
+  accountId: string,
+): Promise<string> {
+  const containerId = await createReelsContainer(
+    videoUrl,
+    caption,
+    accessToken,
+    accountId,
+  );
+  await waitForProcessing(containerId, accessToken);
+  return publishMedia(containerId, accessToken, accountId);
 }
 
 /** Full carousel publish flow */
