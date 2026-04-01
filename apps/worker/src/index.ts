@@ -45,6 +45,7 @@ import { friendFields } from './routes/friend-fields.js';
 import { savedFilters } from './routes/saved-filters.js';
 import { processPhaseTransitions } from './services/phase-cron.js';
 import { osDashboard } from './routes/os-dashboard.js';
+import { osIntake } from './routes/os-intake.js';
 import { checkDormantFriends, sendWeeklyReport } from './services/os-cron.js';
 
 export type Env = {
@@ -160,6 +161,7 @@ app.route('/', tagFolders);
 app.route('/', friendFields);
 app.route('/', savedFilters);
 app.route('/', osDashboard);
+app.route('/', osIntake);
 
 // Short link: /r/:ref → landing page with LINE open button
 app.get('/r/:ref', (c) => {
