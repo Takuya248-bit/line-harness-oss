@@ -76,6 +76,9 @@ export type Env = {
     // Lステップ proxy forwarding
     LSTEP_WEBHOOK_URL?: string;
     DISCORD_WEBHOOK_URL?: string;
+    // Notion knowledge DB
+    NOTION_API_KEY?: string;
+    NOTION_KNOWLEDGE_DB_ID?: string;
   };
 };
 
