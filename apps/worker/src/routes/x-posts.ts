@@ -180,13 +180,13 @@ xPosts.post('/api/x-posts/generate', async (c) => {
       const notionConfig = c.env.NOTION_API_KEY && c.env.NOTION_KNOWLEDGE_DB_ID
         ? { apiKey: c.env.NOTION_API_KEY, dbId: c.env.NOTION_KNOWLEDGE_DB_ID }
         : undefined;
-      const { content } = await generateAIContent(
+      const { content, usedSourceIds, usedKnowledgeIds } = await generateAIContent(
         c.env.DB,
         apiKey,
         (body.category || 'ai_tips') as XPostCategory,
         notionConfig,
       );
-      return c.json({ success: true, data: { content, aiGenerated: true } });
+      return c.json({ success: true, data: { content, aiGenerated: true, usedSourceIds, usedKnowledgeIds } });
     }
 
     const result = await generateXPostContent(c.env.DB, {

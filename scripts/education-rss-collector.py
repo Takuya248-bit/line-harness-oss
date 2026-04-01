@@ -13,6 +13,7 @@ cronで週2-3回実行を想定。重複チェック済み。
 """
 
 import os
+import re
 import sys
 import json
 import hashlib
@@ -31,11 +32,31 @@ NOTION_DB_ID = os.environ.get("NOTION_DB_KNOWLEDGE_ID", "")
 NOTION_API = "https://api.notion.com/v1"
 NOTION_VERSION = "2022-06-28"
 
+DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "")
+DEEPL_API_URL = "https://api-free.deepl.com/v2/translate"
+_JAPANESE_RE = re.compile(r"[぀-ゟ゠-ヿ一-鿿]")
+
 # 直近N日以内の記事のみ取り込む
 MAX_AGE_DAYS = 7
 
 # 1回の実行で投入する最大件数
 MAX_ENTRIES = 10
+
+# 関連性スコアの最低値（0はスキップ）
+MIN_RELEVANCE_SCORE = 1
+
+# キーワードスコアリング
+RELEVANCE_KEYWORDS = {
+    # 高スコア (+2)
+    "留学": 2, "英語": 2, "english": 2, "study abroad": 2,
+    "language school": 2, "toeic": 2, "ielts": 2,
+    "語学学校": 2, "英会話": 2, "ビザ": 2, "visa": 2,
+    # 中スコア (+1)
+    "バリ": 1, "bali": 1, "生活": 1, "費用": 1, "cost": 1,
+    "学習": 1, "learning": 1, "海外": 1, "travel": 1,
+    "文化": 1, "culture": 1, "サーフィン": 1, "yoga": 1,
+    "ヨガ": 1, "nomad": 1, "ノマド": 1, "コワーキング": 1, "coworking": 1,
+}
 
 # RSSフィード一覧（2026-04確認済み）
 FEEDS = [
@@ -192,11 +213,65 @@ def entry_date(entry):
 
 def entry_summary(entry):
     summary = entry.get("summary", "") or entry.get("description", "")
-    # HTMLタグを簡易除去
-    import re
+    # 見出し抽出 (<h2>, <h3>)
+    headings = re.findall(r"<h[23][^>]*>(.*?)</h[23]>", summary, re.IGNORECASE | re.DOTALL)
+    headings = [re.sub(r"<[^>]+>", "", h).strip() for h in headings]
+    headings = [h for h in headings if h]
+    # 最初の <p> タグの中身を取得
+    p_match = re.search(r"<p[^>]*>(.*?)</p>", summary, re.IGNORECASE | re.DOTALL)
+    p_text = ""
+    if p_match:
+        p_text = re.sub(r"<[^>]+>", "", p_match.group(1))
+        p_text = re.sub(r"\s+", " ", p_text).strip()
+    if headings:
+        heading_str = " / ".join(headings)
+        return f"要点: {heading_str}\n{p_text[:200]}"
+    # 見出しなし: 従来通り先頭500文字
     text = re.sub(r"<[^>]+>", "", summary)
     text = re.sub(r"\s+", " ", text).strip()
     return text[:500]
+
+
+def translate_title(title: str) -> str:
+    """DeepL Free APIで英語タイトルを日本語に翻訳する。
+    - DEEPL_API_KEYが未設定なら原文を返す
+    - 日本語が含まれる場合はそのまま返す
+    - エラー時は原文にフォールバック
+    """
+    if not DEEPL_API_KEY:
+        return title
+    if _JAPANESE_RE.search(title):
+        return title
+    try:
+        body = json.dumps({
+            "text": [title],
+            "target_lang": "JA",
+        }).encode()
+        req = Request(
+            DEEPL_API_URL,
+            data=body,
+            headers={
+                "Authorization": f"DeepL-Auth-Key {DEEPL_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        with urlopen(req, timeout=10) as res:
+            result = json.loads(res.read())
+            return result["translations"][0]["text"]
+    except Exception as e:
+        print(f"  [WARN] DeepL translate failed: {e}", file=sys.stderr)
+        return title
+
+
+def relevance_score(title, summary):
+    """タイトル+要約のキーワードマッチでスコアを計算する"""
+    text = (title + " " + summary).lower()
+    score = 0
+    for keyword, points in RELEVANCE_KEYWORDS.items():
+        if keyword.lower() in text:
+            score += points
+    return score
 
 
 # ---------------------------------------------------------------------------
@@ -236,6 +311,11 @@ def main():
                 continue
 
             summary = entry_summary(entry)
+            title = translate_title(title)
+            score = relevance_score(title, summary)
+            if score < MIN_RELEVANCE_SCORE:
+                print(f"    [SKIP] low relevance: {title[:60]}")
+                continue
             link = entry.get("link", "")
             content = f"{summary}\n\nSource: {link}" if link else summary
 

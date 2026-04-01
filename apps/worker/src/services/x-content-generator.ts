@@ -156,8 +156,16 @@ function buildSystemPrompt(sources: XAiSource[], firsthandKnowledge: NotionKnowl
         .join('\n')
     : '（今回はソースなし。自身の知識から生成すること）';
 
-  const knowledgeBlock = firsthandKnowledge.length > 0
-    ? firsthandKnowledge.map((k) => `- ${k.title}: ${k.content.slice(0, 100)}`).join('\n')
+  const knowledgePool = firsthandKnowledge.length > 5
+    ? [...firsthandKnowledge].sort(() => Math.random() - 0.5).slice(0, 5)
+    : firsthandKnowledge;
+  const detailIndex = knowledgePool.length > 0 ? Math.floor(Math.random() * knowledgePool.length) : -1;
+  const knowledgeBlock = knowledgePool.length > 0
+    ? knowledgePool.map((k, i) =>
+        i === detailIndex
+          ? `- [詳細] ${k.title}: ${k.content.slice(0, 150)}`
+          : `- ${k.title}`
+      ).join('\n')
     : '- Claude Codeでサブエージェント並列起動して開発効率3倍\n- CLAUDE.mdにルール書くだけでAIの出力品質が劇的に向上\n- MCPサーバー自作してDB直接操作可能に\n- Cloudflare Workers + D1でAI連携サービスを月額0円運用';
 
   return `あなたはX（旧Twitter）で投稿するコンテンツを作成するアシスタントです。
@@ -190,12 +198,40 @@ ${knowledgeBlock}
 ${sourceBlock}`;
 }
 
+async function incrementNotionUseCountById(notionApiKey: string, pageId: string): Promise<void> {
+  // 現在値を取得
+  const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+    headers: {
+      Authorization: `Bearer ${notionApiKey}`,
+      'Notion-Version': '2022-06-28',
+    },
+  });
+  if (!res.ok) return;
+  const page = (await res.json()) as { properties: Record<string, any> };
+  const current = page.properties?.use_count?.number ?? 0;
+
+  // +1でPATCH
+  await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${notionApiKey}`,
+      'Notion-Version': '2022-06-28',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      properties: {
+        use_count: { number: current + 1 },
+      },
+    }),
+  });
+}
+
 export async function generateAIContent(
   db: D1Database,
   apiKey: string,
   category: XPostCategory,
   notionConfig?: { apiKey: string; dbId: string },
-): Promise<{ content: string; usedSourceIds: string[] }> {
+): Promise<{ content: string; usedSourceIds: string[]; usedKnowledgeIds: string[] }> {
   // 未使用ソースを取得
   const sources = await getUnusedSources(db, 5);
 
@@ -263,7 +299,20 @@ export async function generateAIContent(
     usedSourceIds.push(sources[0].id);
   }
 
-  return { content: text.trim(), usedSourceIds };
+  // 使用したNotionエントリのuse_countをインクリメント
+  const usedKnowledgeIds: string[] = [];
+  if (notionConfig && firsthandKnowledge.length > 0) {
+    for (const entry of firsthandKnowledge) {
+      try {
+        await incrementNotionUseCountById(notionConfig.apiKey, entry.id);
+        usedKnowledgeIds.push(entry.id);
+      } catch (e) {
+        console.warn(`[x-content] Failed to increment use_count for ${entry.id}:`, e);
+      }
+    }
+  }
+
+  return { content: text.trim(), usedSourceIds, usedKnowledgeIds };
 }
 
 // ---------------------------------------------------------------------------
