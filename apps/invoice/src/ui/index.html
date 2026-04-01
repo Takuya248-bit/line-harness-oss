@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>請求書管理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .loader { border: 3px solid #f3f3f3; border-top: 3px solid #f97316; border-radius: 50%; width: 24px; height: 24px; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div id="app" class="max-w-4xl mx-auto px-4 py-8">
+
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-2xl font-bold text-gray-800">請求書管理</h1>
+      <button type="button" onclick="showList()" class="text-sm text-gray-500 hover:text-gray-700">一覧に戻る</button>
+    </div>
+
+    <div id="view-main" class="space-y-4">
+      <div class="bg-white rounded-lg shadow p-6">
+        <label class="block text-sm font-medium text-gray-700 mb-2">名前を入力するだけ</label>
+        <div class="flex gap-2">
+          <input id="input-query" type="text" placeholder="例: 星慎一郎" class="flex-1 rounded-lg border-gray-300 border px-4 py-3 text-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-400">
+          <button type="button" onclick="doExtract('invoice')" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium">請求書</button>
+          <button type="button" onclick="doExtract('estimate')" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium">見積書</button>
+        </div>
+        <p class="text-xs text-gray-400 mt-2">LINEのチャット履歴からAIが自動で品目・金額を抽出します</p>
+      </div>
+
+      <div id="loading" class="hidden flex items-center justify-center py-8">
+        <div class="loader mr-3"></div>
+        <span class="text-gray-500">チャット履歴を解析中...</span>
+      </div>
+
+      <div id="candidates" class="hidden bg-white rounded-lg shadow p-6">
+        <p class="text-sm font-medium text-gray-700 mb-3">複数の候補が見つかりました:</p>
+        <div id="candidate-list" class="space-y-2"></div>
+      </div>
+    </div>
+
+    <div id="view-edit" class="hidden space-y-4">
+      <div class="bg-white rounded-lg shadow p-6 space-y-4">
+        <div class="flex gap-4">
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 mb-1">種別</label>
+            <span id="edit-type-badge" class="inline-block px-3 py-1 rounded-full text-sm font-medium"></span>
+          </div>
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 mb-1">宛名</label>
+            <input id="edit-name" type="text" class="w-full rounded border-gray-300 border px-3 py-2">
+          </div>
+          <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-700 mb-1">発行日</label>
+            <input id="edit-date" type="date" class="w-full rounded border-gray-300 border px-3 py-2">
+          </div>
+        </div>
+
+        <div id="edit-summary-box" class="hidden bg-blue-50 rounded p-3">
+          <p class="text-xs text-blue-600 font-medium">AI抽出結果:</p>
+          <p id="edit-summary" class="text-sm text-blue-800"></p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">品目</label>
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b">
+                <th class="text-left py-2 w-1/2">品名</th>
+                <th class="text-center py-2 w-16">数量</th>
+                <th class="text-right py-2 w-28">単価</th>
+                <th class="text-right py-2 w-28">金額</th>
+                <th class="w-10"></th>
+              </tr>
+            </thead>
+            <tbody id="items-body"></tbody>
+          </table>
+          <button type="button" onclick="addItem()" class="mt-2 text-sm text-orange-500 hover:text-orange-700">+ 品目を追加</button>
+        </div>
+
+        <div class="flex justify-end">
+          <div class="text-right">
+            <span class="text-gray-600">合計: </span>
+            <span id="edit-total" class="text-2xl font-bold text-gray-900">¥0</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">備考</label>
+          <textarea id="edit-notes" rows="10" class="w-full rounded border-gray-300 border px-3 py-2 text-sm"></textarea>
+        </div>
+
+        <div class="flex gap-2">
+          <button type="button" onclick="saveInvoice()" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium">保存してPDF生成</button>
+          <button type="button" onclick="showMain()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium">キャンセル</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-list" class="hidden space-y-4">
+      <div class="flex gap-2 mb-4">
+        <button type="button" onclick="loadList('all')" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-200" data-tab="all">すべて</button>
+        <button type="button" onclick="loadList('invoice')" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100" data-tab="invoice">請求書</button>
+        <button type="button" onclick="loadList('estimate')" class="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100" data-tab="estimate">見積書</button>
+      </div>
+      <div id="invoice-list" class="space-y-2"></div>
+    </div>
+
+    <div id="view-done" class="hidden">
+      <div class="bg-white rounded-lg shadow p-8 text-center">
+        <div class="text-5xl mb-4">✅</div>
+        <p class="text-lg font-medium text-gray-800 mb-2">保存完了</p>
+        <p id="done-number" class="text-gray-500 mb-4"></p>
+        <div class="flex gap-3 justify-center flex-wrap">
+          <a id="done-pdf-link" href="#" target="_blank" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-medium">PDFを開く</a>
+          <button type="button" onclick="copyPdfLink()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg font-medium">リンクをコピー</button>
+          <button type="button" onclick="showMain()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-6 py-3 rounded-lg font-medium">新規作成</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_KEY = new URLSearchParams(location.search).get('key') || '';
+    const BASE = '';
+    let currentType = 'invoice';
+    let currentFriendId = null;
+    let currentSummary = null;
+
+    function apiHeaders(isJsonBody) {
+      const h = { 'X-API-Key': API_KEY };
+      if (isJsonBody) h['Content-Type'] = 'application/json';
+      return h;
+    }
+
+    async function api(method, path, body) {
+      const opts = { method, headers: apiHeaders(!!body) };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(BASE + path, opts);
+      return res.json();
+    }
+
+    function hideAll() {
+      ['view-main', 'view-edit', 'view-list', 'view-done', 'loading', 'candidates'].forEach(
+        id => document.getElementById(id).classList.add('hidden')
+      );
+    }
+    function showMain() { hideAll(); document.getElementById('view-main').classList.remove('hidden'); }
+    function showEdit() { hideAll(); document.getElementById('view-edit').classList.remove('hidden'); }
+    function showDone() { hideAll(); document.getElementById('view-done').classList.remove('hidden'); }
+    function showList() { hideAll(); document.getElementById('view-list').classList.remove('hidden'); loadList('all'); }
+
+    function escAttr(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+
+    async function doExtract(type) {
+      const query = document.getElementById('input-query').value.trim();
+      if (!query) return;
+      currentType = type;
+
+      document.getElementById('loading').classList.remove('hidden');
+      document.getElementById('candidates').classList.add('hidden');
+
+      try {
+        const res = await api('POST', '/api/extract', { query, type });
+        document.getElementById('loading').classList.add('hidden');
+
+        if (res.mode === 'select' && Array.isArray(res.candidates)) {
+          const list = document.getElementById('candidate-list');
+          list.innerHTML = '';
+          res.candidates.forEach(c => {
+            const b = document.createElement('button');
+            ['block','w-full','text-left','px-4','py-3','rounded','hover:bg-orange-50','border'].forEach(cl => b.classList.add(cl));
+            b.type = 'button';
+            b.textContent = c.name;
+            b.onclick = () => selectCandidate(c.id, c.name);
+            list.appendChild(b);
+          });
+          document.getElementById('candidates').classList.remove('hidden');
+          return;
+        }
+
+        if (!res.data) {
+          alert('エラー: 応答が不正です');
+          return;
+        }
+
+        currentFriendId = res.data.friend_id || null;
+        currentSummary = res.data.summary || null;
+        populateForm(type, res.data);
+        showEdit();
+      } catch (e) {
+        document.getElementById('loading').classList.add('hidden');
+        alert('エラー: ' + (e.message || e));
+      }
+    }
+
+    async function selectCandidate(friendId, name) {
+      document.getElementById('input-query').value = name;
+      document.getElementById('candidates').classList.add('hidden');
+      document.getElementById('loading').classList.remove('hidden');
+
+      try {
+        const res = await api('POST', '/api/extract', { query: name, type: currentType });
+        document.getElementById('loading').classList.add('hidden');
+        if (res.mode === 'select' && res.candidates) {
+          document.getElementById('candidate-list').innerHTML = '';
+          res.candidates.forEach(c => {
+            const b = document.createElement('button');
+            ['block','w-full','text-left','px-4','py-3','rounded','hover:bg-orange-50','border'].forEach(cl => b.classList.add(cl));
+            b.type = 'button';
+            b.textContent = c.name;
+            b.onclick = () => selectCandidate(c.id, c.name);
+            document.getElementById('candidate-list').appendChild(b);
+          });
+          document.getElementById('candidates').classList.remove('hidden');
+          return;
+        }
+        if (!res.data) {
+          alert('エラー: 応答が不正です');
+          return;
+        }
+        currentFriendId = res.data.friend_id || friendId;
+        currentSummary = res.data.summary || null;
+        populateForm(currentType, res.data);
+        showEdit();
+      } catch (e) {
+        document.getElementById('loading').classList.add('hidden');
+        alert('エラー: ' + (e.message || e));
+      }
+    }
+
+    function populateForm(type, data) {
+      const badge = document.getElementById('edit-type-badge');
+      badge.textContent = type === 'invoice' ? '請求書' : '見積書';
+      badge.className = `inline-block px-3 py-1 rounded-full text-sm font-medium ${type === 'invoice' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`;
+
+      document.getElementById('edit-name').value = data.recipient_name || '';
+      document.getElementById('edit-date').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('edit-notes').value = data.notes || '';
+
+      if (data.summary) {
+        document.getElementById('edit-summary').textContent = data.summary;
+        document.getElementById('edit-summary-box').classList.remove('hidden');
+      } else {
+        document.getElementById('edit-summary-box').classList.add('hidden');
+      }
+
+      const tbody = document.getElementById('items-body');
+      tbody.innerHTML = '';
+      if (data.items && data.items.length > 0) {
+        data.items.forEach(item => addItem(item));
+      } else {
+        addItem();
+      }
+      calcTotal();
+    }
+
+    function addItem(item) {
+      const tbody = document.getElementById('items-body');
+      const tr = document.createElement('tr');
+      tr.className = 'border-b';
+      const name = item && item.name != null ? escAttr(item.name) : '';
+      const qty = item && item.quantity != null ? escAttr(String(item.quantity)) : '1';
+      const price = item && item.unit_price != null ? escAttr(String(item.unit_price)) : '';
+      const amt = item && item.amount != null ? item.amount.toLocaleString('ja-JP') : '0';
+      tr.innerHTML = `
+        <td class="py-1"><input type="text" value="${name}" class="w-full border rounded px-2 py-1 item-name" oninput="calcTotal()"></td>
+        <td class="py-1"><input type="number" value="${qty}" class="w-full border rounded px-2 py-1 text-center item-qty" oninput="calcTotal()"></td>
+        <td class="py-1"><input type="number" value="${price}" class="w-full border rounded px-2 py-1 text-right item-price" oninput="calcTotal()"></td>
+        <td class="py-1 text-right item-amount font-medium">${amt}</td>
+        <td class="py-1"><button type="button" onclick="this.closest('tr').remove(); calcTotal()" class="text-red-400 hover:text-red-600 px-2">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function calcTotal() {
+      let total = 0;
+      document.querySelectorAll('#items-body tr').forEach(tr => {
+        const qty = parseInt(tr.querySelector('.item-qty').value, 10) || 0;
+        const price = parseInt(tr.querySelector('.item-price').value, 10) || 0;
+        const amount = qty * price;
+        tr.querySelector('.item-amount').textContent = amount.toLocaleString('ja-JP');
+        total += amount;
+      });
+      document.getElementById('edit-total').textContent = `¥${total.toLocaleString('ja-JP')}`;
+    }
+
+    function getFormData() {
+      const items = [];
+      document.querySelectorAll('#items-body tr').forEach(tr => {
+        const name = tr.querySelector('.item-name').value;
+        const quantity = parseInt(tr.querySelector('.item-qty').value, 10) || 0;
+        const unit_price = parseInt(tr.querySelector('.item-price').value, 10) || 0;
+        if (name.trim()) items.push({ name: name.trim(), quantity, unit_price, amount: quantity * unit_price });
+      });
+      const payload = {
+        type: currentType,
+        recipient_name: document.getElementById('edit-name').value.trim(),
+        issued_date: document.getElementById('edit-date').value,
+        items,
+        notes: document.getElementById('edit-notes').value,
+        chat_summary: currentSummary,
+      };
+      if (currentFriendId) payload.friend_id = currentFriendId;
+      return payload;
+    }
+
+    async function saveInvoice() {
+      const data = getFormData();
+      if (!data.recipient_name || data.items.length === 0) {
+        alert('宛名と品目を入力してください');
+        return;
+      }
+
+      try {
+        const res = await api('POST', '/api/invoices', data);
+        if (!res.success) throw new Error(res.error || 'Save failed');
+
+        const pdfUrl = `${BASE}/api/invoices/${res.data.id}/pdf?key=${encodeURIComponent(API_KEY)}`;
+        await fetch(pdfUrl, { headers: { 'X-API-Key': API_KEY } });
+
+        document.getElementById('done-number').textContent = res.data.invoice_number;
+        document.getElementById('done-pdf-link').href = pdfUrl;
+        showDone();
+      } catch (e) {
+        alert('保存エラー: ' + (e.message || e));
+      }
+    }
+
+    function copyPdfLink() {
+      const url = document.getElementById('done-pdf-link').href;
+      navigator.clipboard.writeText(url);
+      alert('コピーしました');
+    }
+
+    async function loadList(filter) {
+      document.querySelectorAll('[data-tab]').forEach(btn => {
+        btn.className = `px-4 py-2 rounded-lg text-sm font-medium ${btn.dataset.tab === filter ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600'}`;
+      });
+
+      const params = filter === 'all' ? '' : `?type=${filter}`;
+      const res = await api('GET', '/api/invoices' + params);
+      const list = document.getElementById('invoice-list');
+
+      if (!res.data || res.data.length === 0) {
+        list.innerHTML = '<p class="text-center text-gray-400 py-8">まだデータがありません</p>';
+        return;
+      }
+
+      const statusColors = { draft: 'bg-gray-100 text-gray-600', sent: 'bg-blue-100 text-blue-700', paid: 'bg-green-100 text-green-700' };
+      const statusLabels = { draft: '下書き', sent: '送付済', paid: '入金済' };
+      const typeLabels = { estimate: '見積書', invoice: '請求書' };
+
+      list.innerHTML = res.data.map(inv => `
+        <div class="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+          <div>
+            <span class="text-xs px-2 py-0.5 rounded-full ${inv.type === 'estimate' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}">${typeLabels[inv.type]}</span>
+            <span class="text-xs px-2 py-0.5 rounded-full ${statusColors[inv.status]}">${statusLabels[inv.status]}</span>
+            <span class="ml-2 font-medium">${escAttr(inv.recipient_name)}</span>
+            <span class="ml-2 text-gray-400 text-sm">${escAttr(inv.invoice_number)}</span>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="font-bold">¥${inv.total.toLocaleString('ja-JP')}</span>
+            ${inv.pdf_url ? `<a href="${escAttr(inv.pdf_url)}" target="_blank" rel="noopener" class="text-orange-500 hover:text-orange-700 text-sm">PDF</a>` : ''}
+            <button type="button" onclick="duplicateInvoice('${escAttr(inv.id)}')" class="text-gray-400 hover:text-gray-600 text-sm">複製</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function duplicateInvoice(id) {
+      const type = prompt('種別を選択: invoice or estimate', 'invoice');
+      if (!type) return;
+      await api('POST', `/api/invoices/${id}/duplicate`, { type });
+      loadList('all');
+    }
+
+    showMain();
+  </script>
+</body>
+</html>
