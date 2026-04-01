@@ -81,6 +81,27 @@ FEEDS = [
         "subcategory": "english_learning",
         "tags": ["英語", "学習アプリ", "トレンド"],
     },
+    # バリ島情報
+    {
+        "url": "https://nowbali.co.id/feed/",
+        "subcategory": "bali_life",
+        "tags": ["バリ", "生活情報", "観光"],
+    },
+    {
+        "url": "https://thebeatbali.com/feed/",
+        "subcategory": "bali_life",
+        "tags": ["バリ", "ニュース", "カルチャー"],
+    },
+    {
+        "url": "https://balidiscovery.com/feed/",
+        "subcategory": "bali_life",
+        "tags": ["バリ", "ニュース", "規制"],
+    },
+    {
+        "url": "https://www.balipedia.com/feed/",
+        "subcategory": "bali_life",
+        "tags": ["バリ", "ガイド", "生活情報"],
+    },
 ]
 
 # ---------------------------------------------------------------------------
