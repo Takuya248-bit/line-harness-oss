@@ -1,6 +1,10 @@
 const NOTION_API_BASE = "https://api.notion.com/v1";
 const NOTION_VERSION = "2022-06-28";
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export interface NotionKnowledgeEntry {
   id: string;
   category: string;
@@ -35,28 +39,35 @@ interface DatabaseQueryResponse {
   results: NotionPageResult[];
 }
 
-async function notionFetch<T>(
+async function notionFetch<T = unknown>(
   path: string,
   apiKey: string,
   method = "GET",
   body?: unknown,
 ): Promise<T> {
-  const res = await fetch(`${NOTION_API_BASE}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Notion-Version": NOTION_VERSION,
-      "Content-Type": "application/json",
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Notion API ${method} ${path} failed: ${res.status} ${text}`);
+  const maxRetries = 3;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(`${NOTION_API_BASE}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json",
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (res.status === 429 && attempt < maxRetries) {
+      const wait = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s
+      await sleep(wait);
+      continue;
+    }
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Notion API ${res.status}: ${err}`);
+    }
+    return res.json() as Promise<T>;
   }
-
-  return res.json() as Promise<T>;
+  throw new Error("Notion API: max retries exceeded");
 }
 
 function extractSelect(prop: unknown): string {
@@ -147,6 +158,12 @@ export async function fetchKnowledgeFromNotion(
   tags: string[] | undefined,
   limit: number,
 ): Promise<NotionKnowledgeEntry[]> {
+  const catList = categories?.filter((c) => c.length > 0) ?? [];
+  const tagList = tags?.filter((t) => t.length > 0) ?? [];
+  if (catList.length === 0 && tagList.length === 0) {
+    return [];
+  }
+
   const filter = buildFilter(categories, tags);
   const body: DatabaseQueryBody = {
     sorts: [{ property: "use_count", direction: "ascending" }],
@@ -176,5 +193,6 @@ export async function incrementNotionUseCount(apiKey: string, pageIds: string[])
         use_count: { number: current + 1 },
       },
     });
+    await sleep(500); // throttle between entries
   }
 }
