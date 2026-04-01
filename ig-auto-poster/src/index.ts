@@ -17,6 +17,8 @@ export interface Env {
   LINE_OWNER_USER_ID: string;
   UNSPLASH_ACCESS_KEY: string;
   SERPER_API_KEY: string;
+  NOTION_API_KEY: string;
+  NOTION_KNOWLEDGE_DB_ID: string;
 }
 
 // --- 設定取得ヘルパー ---
