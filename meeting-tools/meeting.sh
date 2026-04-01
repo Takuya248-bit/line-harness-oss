@@ -35,6 +35,14 @@ Environment:
 USAGE
 }
 
+_ensure_meeting_output() {
+  # Meeting Outputが存在しなければSwiftで自動作成
+  if ! SwitchAudioSource -a -t output 2>/dev/null | grep -q "Meeting Output"; then
+    echo "Meeting Output装置を作成中..."
+    swift "$SCRIPT_DIR/create-meeting-output.swift" 2>/dev/null || true
+  fi
+}
+
 cmd_start() {
   local name="${1:?会議名を指定してください: meeting.sh start \"KOH定例\"}"
 
@@ -43,6 +51,9 @@ cmd_start() {
     echo "停止するには: ./meeting.sh stop"
     exit 1
   fi
+
+  # Meeting Output装置を確認・作成
+  _ensure_meeting_output
 
   local timestamp
   timestamp="$(date +%Y%m%d-%H%M%S)"
