@@ -11,7 +11,7 @@ cd "$(dirname "$0")"
 CSV="${1:?CSVファイルを指定してください}"
 TITLE="${2:-旅ガチ勢による行ってよかった都道府県ランキング}"
 OUTPUT="${3:-output/final.mp4}"
-SEC_PER_PREF=9.0
+SEC_PER_PREF=4.5
 FPS=24
 
 echo "=== 塗り絵動画ビルド開始 ==="
