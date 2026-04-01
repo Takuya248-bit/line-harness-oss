@@ -6,7 +6,7 @@
  *
  * Env: ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_DB_KNOWLEDGE_ID
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -100,13 +100,43 @@ console.log(`  要点:\n${result.summary}`);
 if (result.decisions) console.log(`  決定事項:\n${result.decisions}`);
 if (result.action_items) console.log(`  アクション:\n${result.action_items}`);
 
-// Notion 知識DBに投入
 const content = [
   result.summary,
   result.decisions ? `\n決定事項:\n${result.decisions}` : "",
   result.action_items ? `\nアクション:\n${result.action_items}` : "",
 ].join("");
 
+// 1. Obsidian Vaultに保存
+const OBSIDIAN_VAULT = resolve(
+  process.env.HOME,
+  "Documents/Obsidian Vault/meetings"
+);
+const today = new Date().toISOString().slice(0, 10);
+const obsidianFile = resolve(OBSIDIAN_VAULT, `${today}-${meetingName}.md`);
+
+try {
+  mkdirSync(OBSIDIAN_VAULT, { recursive: true });
+  const md = [
+    `# ${result.title}`,
+    ``,
+    `date: ${today}`,
+    `tags: ${result.tags || meetingName}`,
+    ``,
+    `## 要点`,
+    result.summary,
+    result.decisions ? `\n## 決定事項\n${result.decisions}` : "",
+    result.action_items ? `\n## アクション\n${result.action_items}` : "",
+    ``,
+    `## 文字起こし`,
+    `![[${transcriptPath}]]`,
+  ].join("\n");
+  writeFileSync(obsidianFile, md);
+  console.log(`\nObsidian保存: ${obsidianFile}`);
+} catch (e) {
+  console.error(`\nObsidian保存: 失敗 (${e.message})`);
+}
+
+// 2. Notion 知識DBに投入
 const knowledgeScript = resolve(__dirname, "../scripts/knowledge-add.mjs");
 
 try {
@@ -120,8 +150,8 @@ try {
       `"firsthand" "verified"`,
     { stdio: "inherit" }
   );
-  console.log("\nNotion知識DB投入: OK");
+  console.log("Notion知識DB投入: OK");
 } catch {
-  console.error("\nNotion知識DB投入: 失敗（手動で投入してください）");
+  console.error("Notion知識DB投入: 失敗（手動で投入してください）");
   console.error(`  内容は ${transcriptPath} を参照`);
 }

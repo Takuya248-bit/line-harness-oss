@@ -6,8 +6,8 @@ MEETINGS_DIR="$SCRIPT_DIR/meetings"
 PID_FILE="$SCRIPT_DIR/.recording.pid"
 META_FILE="$SCRIPT_DIR/.recording.meta"
 
-# Whisper モデル (large-v3 推奨、初回DLに3GB)
-WHISPER_MODEL="${WHISPER_MODEL:-large-v3}"
+# Groq API (whisper-large-v3、無料・高速・高精度)
+GROQ_API_KEY="${GROQ_API_KEY:?GROQ_API_KEYを設定してください}"
 # BlackHole デバイス名
 BLACKHOLE_DEV="${BLACKHOLE_DEV:-BlackHole 2ch}"
 # マイクデバイス名 (default = システムデフォルト)
@@ -24,7 +24,7 @@ Commands:
   transcribe <wav>  既存ファイルを文字起こし+要約
 
 Environment:
-  WHISPER_MODEL   Whisperモデル (default: large-v3)
+  GROQ_API_KEY    Groq APIキー (必須)
   BLACKHOLE_DEV   BlackHoleデバイス名 (default: BlackHole 2ch)
   MIC_DEV         マイクデバイス名 (default: default)
 USAGE
@@ -141,34 +141,53 @@ _transcribe_and_summarize() {
   local session_dir="$2"
   local name="$3"
 
-  # Whisper 文字起こし
+  # Groq API 文字起こし (whisper-large-v3-turbo)
   echo ""
-  echo "=== Whisper 文字起こし (model: $WHISPER_MODEL) ==="
-  echo "処理中... (large-v3で1時間の音声 → 数分程度)"
+  echo "=== Groq API 文字起こし (whisper-large-v3-turbo) ==="
 
-  whisper "$wav_file" \
-    --model "$WHISPER_MODEL" \
-    --language ja \
-    --output_format json \
-    --output_dir "$session_dir" \
-    2>&1 | tail -5
+  # 25MBを超える場合はffmpegで分割
+  local file_size
+  file_size=$(stat -f%z "$wav_file" 2>/dev/null || stat -c%s "$wav_file" 2>/dev/null)
+  local max_size=$((24 * 1024 * 1024))  # 24MB (余裕を持たせる)
 
-  local json_file="$session_dir/merged.json"
-  if [ ! -f "$json_file" ]; then
-    echo "エラー: 文字起こしファイルが生成されませんでした"
-    exit 1
+  local transcript_file="$session_dir/transcript.txt"
+  > "$transcript_file"
+
+  if [ "$file_size" -gt "$max_size" ]; then
+    echo "ファイルサイズ: $((file_size / 1024 / 1024))MB → 分割して処理"
+    local chunk_dir="$session_dir/chunks"
+    mkdir -p "$chunk_dir"
+
+    # 10分ごとに分割
+    ffmpeg -i "$wav_file" -f segment -segment_time 600 \
+      -c copy "$chunk_dir/chunk_%03d.wav" -y 2>/dev/null
+
+    for chunk in "$chunk_dir"/chunk_*.wav; do
+      echo "  処理中: $(basename "$chunk")"
+      local chunk_text
+      chunk_text=$(curl -s "https://api.groq.com/openai/v1/audio/transcriptions" \
+        -H "Authorization: Bearer $GROQ_API_KEY" \
+        -F "file=@$chunk" \
+        -F "model=whisper-large-v3-turbo" \
+        -F "language=ja" \
+        -F "response_format=text")
+      echo "$chunk_text" >> "$transcript_file"
+    done
+    rm -rf "$chunk_dir"
+  else
+    echo "処理中..."
+    curl -s "https://api.groq.com/openai/v1/audio/transcriptions" \
+      -H "Authorization: Bearer $GROQ_API_KEY" \
+      -F "file=@$wav_file" \
+      -F "model=whisper-large-v3-turbo" \
+      -F "language=ja" \
+      -F "response_format=text" > "$transcript_file"
   fi
 
-  # テキスト抽出
-  local transcript_file="$session_dir/transcript.txt"
-  node -e "
-    const fs = require('fs');
-    const data = JSON.parse(fs.readFileSync('$json_file', 'utf8'));
-    const text = data.segments
-      ? data.segments.map(s => s.text.trim()).join('\n')
-      : data.text || '';
-    fs.writeFileSync('$transcript_file', text);
-  "
+  if [ ! -s "$transcript_file" ]; then
+    echo "エラー: 文字起こしが空です"
+    exit 1
+  fi
 
   echo "文字起こし完了: $transcript_file"
   echo ""
