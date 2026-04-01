@@ -1,4 +1,5 @@
 import { searchPhotosForSpots } from "./photo-search";
+import { searchPexelsVideos } from "./pexels-video";
 import { generateCaption } from "./caption-generator";
 import { fetchKnowledge, incrementUseCount, type KnowledgeEntry } from "./knowledge";
 import { fetchKnowledgeFromNotion, incrementNotionUseCount, type NotionKnowledgeEntry } from "./notion-client";
@@ -12,6 +13,7 @@ export interface GenerateOptions {
   notionDbId: string;
   unsplashKey: string;
   serperKey: string;
+  pexelsKey: string;
 }
 
 export interface GeneratedContent {
@@ -226,6 +228,7 @@ export interface HookFactsBuilt {
   hookText: string;
   facts: string[];
   duration: number;
+  videoClipUrls: string[];
   title: string;
   bodyLines: string[];
   hook: string;
@@ -240,6 +243,7 @@ export async function buildContentData(
   entries: UnifiedEntry[],
   unsplashKey: string,
   serperKey: string,
+  pexelsKey: string,
 ): Promise<SpotListBuilt | HookFactsBuilt> {
   // Phase 1: カルーセルは spot_list 相当、リールは hook_facts 相当（未実装テンプレは形式に合わせる）
   const effective: "spot_list" | "hook_facts" = formatType === "reel" ? "hook_facts" : "spot_list";
@@ -253,7 +257,15 @@ export async function buildContentData(
       })
       .filter(Boolean);
     const hookText = selected[0]?.title ?? "バリ島、知らないと損する話";
-    const duration = 18 + Math.floor(Math.random() * 11);
+    const duration = 2 + 1.5 * facts.length + 3;
+    let videoClipUrls: string[] = [];
+    if (pexelsKey.trim()) {
+      try {
+        videoClipUrls = await searchPexelsVideos(pexelsKey, category, area, 4);
+      } catch {
+        videoClipUrls = [];
+      }
+    }
     const titles = CATEGORY_TITLES[category] ?? { catchCopy: "のおすすめ！", mainTitle: "スポット", countLabel: "まとめ" };
     const title = `${area}${titles.catchCopy}${titles.mainTitle}｜今知りたい3つ`;
 
@@ -262,6 +274,7 @@ export async function buildContentData(
       hookText,
       facts,
       duration,
+      videoClipUrls,
       title,
       bodyLines: facts.map((f) => `・${f}`),
       hook: hookText,
@@ -350,7 +363,7 @@ async function incrementUsed(
 }
 
 export async function generateContentV3(opts: GenerateOptions): Promise<GeneratedContent> {
-  const { db, notionApiKey, notionDbId, unsplashKey, serperKey } = opts;
+  const { db, notionApiKey, notionDbId, unsplashKey, serperKey, pexelsKey } = opts;
 
   const formatType = await selectFormatType(db);
   const templateName = await selectTemplate(db, formatType);
@@ -380,7 +393,7 @@ export async function generateContentV3(opts: GenerateOptions): Promise<Generate
 
   const area = AREAS[Math.floor(Math.random() * AREAS.length)]!;
 
-  const built = await buildContentData(templateName, formatType, category, area, entries, unsplashKey, serperKey);
+  const built = await buildContentData(templateName, formatType, category, area, entries, unsplashKey, serperKey, pexelsKey);
 
   const usedSlice = entries.slice(0, built.kind === "hook_facts" ? 3 : 5);
   await incrementUsed(db, source, notionApiKey, usedSlice);
@@ -413,6 +426,7 @@ export async function generateContentV3(opts: GenerateOptions): Promise<Generate
       hookText: built.hookText,
       facts: built.facts,
       duration: built.duration,
+      videoClipUrls: built.videoClipUrls,
     });
     await db
       .prepare("INSERT INTO posted_topics (category, area, theme, spots_json) VALUES (?, ?, ?, ?)")

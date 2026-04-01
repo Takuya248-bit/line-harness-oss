@@ -21,6 +21,7 @@ export interface Env {
   SERPER_API_KEY: string;
   NOTION_API_KEY: string;
   NOTION_KNOWLEDGE_DB_ID: string;
+  PEXELS_API_KEY?: string;
 }
 
 // --- 設定取得ヘルパー ---
@@ -40,6 +41,7 @@ async function handleV3GenerateCron(env: Env): Promise<void> {
     notionDbId: env.NOTION_KNOWLEDGE_DB_ID ?? "",
     unsplashKey: env.UNSPLASH_ACCESS_KEY,
     serperKey: env.SERPER_API_KEY,
+    pexelsKey: env.PEXELS_API_KEY ?? "",
   });
 
   await env.DB

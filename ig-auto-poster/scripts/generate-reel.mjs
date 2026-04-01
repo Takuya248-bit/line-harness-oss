@@ -4,6 +4,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { execFileSync } from "child_process";
+import { generateAllVoices } from "./generate-voice.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -11,8 +12,14 @@ const DRY_RUN = process.argv.includes("--dry-run");
 const WORKER_URL = process.env.WORKER_URL || "https://ig-auto-poster.archbridge24.workers.dev";
 const WIDTH = 1080;
 const HEIGHT = 1920;
+const FPS = 30;
 const FONT_FAMILY = "Zen Maru Gothic";
 const TMP_DIR = path.join("/tmp", "ig-reels");
+
+const DUR_HOOK = 2;
+const DUR_FACT = 1.5;
+const DUR_CTA = 3;
+const TEXT_FADE_SEC = 0.3;
 
 function setupFonts() {
   const fontDir = path.join(__dirname, "fonts");
@@ -22,12 +29,19 @@ function setupFonts() {
   if (fs.existsSync(mediumPath)) registerFont(mediumPath, { family: FONT_FAMILY, weight: "700" });
 }
 
-function escapeXml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+function fontFilePath() {
+  const boldPath = path.join(__dirname, "fonts", "ZenMaruGothic-Black.ttf");
+  if (fs.existsSync(boldPath)) return boldPath;
+  const mediumPath = path.join(__dirname, "fonts", "ZenMaruGothic-Bold.ttf");
+  return mediumPath;
+}
+
+function escapeDrawtext(str) {
+  return String(str)
+    .replace(/\\/g, "\\\\")
+    .replace(/:/g, "\\:")
+    .replace(/'/g, "\\\\'")
+    .replace(/"/g, '\\"');
 }
 
 function wrapText(text, maxChars = 14) {
@@ -47,6 +61,18 @@ async function downloadImage(url) {
   });
   if (!res.ok) return null;
   return Buffer.from(await res.arrayBuffer());
+}
+
+async function downloadVideoFile(url, destPath) {
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; IGAutoBot/1.0)" },
+    signal: AbortSignal.timeout(120000),
+  });
+  if (!res.ok) return false;
+  const buf = Buffer.from(await res.arrayBuffer());
+  fs.mkdirSync(path.dirname(destPath), { recursive: true });
+  fs.writeFileSync(destPath, buf);
+  return true;
 }
 
 async function prepareBackground(imageUrl, overlayOpacity = 0.5) {
@@ -70,57 +96,14 @@ async function prepareBackground(imageUrl, overlayOpacity = 0.5) {
     .toBuffer();
 }
 
-function textToSvg(lines, options = {}) {
-  const {
-    fontSize = 48,
-    fontWeight = "900",
-    color = "white",
-    x = WIDTH / 2,
-    y0 = HEIGHT / 2,
-    lineHeight = 1.4,
-    shadow = true,
-  } = options;
-
-  const lineElements = lines.map((line, i) => {
-    const yPos = y0 + i * fontSize * lineHeight;
-    const shadowFilter = shadow ? `filter="url(#shadow)"` : "";
-    return `<text x="${x}" y="${yPos}" font-family="${FONT_FAMILY}" font-size="${fontSize}" font-weight="${fontWeight}" fill="${color}" text-anchor="middle" ${shadowFilter}>${escapeXml(line)}</text>`;
-  });
-
-  return Buffer.from(`<svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-    <defs><filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="rgba(0,0,0,0.7)"/></filter></defs>
-    ${lineElements.join("\n")}
-  </svg>`);
-}
-
-/** フック: トロピカルグラデ + 中央太字 */
-async function generateHookSlide(hookText) {
-  const bgSvg = Buffer.from(`<svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#004D40"/>
-      <stop offset="100%" stop-color="#00BCD4"/>
-    </linearGradient></defs>
-    <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#bg)"/>
-  </svg>`);
-
-  const lines = wrapText(hookText, 12);
-  const midY = HEIGHT / 2 - ((lines.length - 1) * 64 * 1.2) / 2;
-  const textSvg = textToSvg(lines, { fontSize: 64, fontWeight: "900", y0: midY, lineHeight: 1.25 });
-
-  return sharp(bgSvg).composite([{ input: textSvg, top: 0, left: 0 }]).jpeg({ quality: 90 }).toBuffer();
-}
-
-/** ファクト: 暗めオーバーレイ + テキスト */
-async function generateFactSlide(text, imageUrl) {
+/** Fact slide: 背景のみ（本文はffmpeg drawtextで重畳） */
+async function generateFactBackgroundJpeg(imageUrl) {
   const bg = await prepareBackground(imageUrl || null, 0.55);
-  const lines = wrapText(text, 14);
-  const midY = HEIGHT / 2 - ((lines.length - 1) * 48 * 1.25) / 2;
-  const textSvg = textToSvg(lines, { fontSize: 48, fontWeight: "900", y0: midY, lineHeight: 1.25 });
-  return sharp(bg).composite([{ input: textSvg, top: 0, left: 0 }]).jpeg({ quality: 90 }).toBuffer();
+  return bg;
 }
 
-/** CTA: LINE緑ボタン */
-async function generateCtaSlide() {
+/** CTA: still frame without on-screen hook/fact text (overlay added in ffmpeg if needed) */
+async function generateCtaBaseSlide() {
   const bgSvg = Buffer.from(`<svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#004D40"/>
@@ -144,39 +127,248 @@ function pickBgmPath() {
   return path.join(bgmDir, files[Math.floor(Math.random() * files.length)]);
 }
 
-function writeConcatList(slidePaths, durationPerSlide, listPath) {
-  const lines = [];
-  for (const p of slidePaths) {
-    const abs = path.resolve(p);
-    lines.push(`file '${abs.replace(/'/g, "'\\''")}'`);
-    lines.push(`duration ${durationPerSlide}`);
-  }
-  const last = path.resolve(slidePaths[slidePaths.length - 1]);
-  lines.push(`file '${last.replace(/'/g, "'\\''")}'`);
-  fs.writeFileSync(listPath, lines.join("\n"));
+function framesForDuration(sec) {
+  return Math.max(2, Math.round(sec * FPS));
 }
 
-function createVideo(slidePaths, outputPath, durationPerSlide, totalDuration) {
-  const listPath = path.join(TMP_DIR, `concat-${Date.now()}.txt`);
-  fs.mkdirSync(TMP_DIR, { recursive: true });
-  writeConcatList(slidePaths, durationPerSlide, listPath);
-
-  const bgmPath = pickBgmPath();
-  const vf = `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=decrease,pad=${WIDTH}:${HEIGHT}:-1:-1,fps=30`;
-
-  const args = ["-y", "-f", "concat", "-safe", "0", "-i", listPath, "-vf", vf, "-c:v", "libx264", "-pix_fmt", "yuv420p"];
-
-  if (bgmPath) {
-    args.push("-i", bgmPath, "-map", "0:v", "-map", "1:a", "-c:a", "aac", "-b:a", "128k", "-shortest");
-  } else {
-    args.push("-t", String(totalDuration));
+/** Random Ken Burns: 0 zoom in, 1 zoom out, 2 pan */
+function kenBurnsZoompan(durationSec, pattern) {
+  const d = framesForDuration(durationSec);
+  if (pattern === 1) {
+    const step = d > 1 ? 0.2 / (d - 1) : 0.2;
+    return `zoompan=z='max(1.2-${step.toFixed(6)}*on,1)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${d}:s=${WIDTH}x${HEIGHT}:fps=${FPS}`;
   }
-  args.push(outputPath);
+  if (pattern === 2) {
+    return `zoompan=z='1.15':x='if(eq(on,0),0,min(x+2,iw-(iw/zoom)))':y='ih/2-(ih/zoom/2)':d=${d}:s=${WIDTH}x${HEIGHT}:fps=${FPS}`;
+  }
+  return `zoompan=z='min(zoom+0.004,1.2)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${d}:s=${WIDTH}x${HEIGHT}:fps=${FPS}`;
+}
 
+/**
+ * drawtext chain: one filter per line, vertical center stack, alpha fade-in
+ */
+function drawtextChainForLines(lines, fontfile, fontSize) {
+  const ff = fontfile.replace(/\\/g, "/").replace(/:/g, "\\:");
+  const fade = TEXT_FADE_SEC;
+  const n = lines.length;
+  const lineH = Math.round(fontSize * 1.25);
+  const totalH = (n - 1) * lineH;
+  const y0Expr = `(h-${totalH})/2`;
+  const parts = [];
+  for (let i = 0; i < n; i++) {
+    const txt = escapeDrawtext(lines[i]);
+    const yi = `${y0Expr}+${i * lineH}`;
+    parts.push(
+      `drawtext=fontfile='${ff}':fontsize=${fontSize}:fontcolor=white:x=(w-text_w)/2:y=${yi}:text='${txt}':` +
+        `alpha='if(lt(t\\,${fade})\\,t/${fade}\\,1)'`,
+    );
+  }
+  return parts.join(",");
+}
+
+function runFfmpeg(args) {
   if (DRY_RUN) {
     console.log("[generate-reel] dry-run ffmpeg:", "ffmpeg", args.join(" "));
     return;
   }
+  execFileSync("ffmpeg", args, { stdio: "inherit" });
+}
+
+/**
+ * Video-only (no audio) from image + Ken Burns + drawtext
+ */
+function renderStillKenBurnsToVideo(imagePath, durationSec, lines, opts) {
+  const { outPath, fontSize, kbPattern } = opts;
+  const fontfile = fontFilePath();
+  const z = kenBurnsZoompan(durationSec, kbPattern);
+  const dt = drawtextChainForLines(lines, fontfile, fontSize);
+  const vf = `${z},format=yuv420p,${dt}`;
+  runFfmpeg([
+    "-y",
+    "-loop",
+    "1",
+    "-i",
+    imagePath,
+    "-vf",
+    vf,
+    "-t",
+    String(durationSec),
+    "-r",
+    String(FPS),
+    "-an",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    outPath,
+  ]);
+}
+
+/**
+ * Video-only from downloaded clip: trim, scale+crop, drawtext
+ */
+function renderClipToVideo(clipPath, durationSec, lines, outPath, fontSize) {
+  const fontfile = fontFilePath();
+  const dt = drawtextChainForLines(lines, fontfile, fontSize);
+  const vf = `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT},format=yuv420p,${dt}`;
+  runFfmpeg([
+    "-y",
+    "-stream_loop",
+    "-1",
+    "-i",
+    clipPath,
+    "-vf",
+    vf,
+    "-t",
+    String(durationSec),
+    "-r",
+    String(FPS),
+    "-an",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    outPath,
+  ]);
+}
+
+/** Still image with center crop scale + drawtext (no Ken Burns) — for CTA embedded SVG already has text */
+function renderStillStaticToVideo(imagePath, durationSec, outPath) {
+  runFfmpeg([
+    "-y",
+    "-loop",
+    "1",
+    "-i",
+    imagePath,
+    "-vf",
+    `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT},format=yuv420p`,
+    "-t",
+    String(durationSec),
+    "-r",
+    String(FPS),
+    "-an",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    outPath,
+  ]);
+}
+
+/**
+ * Mux video (no audio) + voice or silence into segment with stereo AAC
+ */
+function muxSegmentVideoAudio(videoSilentPath, voicePathOrNull, durationSec, outPath) {
+  if (DRY_RUN) {
+    console.log("[generate-reel] dry-run mux", videoSilentPath, voicePathOrNull, outPath);
+    fs.copyFileSync(videoSilentPath, outPath);
+    return;
+  }
+  if (voicePathOrNull && fs.existsSync(voicePathOrNull)) {
+    runFfmpeg([
+      "-y",
+      "-i",
+      videoSilentPath,
+      "-i",
+      voicePathOrNull,
+      "-filter_complex",
+      `[1:a]aformat=sample_rates=44100:channel_layouts=stereo,apad=whole_dur=${durationSec}[a1]`,
+      "-map",
+      "0:v",
+      "-map",
+      "[a1]",
+      "-t",
+      String(durationSec),
+      "-c:v",
+      "copy",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      "-ar",
+      "44100",
+      "-ac",
+      "2",
+      outPath,
+    ]);
+  } else {
+    runFfmpeg([
+      "-y",
+      "-i",
+      videoSilentPath,
+      "-f",
+      "lavfi",
+      "-i",
+      `anullsrc=r=44100:cl=stereo`,
+      "-filter_complex",
+      `[1:a]atrim=0:${durationSec},asetpts=PTS-STARTPTS[a1]`,
+      "-map",
+      "0:v",
+      "-map",
+      "[a1]",
+      "-t",
+      String(durationSec),
+      "-c:v",
+      "copy",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      outPath,
+    ]);
+  }
+}
+
+function mixFinalWithBgm(videoWithVoicePath, bgmPath, totalDuration, outPath) {
+  if (!bgmPath || !fs.existsSync(bgmPath)) {
+    if (DRY_RUN) {
+      console.log("[generate-reel] dry-run skip BGM");
+      return;
+    }
+    fs.copyFileSync(videoWithVoicePath, outPath);
+    return;
+  }
+  const loopSamples = 44100 * 30;
+  runFfmpeg([
+    "-y",
+    "-i",
+    videoWithVoicePath,
+    "-i",
+    bgmPath,
+    "-filter_complex",
+    `[0:a]aformat=sample_rates=44100:channel_layouts=stereo[voice];` +
+      `[1:a]volume=0.25,aloop=loop=-1:size=${loopSamples},aformat=sample_rates=44100:channel_layouts=stereo,atrim=0:${totalDuration},asetpts=PTS-STARTPTS[bgm];` +
+      `[voice][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]`,
+    "-map",
+    "0:v",
+    "-map",
+    "[aout]",
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "192k",
+    "-t",
+    String(totalDuration),
+    outPath,
+  ]);
+}
+
+function concatSegments(segmentPaths, outPath) {
+  if (DRY_RUN) {
+    console.log("[generate-reel] dry-run concat", segmentPaths);
+    if (segmentPaths[0]) fs.copyFileSync(segmentPaths[0], outPath);
+    return;
+  }
+  const args = ["-y"];
+  let fcIn = "";
+  for (let i = 0; i < segmentPaths.length; i++) {
+    args.push("-i", segmentPaths[i]);
+    fcIn += `[${i}:v][${i}:a]`;
+  }
+  const fc = `${fcIn}concat=n=${segmentPaths.length}:v=1:a=1[v][a]`;
+  args.push("-filter_complex", fc, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", outPath);
   execFileSync("ffmpeg", args, { stdio: "inherit" });
 }
 
@@ -207,34 +399,125 @@ async function main() {
     console.log(`[generate-reel] Processing #${item.id}`);
     try {
       const content = JSON.parse(item.content_json);
-      const slidePaths = [];
-
-      const hookBuf = await generateHookSlide(content.hookText || content.title || "バリ島、知ってた？");
-      const hookPath = path.join(TMP_DIR, `${item.id}-hook.jpg`);
-      fs.writeFileSync(hookPath, hookBuf);
-      slidePaths.push(hookPath);
-
       const facts = Array.isArray(content.facts) ? content.facts : [];
+      const videoUrls = Array.isArray(content.videoClipUrls) ? content.videoClipUrls : [];
+      const hookText = content.hookText || content.title || "バリ島、知ってた？";
+
+      const ts = Date.now();
+      const workBase = path.join(TMP_DIR, `${item.id}-${ts}`);
+      fs.mkdirSync(workBase, { recursive: true });
+
+      const voiceTasks = [];
+      voiceTasks.push({ text: hookText, outputPath: path.join(workBase, "voice-hook.mp3") });
       for (let i = 0; i < facts.length; i++) {
-        const imgUrl = content.factImageUrls?.[i] || content.imageUrls?.[i] || null;
-        const factBuf = await generateFactSlide(facts[i], imgUrl);
-        const factPath = path.join(TMP_DIR, `${item.id}-fact-${i}.jpg`);
-        fs.writeFileSync(factPath, factBuf);
-        slidePaths.push(factPath);
+        voiceTasks.push({ text: facts[i], outputPath: path.join(workBase, `voice-fact-${i}.mp3`) });
       }
 
-      const ctaBuf = await generateCtaSlide();
-      const ctaPath = path.join(TMP_DIR, `${item.id}-cta.jpg`);
-      fs.writeFileSync(ctaPath, ctaBuf);
-      slidePaths.push(ctaPath);
+      const voicePaths = generateAllVoices(voiceTasks);
 
-      const n = slidePaths.length;
-      const rawPer = Math.floor((content.duration || 20) / n);
-      const durationPerSlide = Math.min(5, Math.max(3, rawPer));
-      const totalDuration = n * durationPerSlide;
-      const videoPath = path.join(TMP_DIR, `${item.id}.mp4`);
+      const silentParts = [];
+      const kbPatternHook = Math.floor(Math.random() * 3);
+      const kbPatternsFacts = facts.map(() => Math.floor(Math.random() * 3));
 
-      createVideo(slidePaths, videoPath, durationPerSlide, totalDuration);
+      /** Hook */
+      const hookUrl = videoUrls[0] ?? null;
+      const hookSilent = path.join(workBase, "hook-silent.mp4");
+      if (hookUrl) {
+        const hookClip = path.join(workBase, "hook-src.mp4");
+        const ok = await downloadVideoFile(hookUrl, hookClip);
+        if (ok) {
+          renderClipToVideo(hookClip, DUR_HOOK, wrapText(hookText, 12), hookSilent, 64);
+        } else {
+          const hookStillPath = path.join(workBase, "hook-fallback.jpg");
+          const bgSvg = Buffer.from(`<svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#004D40"/>
+      <stop offset="100%" stop-color="#00BCD4"/>
+    </linearGradient></defs>
+    <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#bg)"/>
+  </svg>`);
+          const hookFbBuf = await sharp(bgSvg).jpeg({ quality: 92 }).toBuffer();
+          fs.writeFileSync(hookStillPath, hookFbBuf);
+          renderStillKenBurnsToVideo(hookStillPath, DUR_HOOK, wrapText(hookText, 12), {
+            outPath: hookSilent,
+            fontSize: 64,
+            kbPattern: kbPatternHook,
+          });
+        }
+      } else {
+        const hookStillPath = path.join(workBase, "hook-plain.jpg");
+        const bgSvg = Buffer.from(`<svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#004D40"/>
+      <stop offset="100%" stop-color="#00BCD4"/>
+    </linearGradient></defs>
+    <rect width="${WIDTH}" height="${HEIGHT}" fill="url(#bg)"/>
+  </svg>`);
+        const plainHook = await sharp(bgSvg).jpeg({ quality: 92 }).toBuffer();
+        fs.writeFileSync(hookStillPath, plainHook);
+        renderStillKenBurnsToVideo(hookStillPath, DUR_HOOK, wrapText(hookText, 12), {
+          outPath: hookSilent,
+          fontSize: 64,
+          kbPattern: kbPatternHook,
+        });
+      }
+
+      const hookSeg = path.join(workBase, "hook-seg.mp4");
+      muxSegmentVideoAudio(hookSilent, voicePaths[0], DUR_HOOK, hookSeg);
+      silentParts.push(hookSeg);
+
+      /** Facts */
+      for (let i = 0; i < facts.length; i++) {
+        const vUrl = videoUrls[i + 1] ?? null;
+        const imgUrl = content.factImageUrls?.[i] ?? content.imageUrls?.[i] ?? null;
+        const silentV = path.join(workBase, `fact-${i}-silent.mp4`);
+        if (vUrl) {
+          const fp = path.join(workBase, `fact-${i}-src.mp4`);
+          const ok = await downloadVideoFile(vUrl, fp);
+          if (ok) {
+            renderClipToVideo(fp, DUR_FACT, wrapText(facts[i], 14), silentV, 48);
+          } else {
+            const still = path.join(workBase, `fact-${i}.jpg`);
+            const factBuf = await generateFactBackgroundJpeg(imgUrl);
+            fs.writeFileSync(still, factBuf);
+            renderStillKenBurnsToVideo(still, DUR_FACT, wrapText(facts[i], 14), {
+              outPath: silentV,
+              fontSize: 48,
+              kbPattern: kbPatternsFacts[i] ?? 0,
+            });
+          }
+        } else {
+          const still = path.join(workBase, `fact-${i}.jpg`);
+          const factBuf = await generateFactBackgroundJpeg(imgUrl);
+          fs.writeFileSync(still, factBuf);
+          renderStillKenBurnsToVideo(still, DUR_FACT, wrapText(facts[i], 14), {
+            outPath: silentV,
+            fontSize: 48,
+            kbPattern: kbPatternsFacts[i] ?? 0,
+          });
+        }
+        const factSeg = path.join(workBase, `fact-${i}-seg.mp4`);
+        muxSegmentVideoAudio(silentV, voicePaths[i + 1], DUR_FACT, factSeg);
+        silentParts.push(factSeg);
+      }
+
+      /** CTA */
+      const ctaStill = path.join(workBase, "cta.jpg");
+      const ctaBuf = await generateCtaBaseSlide();
+      fs.writeFileSync(ctaStill, ctaBuf);
+      const ctaSilent = path.join(workBase, "cta-silent.mp4");
+      renderStillStaticToVideo(ctaStill, DUR_CTA, ctaSilent);
+      const ctaSeg = path.join(workBase, "cta-seg.mp4");
+      muxSegmentVideoAudio(ctaSilent, null, DUR_CTA, ctaSeg);
+      silentParts.push(ctaSeg);
+
+      const concatPath = path.join(workBase, "concat-voice.mp4");
+      concatSegments(silentParts, concatPath);
+
+      const totalDuration = DUR_HOOK + DUR_FACT * facts.length + DUR_CTA;
+      const bgmPath = pickBgmPath();
+      const videoPath = path.join(workBase, "final.mp4");
+      mixFinalWithBgm(concatPath, bgmPath, totalDuration, videoPath);
 
       if (DRY_RUN) {
         console.log(`[generate-reel] dry-run skip upload #${item.id}`);

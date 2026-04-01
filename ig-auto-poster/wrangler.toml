@@ -1,0 +1,33 @@
+name = "ig-auto-poster"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Bali time (WITA UTC+8):
+# 08:00 (UTC 00:00) - V2コンテンツ生成
+# 09:00 (UTC 01:00) - 承認済み投稿
+# 16:00 (UTC 08:00) - V2コンテンツ生成
+# 18:00 (UTC 10:00) - 承認済み投稿
+# 毎週月曜 10:00 (UTC 02:00) - Insights収集+最適化
+[triggers]
+crons = ["0 0,8 * * *", "0 1,10 * * *", "0 2 * * 1"]
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "barilingual-ig-images"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ig-auto-poster-db"
+database_id = "5d6c137b-4667-4862-a087-5372aebe1e48"
+
+# Secrets (set via `wrangler secret put`):
+# - IG_ACCESS_TOKEN
+# - IG_BUSINESS_ACCOUNT_ID
+# - R2_PUBLIC_URL (e.g. https://images.barilingual.com)
+# - ANTHROPIC_API_KEY
+# - LINE_CHANNEL_ACCESS_TOKEN
+# - LINE_OWNER_USER_ID
+# - NOTION_API_KEY
+# - NOTION_KNOWLEDGE_DB_ID
+# - PEXELS_API_KEY
