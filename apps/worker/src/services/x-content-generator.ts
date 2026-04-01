@@ -108,6 +108,8 @@ const EXCLUDED_TAGS = ['LINE', 'Lステップ', 'lstep', 'line-harness', 'リッ
 async function fetchFirsthandKnowledge(
   notionApiKey: string,
   notionDbId: string,
+  categories: string[] = ['technology', 'method', 'ai_news'],
+  excludeTags: string[] = EXCLUDED_TAGS,
   limit = 10,
 ): Promise<NotionKnowledgeEntry[]> {
   const res = await fetch(`https://api.notion.com/v1/databases/${notionDbId}/query`, {
@@ -119,11 +121,7 @@ async function fetchFirsthandKnowledge(
     },
     body: JSON.stringify({
       filter: {
-        or: [
-          { property: 'category', select: { equals: 'technology' } },
-          { property: 'category', select: { equals: 'method' } },
-          { property: 'category', select: { equals: 'ai_news' } },
-        ],
+        or: categories.map((cat) => ({ property: 'category', select: { equals: cat } })),
       },
       sorts: [{ property: 'use_count', direction: 'ascending' }],
       page_size: limit,
@@ -144,7 +142,7 @@ async function fetchFirsthandKnowledge(
         tags,
       };
     })
-    .filter((e) => !e.tags.some((t: string) => EXCLUDED_TAGS.some((ex) => t.toLowerCase().includes(ex.toLowerCase()))));
+    .filter((e) => !e.tags.some((t: string) => excludeTags.some((ex) => t.toLowerCase().includes(ex.toLowerCase()))));
 }
 
 // ---------------------------------------------------------------------------
@@ -205,7 +203,7 @@ export async function generateAIContent(
   let firsthandKnowledge: NotionKnowledgeEntry[] = [];
   if (notionConfig) {
     try {
-      firsthandKnowledge = await fetchFirsthandKnowledge(notionConfig.apiKey, notionConfig.dbId, 10);
+      firsthandKnowledge = await fetchFirsthandKnowledge(notionConfig.apiKey, notionConfig.dbId);
     } catch (e) {
       console.warn('[x-content] Notion fetch failed, using fallback:', e);
     }
