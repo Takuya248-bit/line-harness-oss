@@ -33,6 +33,9 @@ NOTION_API = "https://api.notion.com/v1"
 NOTION_VERSION = "2022-06-28"
 
 DEEPL_API_KEY = os.environ.get("DEEPL_API_KEY", "")
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
+
+feed_stats = {"success": 0, "fail": 0, "feeds_failed": []}
 DEEPL_API_URL = "https://api-free.deepl.com/v2/translate"
 _JAPANESE_RE = re.compile(r"[぀-ゟ゠-ヿ一-鿿]")
 
@@ -195,10 +198,15 @@ def fetch_feed(feed_config):
         parsed = feedparser.parse(raw)
         if parsed.bozo and not parsed.entries:
             print(f"  [WARN] Feed parse error: {url}", file=sys.stderr)
+            feed_stats["fail"] += 1
+            feed_stats["feeds_failed"].append(url)
             return []
+        feed_stats["success"] += 1
         return parsed.entries
     except Exception as e:
         print(f"  [ERROR] Feed fetch failed: {url} - {e}", file=sys.stderr)
+        feed_stats["fail"] += 1
+        feed_stats["feeds_failed"].append(url)
         return []
 
 
@@ -325,6 +333,31 @@ def main():
                 added += 1
 
     print(f"[education-rss] Done: {added} entries added")
+
+    # RSS死活監視サマリー
+    total = feed_stats["success"] + feed_stats["fail"]
+    if total > 0:
+        rate = feed_stats["success"] / total * 100
+        print(f"[education-rss] Feed stats: {feed_stats['success']}/{total} succeeded ({rate:.0f}%)")
+        if feed_stats["fail"] > 0:
+            print(f"  Failed feeds: {', '.join(feed_stats['feeds_failed'])}", file=sys.stderr)
+
+        fail_rate = feed_stats["fail"] / total
+        if fail_rate >= 0.5 and DISCORD_WEBHOOK_URL:
+            urls_str = ", ".join(feed_stats["feeds_failed"])
+            msg = f"⚠️ education-rss: {feed_stats['fail']}/{total} feeds failed: {urls_str}"
+            try:
+                body = json.dumps({"content": msg}).encode()
+                req = Request(
+                    DISCORD_WEBHOOK_URL,
+                    data=body,
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                urlopen(req, timeout=10)
+                print("[education-rss] Discord alert sent")
+            except Exception as e:
+                print(f"  [WARN] Discord notify failed: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

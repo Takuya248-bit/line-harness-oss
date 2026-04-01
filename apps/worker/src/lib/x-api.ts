@@ -206,6 +206,46 @@ export class XApiClient {
   }
 
   /**
+   * ツイートのメトリクスを取得する (v2 tweet lookup)
+   */
+  async getTweet(tweetId: string): Promise<{
+    id: string;
+    public_metrics: {
+      like_count: number;
+      retweet_count: number;
+      reply_count: number;
+      impression_count: number;
+    };
+  }> {
+    const baseUrl = `${V2_BASE}/tweets/${tweetId}`;
+    const queryParams = { 'tweet.fields': 'public_metrics' };
+    const authHeader = await generateOAuthHeader('GET', baseUrl, this.config, queryParams);
+
+    const url = `${baseUrl}?tweet.fields=public_metrics`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: authHeader,
+      },
+    });
+
+    await this.handleErrors(res);
+
+    const json = (await res.json()) as {
+      data: {
+        id: string;
+        public_metrics: {
+          like_count: number;
+          retweet_count: number;
+          reply_count: number;
+          impression_count: number;
+        };
+      };
+    };
+    return json.data;
+  }
+
+  /**
    * ツイートを削除する
    */
   async deleteTweet(tweetId: string): Promise<void> {
