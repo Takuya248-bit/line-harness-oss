@@ -1,13 +1,12 @@
 #!/usr/bin/env node
 /**
- * summarize.mjs - 文字起こしテキストをClaude Haikuで要約し、Notion知識DBに投入
+ * summarize.mjs - 文字起こしテキストをClaude Haikuで要約し、Notion議事録DBに投入
  *
  * Usage: node summarize.mjs <transcript.txt> <meeting_name>
  *
- * Env: ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_DB_KNOWLEDGE_ID
+ * Env: ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_DB_MEETINGS_ID
  */
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
@@ -15,10 +14,10 @@ import process from "node:process";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const apiKey = process.env.ANTHROPIC_API_KEY;
-if (!apiKey) {
-  console.error("ANTHROPIC_API_KEY が設定されていません");
-  process.exit(1);
-}
+const notionToken = process.env.NOTION_TOKEN;
+const meetingsDbId = process.env.NOTION_DB_MEETINGS_ID;
+if (!apiKey) { console.error("ANTHROPIC_API_KEY が設定されていません"); process.exit(1); }
+if (!notionToken || !meetingsDbId) { console.error("NOTION_TOKEN / NOTION_DB_MEETINGS_ID が設定されていません"); process.exit(1); }
 
 const [, , transcriptPath, meetingName] = process.argv;
 if (!transcriptPath || !meetingName) {
@@ -100,58 +99,64 @@ console.log(`  要点:\n${result.summary}`);
 if (result.decisions) console.log(`  決定事項:\n${result.decisions}`);
 if (result.action_items) console.log(`  アクション:\n${result.action_items}`);
 
-const content = [
-  result.summary,
-  result.decisions ? `\n決定事項:\n${result.decisions}` : "",
-  result.action_items ? `\nアクション:\n${result.action_items}` : "",
-].join("");
-
-// 1. Obsidian Vaultに保存
-const OBSIDIAN_VAULT = resolve(
-  process.env.HOME,
-  "Documents/Obsidian Vault/meetings"
-);
 const today = new Date().toISOString().slice(0, 10);
-const obsidianFile = resolve(OBSIDIAN_VAULT, `${today}-${meetingName}.md`);
 
-try {
-  mkdirSync(OBSIDIAN_VAULT, { recursive: true });
-  const md = [
-    `# ${result.title}`,
-    ``,
-    `date: ${today}`,
-    `tags: ${result.tags || meetingName}`,
-    ``,
-    `## 要点`,
-    result.summary,
-    result.decisions ? `\n## 決定事項\n${result.decisions}` : "",
-    result.action_items ? `\n## アクション\n${result.action_items}` : "",
-    ``,
-    `## 文字起こし`,
-    `![[${transcriptPath}]]`,
-  ].join("\n");
-  writeFileSync(obsidianFile, md);
-  console.log(`\nObsidian保存: ${obsidianFile}`);
-} catch (e) {
-  console.error(`\nObsidian保存: 失敗 (${e.message})`);
+// Notion 議事録DBに投入
+// ブロック本文を組み立て (2000文字制限のため分割)
+function textBlocks(text, heading) {
+  const blocks = [];
+  if (heading) {
+    blocks.push({ object: "block", type: "heading_2", heading_2: { rich_text: [{ text: { content: heading } }] } });
+  }
+  const lines = text.split("\n").filter(Boolean);
+  for (const line of lines) {
+    blocks.push({
+      object: "block", type: "bulleted_list_item",
+      bulleted_list_item: { rich_text: [{ text: { content: line.replace(/^-\s*/, "").slice(0, 2000) } }] },
+    });
+  }
+  return blocks;
 }
 
-// 2. Notion 知識DBに投入
-const knowledgeScript = resolve(__dirname, "../scripts/knowledge-add.mjs");
+const children = [
+  ...textBlocks(result.summary, "要点"),
+  ...(result.decisions ? textBlocks(result.decisions, "決定事項") : []),
+  ...(result.action_items ? textBlocks(result.action_items, "アクション") : []),
+];
 
-try {
-  execSync(
-    `node ${JSON.stringify(knowledgeScript)} ` +
-      `${JSON.stringify(result.category)} ` +
-      `${JSON.stringify(result.subcategory || "meeting")} ` +
-      `${JSON.stringify(result.title)} ` +
-      `${JSON.stringify(content.slice(0, 2000))} ` +
-      `${JSON.stringify(result.tags || meetingName)} ` +
-      `"firsthand" "verified"`,
-    { stdio: "inherit" }
-  );
-  console.log("Notion知識DB投入: OK");
-} catch {
-  console.error("Notion知識DB投入: 失敗（手動で投入してください）");
-  console.error(`  内容は ${transcriptPath} を参照`);
+// 文字起こし全文もブロックとして追加 (2000文字ずつ分割)
+children.push({ object: "block", type: "heading_2", heading_2: { rich_text: [{ text: { content: "文字起こし" } }] } });
+for (let i = 0; i < transcript.length; i += 2000) {
+  children.push({
+    object: "block", type: "paragraph",
+    paragraph: { rich_text: [{ text: { content: transcript.slice(i, i + 2000) } }] },
+  });
 }
+
+const notionRes = await fetch("https://api.notion.com/v1/pages", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${notionToken}`,
+    "Notion-Version": "2022-06-28",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    parent: { database_id: meetingsDbId },
+    properties: {
+      Name: { title: [{ text: { content: result.title } }] },
+      Date: { date: { start: today } },
+      Tags: { multi_select: (result.tags || meetingName).split(",").filter(Boolean).map((t) => ({ name: t.trim() })) },
+    },
+    children: children.slice(0, 100), // Notion API上限100ブロック
+  }),
+});
+
+if (!notionRes.ok) {
+  const err = await notionRes.json();
+  console.error(`\nNotion投入失敗 ${notionRes.status}: ${JSON.stringify(err)}`);
+  process.exit(1);
+}
+
+const page = await notionRes.json();
+console.log(`\nNotion議事録DB投入: OK`);
+console.log(`  URL: ${page.url}`);
