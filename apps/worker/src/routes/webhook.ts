@@ -92,7 +92,116 @@ webhook.post('/webhook', async (c) => {
     c.executionCtx.waitUntil(forwardPromise);
   }
 
-  // 非同期処理 — LINE は ~1s 以内のレスポンスを要求
+  // バリリンガル（Lステップ管理下）: handleEvent をスキップし、OS処理のみ実行
+  // handleEvent はリッチメニュー操作・シナリオ登録等を行うため、Lステップと競合する
+  const OS_BARILINGUAL_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
+  const isLstepManaged = matchedAccountId === null || matchedAccountId === OS_BARILINGUAL_ID;
+
+  if (isLstepManaged) {
+    // OS処理のみ（Lステップと競合する handleEvent は実行しない）
+    const osPromise = (async () => {
+      for (const event of body.events) {
+        if (event.type === 'message' && (event as any).message?.type === 'text') {
+          const text = (event as any).message.text as string;
+          const userId = (event as any).source?.userId ?? 'unknown';
+          try {
+            const classResult = classify({ text, channel: 'line', tenant: 'barilingual' });
+            await db.prepare(
+              'INSERT INTO os_inquiry_log (line_user_id, message, module, confidence, status) VALUES (?, ?, ?, ?, ?)'
+            ).bind(userId, text, classResult.module, classResult.confidence, 'received').run();
+
+            // ドラフト生成
+            let draft: string | undefined;
+            if (classResult.module === 'inquiry') {
+              const quickDraft = tryQuickAnswer(text);
+              if (quickDraft) {
+                draft = quickDraft;
+              } else if (c.env.ANTHROPIC_API_KEY) {
+                try {
+                  // D1から友だち情報+履歴取得
+                  const friend = await db.prepare(
+                    'SELECT id, display_name, created_at FROM friends WHERE line_user_id = ? LIMIT 1'
+                  ).bind(userId).first<any>();
+                  const friendTags = friend ? await getFriendTags(db, friend.id) : [];
+                  const tagNames = friendTags.map((t: any) => t.name || t.tag_name).join(', ');
+                  const history = friend ? await db.prepare(
+                    'SELECT direction, content FROM messages_log WHERE friend_id = ? ORDER BY created_at DESC LIMIT 5'
+                  ).bind(friend.id).all() : { results: [] };
+                  const historyText = (history.results as any[]).reverse()
+                    .map((m: any) => `${m.direction === 'incoming' ? '友だち' : 'こちら'}: ${m.content}`)
+                    .join('\n');
+
+                  const systemPrompt = `あなたはバリリンガル（バリ島の英語留学学校）のLINE返信担当です。
+
+## 料金表
+【1人部屋】1週119,800円/2週219,800円/4週349,800円(人気)/8週629,000円/12週899,000円
+【ペア留学】1週98,000円/4週320,000円/8週539,000円
+【外泊】1週85,000円(最安)/4週246,000円/8週435,000円
+※入学金30,000円別途。含む:授業料・食事(朝昼)・空港送迎・卒業証書
+
+## 授業
+1日4コマ(50分×4)、マンツーマン3+グループ1(最大3名)、月〜金、初心者OK、卒業生200名超、バリ島チャングー
+
+## コース
+日常英会話/TOEIC/TOEFL/英検/ワーホリ準備/サーフィン×英語/ヨガRYT200/副業スキル×英語/親子留学
+
+## 返信ルール
+- 丁寧語ベース、「!」OK、絵文字最小限
+- 押し売りしない。聞き出す→提案
+- CTA1つ含める
+- 「スタッフ常駐」と書かない
+- 入学金30,000円別途を必ず伝える`;
+
+                  const userPrompt = `名前: ${friend?.display_name ?? '不明'} / タグ: ${tagNames || 'なし'}\n直近のやり取り:\n${historyText || 'なし'}\n\n今回のメッセージ: ${text}\n\n返信ドラフトを作成してください。`;
+
+                  const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'x-api-key': c.env.ANTHROPIC_API_KEY,
+                      'anthropic-version': '2023-06-01',
+                    },
+                    body: JSON.stringify({
+                      model: 'claude-haiku-4-5-20251001',
+                      max_tokens: 500,
+                      system: systemPrompt,
+                      messages: [{ role: 'user', content: userPrompt }],
+                    }),
+                  });
+                  if (apiRes.ok) {
+                    const data = await apiRes.json() as { content: { text: string }[] };
+                    draft = data.content?.[0]?.text;
+                  }
+                } catch (err) {
+                  console.error('Draft generation error:', err);
+                }
+              }
+            }
+
+            // Discord通知
+            if (classResult.module === 'inquiry' && c.env.DISCORD_WEBHOOK_URL) {
+              const friend = await db.prepare(
+                'SELECT display_name FROM friends WHERE line_user_id = ? LIMIT 1'
+              ).bind(userId).first<any>();
+              await notifyDiscord(c.env.DISCORD_WEBHOOK_URL, {
+                username: friend?.display_name ?? userId,
+                message: text,
+                module: classResult.module,
+                confidence: classResult.confidence,
+                draft,
+              });
+            }
+          } catch (err) {
+            console.error('OS processing error:', err);
+          }
+        }
+      }
+    })();
+    c.executionCtx.waitUntil(osPromise);
+    return c.json({ status: 'ok' }, 200);
+  }
+
+  // Lステップ管理外のアカウント: 通常の handleEvent を実行
   const processingPromise = (async () => {
     for (const event of body.events) {
       try {
