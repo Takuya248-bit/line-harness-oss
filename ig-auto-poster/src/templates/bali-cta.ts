@@ -24,15 +24,15 @@ export function buildBaliCtaNode(): SatoriNode {
           gap: 4,
         },
       },
-        h("span", { style: { fontSize: 48, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY, textAlign: "center" } }, "保存してバリ旅行の"),
-        h("span", { style: { fontSize: 48, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY, textAlign: "center" } }, "参考にしてね！"),
+        h("span", { style: { fontSize: 48, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY, textAlign: "center" } }, "無料で留学費用表を"),
+        h("span", { style: { fontSize: 48, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY, textAlign: "center" } }, "受け取れます"),
       ),
       h("div", {
         style: {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#E67E22",
+          backgroundColor: "#06C755",
           borderRadius: 50,
           padding: "20px 60px",
         },
@@ -44,7 +44,7 @@ export function buildBaliCtaNode(): SatoriNode {
             color: "white",
             fontFamily: FONT_FAMILY,
           },
-        }, "フォローで最新情報をGET"),
+        }, "LINEで受け取る"),
       ),
       h("div", {
         style: {
@@ -54,8 +54,8 @@ export function buildBaliCtaNode(): SatoriNode {
           gap: 4,
         },
       },
-        h("span", { style: { fontSize: 30, fontWeight: 700, color: "rgba(255,255,255,0.8)", fontFamily: FONT_FAMILY, textAlign: "center" } }, "バリ島のおすすめスポットを"),
-        h("span", { style: { fontSize: 30, fontWeight: 700, color: "rgba(255,255,255,0.8)", fontFamily: FONT_FAMILY, textAlign: "center" } }, "毎日配信中！"),
+        h("span", { style: { fontSize: 30, fontWeight: 700, color: "rgba(255,255,255,0.8)", fontFamily: FONT_FAMILY, textAlign: "center" } }, "プロフィールのリンクから"),
+        h("span", { style: { fontSize: 30, fontWeight: 700, color: "rgba(255,255,255,0.8)", fontFamily: FONT_FAMILY, textAlign: "center" } }, "どうぞ！"),
       ),
     ),
   );

@@ -258,14 +258,14 @@ async function generateCta() {
     <text x="${WIDTH / 2}" y="50" font-family="${FONT_FAMILY}" font-size="36" font-weight="700" fill="white" text-anchor="middle">Barilingual</text>
   </svg>`);
 
-  const mainText = textToSvg(["保存してバリ旅行の", "参考にしてね！"], { fontSize: 48, fontWeight: "900", y: 480, shadow: false });
+  const mainText = textToSvg(["無料で留学費用表を", "受け取れます"], { fontSize: 48, fontWeight: "900", y: 480, shadow: false });
 
   const buttonSvg = Buffer.from(`<svg width="${WIDTH}" height="100" xmlns="http://www.w3.org/2000/svg">
-    <rect x="${WIDTH / 2 - 220}" y="10" width="440" height="70" rx="35" fill="#E67E22"/>
-    <text x="${WIDTH / 2}" y="55" font-family="${FONT_FAMILY}" font-size="32" font-weight="900" fill="white" text-anchor="middle">フォローで最新情報をGET</text>
+    <rect x="${WIDTH / 2 - 220}" y="10" width="440" height="70" rx="35" fill="#06C755"/>
+    <text x="${WIDTH / 2}" y="55" font-family="${FONT_FAMILY}" font-size="32" font-weight="900" fill="white" text-anchor="middle">LINEで受け取る</text>
   </svg>`);
 
-  const subText = textToSvg(["バリ島のおすすめスポットを", "毎日配信中！"], { fontSize: 30, fontWeight: "700", color: "rgba(255,255,255,0.8)", y: 750, shadow: false });
+  const subText = textToSvg(["プロフィールのリンクから", "どうぞ！"], { fontSize: 30, fontWeight: "700", color: "rgba(255,255,255,0.8)", y: 750, shadow: false });
 
   return sharp(bg)
     .composite([

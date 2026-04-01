@@ -13,5 +13,9 @@
     "typescript": "^5.9.3",
     "wrangler": "^3.30.0"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.81.0",
+    "canvas": "^3.2.3",
+    "sharp": "^0.34.5"
+  }
 }
