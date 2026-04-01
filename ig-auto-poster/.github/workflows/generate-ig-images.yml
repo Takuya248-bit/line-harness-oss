@@ -25,6 +25,13 @@ jobs:
           mkdir -p scripts/fonts
           curl -sL "https://raw.githubusercontent.com/googlefonts/zen-marugothic/main/fonts/ttf/ZenMaruGothic-Black.ttf" -o scripts/fonts/ZenMaruGothic-Black.ttf
           curl -sL "https://raw.githubusercontent.com/googlefonts/zen-marugothic/main/fonts/ttf/ZenMaruGothic-Bold.ttf" -o scripts/fonts/ZenMaruGothic-Bold.ttf
+          mkdir -p ~/.local/share/fonts
+          cp scripts/fonts/*.ttf ~/.local/share/fonts/
+          fc-cache -f
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
 
       - name: Install dependencies
         run: npm install sharp canvas
@@ -33,3 +40,8 @@ jobs:
         run: node scripts/generate-images.mjs
         env:
           WORKER_URL: https://ig-auto-poster.archbridge24.workers.dev
+
+      - name: Generate Reels videos
+        run: node scripts/generate-reel.mjs
+        env:
+          WORKER_URL: ${{ secrets.WORKER_URL }}

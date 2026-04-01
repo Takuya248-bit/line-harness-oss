@@ -1,8 +1,10 @@
-import { publishCarousel } from "./instagram";
-import { generateBaliContent } from "./content-generator-v2";
+import { publishCarousel, publishReel } from "./instagram";
+import { generateContentV3 } from "./content-generator-v3";
 import { sendPreview, sendNotification, parsePostback } from "./line-preview";
 import { collectInsights } from "./insights";
-import { optimizeWeights, sendWeeklyReport } from "./optimizer";
+import type { CategoryScore } from "./optimizer";
+import { sendWeeklyReport } from "./optimizer";
+import { runPDCA } from "./pdca-engine";
 import { renderGalleryList, renderGalleryDetail } from "./gallery";
 import { fetchKnowledge, fetchGuardrails, formatKnowledgeForPrompt } from "./knowledge";
 import type { KnowledgeEntry } from "./knowledge";
@@ -30,51 +32,72 @@ async function getSetting(db: D1Database, key: string): Promise<string | null> {
   return row?.value ?? null;
 }
 
-// --- V2 Cronハンドラー ---
-async function handleV2GenerateCron(env: Env): Promise<void> {
-  const content = await generateBaliContent(
-    env.UNSPLASH_ACCESS_KEY,
-    env.DB,
-    env.SERPER_API_KEY,
-  );
+// --- V3 Cronハンドラー（カルーセル + リール） ---
+async function handleV3GenerateCron(env: Env): Promise<void> {
+  const content = await generateContentV3({
+    db: env.DB,
+    notionApiKey: env.NOTION_API_KEY ?? "",
+    notionDbId: env.NOTION_KNOWLEDGE_DB_ID ?? "",
+    unsplashKey: env.UNSPLASH_ACCESS_KEY,
+    serperKey: env.SERPER_API_KEY,
+  });
 
-  // DBに保存（画像生成はGitHub Actionsで実行）
   await env.DB
-    .prepare("INSERT INTO generated_content (template_type, content_json, caption, status, category) VALUES ('bali_v2', ?, ?, ?, ?)")
+    .prepare(
+      "INSERT INTO generated_content (template_type, content_json, caption, status, category, format_type, template_name) VALUES ('bali_v3', ?, ?, ?, ?, ?, ?)",
+    )
     .bind(
-      JSON.stringify(content),
+      content.content_json,
       content.caption,
       "pending_images",
       content.category,
+      content.format_type,
+      content.template_name,
     )
     .run();
 
   await sendNotification(
-    `新しい投稿が生成されました\nテーマ: ${content.title}\nカテゴリ: ${content.category}\n画像生成後にギャラリーで確認できます`,
+    `新投稿生成\n形式: ${content.format_type}\nテンプレ: ${content.template_name}\nカテゴリ: ${content.category}\nタイトル: ${content.title}`,
     env.LINE_OWNER_USER_ID,
     env.LINE_CHANNEL_ACCESS_TOKEN,
   );
 
-  console.log(`V2 content generated: ${content.title} (${content.category})`);
+  console.log(`V3 content generated: ${content.title} (${content.category}) ${content.format_type}`);
 }
 
-async function handleV2PostCron(env: Env): Promise<void> {
+async function handleV3PostCron(env: Env): Promise<void> {
   const row = await env.DB
-    .prepare("SELECT id, content_json, caption, category FROM generated_content WHERE status = 'approved' AND template_type = 'bali_v2' ORDER BY id ASC LIMIT 1")
-    .first<{ id: number; content_json: string; caption: string; category: string }>();
+    .prepare(
+      "SELECT id, content_json, caption, category, COALESCE(NULLIF(TRIM(format_type), ''), 'carousel') AS format_type FROM generated_content WHERE status = 'approved' ORDER BY id ASC LIMIT 1",
+    )
+    .first<{ id: number; content_json: string; caption: string; category: string; format_type: string }>();
 
   if (!row) {
-    console.log("No approved v2 content.");
+    console.log("No approved content to post.");
     return;
   }
 
-  const stored = JSON.parse(row.content_json) as { title: string; slideUrls?: string[] };
-  if (!stored.slideUrls || stored.slideUrls.length === 0) {
-    console.log("Approved content has no slide images yet.");
+  const stored = JSON.parse(row.content_json) as {
+    title?: string;
+    slideUrls?: string[];
+    videoUrl?: string;
+  };
+
+  let publishedId: string;
+
+  if (row.format_type === "reel" && stored.videoUrl) {
+    publishedId = await publishReel(
+      stored.videoUrl,
+      row.caption,
+      env.IG_ACCESS_TOKEN,
+      env.IG_BUSINESS_ACCOUNT_ID,
+    );
+  } else if (stored.slideUrls?.length) {
+    publishedId = await publishCarousel(stored.slideUrls, row.caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
+  } else {
+    console.log("Content not ready for posting (need videoUrl for reel or slideUrls for carousel).");
     return;
   }
-
-  const publishedId = await publishCarousel(stored.slideUrls, row.caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
 
   await env.DB
     .prepare("UPDATE generated_content SET status = 'posted', posted_at = datetime('now'), ig_media_id = ? WHERE id = ?")
@@ -82,11 +105,11 @@ async function handleV2PostCron(env: Env): Promise<void> {
     .run();
 
   await sendNotification(
-    `投稿完了: ${stored.title}\nカテゴリ: ${row.category}`,
+    `投稿完了: ${stored.title ?? "(no title)"}\nカテゴリ: ${row.category}\n形式: ${row.format_type}`,
     env.LINE_OWNER_USER_ID,
     env.LINE_CHANNEL_ACCESS_TOKEN,
   );
-  console.log(`V2 posted: ${stored.title} (${row.category})`);
+  console.log(`Posted #${row.id} (${row.format_type})`);
 }
 
 // --- 週次Insights + 最適化 ---
@@ -96,8 +119,17 @@ async function handleWeeklyInsightsCron(env: Env): Promise<void> {
   const metrics = await collectInsights(env.DB, env.IG_ACCESS_TOKEN);
   console.log(`Collected insights for ${metrics.length} posts`);
 
-  const scores = await optimizeWeights(env.DB);
-  await sendWeeklyReport(scores, env.LINE_OWNER_USER_ID, env.LINE_CHANNEL_ACCESS_TOKEN);
+  const pdcaSummary = await runPDCA(env.DB);
+  console.log(pdcaSummary);
+
+  const reportRows = await env.DB
+    .prepare(
+      `SELECT category, avg_saves as avgSaves, total_posts as totalPosts, weight as currentWeight
+       FROM category_weights ORDER BY avg_saves DESC`,
+    )
+    .all<CategoryScore>();
+
+  await sendWeeklyReport(reportRows.results, env.LINE_OWNER_USER_ID, env.LINE_CHANNEL_ACCESS_TOKEN);
 
   console.log("Weekly insights and optimization complete");
 }
@@ -134,7 +166,7 @@ async function handleLineWebhook(request: Request, env: Env): Promise<Response> 
           .prepare("UPDATE generated_content SET status = 'rejected' WHERE id = ?")
           .bind(parsed.id)
           .run();
-        await handleV2GenerateCron(env);
+        await handleV3GenerateCron(env);
         break;
       }
       case "skip": {
@@ -169,13 +201,13 @@ export default {
       return;
     }
 
-    // 日次: UTC 0,8 → V2コンテンツ生成
+    // 日次: UTC 0,8 → V3コンテンツ生成
     if (hour === 0 || hour === 8) {
-      await handleV2GenerateCron(env);
+      await handleV3GenerateCron(env);
     }
-    // 日次: UTC 1,10 → V2投稿
+    // 日次: UTC 1,10 → 投稿（カルーセル / リール）
     else if (hour === 1 || hour === 10) {
-      await handleV2PostCron(env);
+      await handleV3PostCron(env);
     }
   },
 
@@ -230,8 +262,17 @@ export default {
       // --- Image Pipeline API ---
       if (request.method === "GET" && url.pathname === "/api/pending-images") {
         const rows = await env.DB
-          .prepare("SELECT id, content_json, caption, category FROM generated_content WHERE status = 'pending_images' ORDER BY id ASC LIMIT 5")
-          .all<{ id: number; content_json: string; caption: string; category: string }>();
+          .prepare(
+            "SELECT id, content_json, caption, category, format_type, template_name FROM generated_content WHERE status = 'pending_images' ORDER BY id ASC LIMIT 5",
+          )
+          .all<{
+            id: number;
+            content_json: string;
+            caption: string;
+            category: string;
+            format_type: string | null;
+            template_name: string | null;
+          }>();
         return json({ items: rows.results });
       }
 
@@ -239,6 +280,7 @@ export default {
         const body = await request.json() as {
           contentId: number;
           slides: { index: number; imageBase64: string }[];
+          isVideo?: boolean;
         };
         if (!body.contentId || !body.slides?.length) {
           return json({ error: "contentId and slides are required" }, 400);
@@ -249,12 +291,35 @@ export default {
           .first<{ content_json: string }>();
         if (!row) return json({ error: "Content not found" }, 404);
 
-        const stored = JSON.parse(row.content_json);
-        const slideUrls: string[] = stored.slideUrls ?? [];
+        const stored = JSON.parse(row.content_json) as Record<string, unknown>;
+        const autoApprove = await getSetting(env.DB, "auto_approve");
+        const newStatus = autoApprove === "true" ? "approved" : "pending_review";
+
+        if (body.isVideo === true && body.slides.length === 1) {
+          const slide = body.slides[0];
+          const binary = Uint8Array.from(atob(slide.imageBase64), (c) => c.charCodeAt(0));
+          const key = `reels/${body.contentId}/${Date.now()}/reel.mp4`;
+          await env.IMAGES.put(key, binary, {
+            httpMetadata: { contentType: "video/mp4" },
+          });
+          stored.videoUrl = `${env.R2_PUBLIC_URL}/${key}`;
+          await env.DB
+            .prepare("UPDATE generated_content SET content_json = ?, status = ? WHERE id = ?")
+            .bind(JSON.stringify(stored), newStatus, body.contentId)
+            .run();
+          return json({
+            success: true,
+            contentId: body.contentId,
+            isVideo: true,
+            videoUrl: stored.videoUrl,
+          });
+        }
+
+        const slideUrls: string[] = (stored.slideUrls as string[] | undefined) ?? [];
         const timestamp = Date.now();
 
         for (const slide of body.slides) {
-          const binary = Uint8Array.from(atob(slide.imageBase64), c => c.charCodeAt(0));
+          const binary = Uint8Array.from(atob(slide.imageBase64), (c) => c.charCodeAt(0));
           const key = `slides/${body.contentId}/${timestamp}/slide-${slide.index + 1}.jpg`;
           await env.IMAGES.put(key, binary, {
             httpMetadata: { contentType: "image/jpeg" },
@@ -263,8 +328,6 @@ export default {
         }
 
         stored.slideUrls = slideUrls;
-        const autoApprove = await getSetting(env.DB, "auto_approve");
-        const newStatus = autoApprove === "true" ? "approved" : "pending_review";
         await env.DB
           .prepare("UPDATE generated_content SET content_json = ?, status = ? WHERE id = ?")
           .bind(JSON.stringify(stored), newStatus, body.contentId)
@@ -300,8 +363,8 @@ export default {
 
       // --- Manual triggers ---
       if (request.method === "POST" && url.pathname === "/generate") {
-        await handleV2GenerateCron(env);
-        return json({ success: true, message: "V2 content generated" });
+        await handleV3GenerateCron(env);
+        return json({ success: true, message: "V3 content generated" });
       }
 
       if (request.method === "POST" && url.pathname === "/collect-insights") {
@@ -400,7 +463,7 @@ export default {
           "POST /gallery/:id/skip   - スキップ",
           "GET  /api/pending-images - 画像生成待ちコンテンツ取得",
           "POST /api/slides         - スライド画像アップロード",
-          "POST /generate           - V2コンテンツ手動生成",
+          "POST /generate           - V3コンテンツ手動生成",
           "POST /collect-insights   - Insights手動収集+最適化",
           "POST /settings/auto-approve - 自動承認切替 {enabled:bool}",
           "POST /line-webhook       - LINE Webhook",

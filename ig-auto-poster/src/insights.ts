@@ -16,6 +16,7 @@ export interface PostMetrics {
   likes: number;
   comments: number;
   reach: number;
+  shares: number;
 }
 
 /** 1投稿のInsightsを取得 */
@@ -23,7 +24,7 @@ async function fetchMediaInsights(
   mediaId: string,
   accessToken: string,
 ): Promise<PostMetrics | null> {
-  const url = `${GRAPH_API_BASE}/${mediaId}/insights?metric=saved,likes,comments,reach&access_token=${accessToken}`;
+  const url = `${GRAPH_API_BASE}/${mediaId}/insights?metric=saved,likes,comments,reach,shares&access_token=${accessToken}`;
   const res = await fetch(url);
 
   if (!res.ok) {
@@ -48,6 +49,7 @@ async function fetchMediaInsights(
     likes: metrics.likes ?? 0,
     comments: metrics.comments ?? 0,
     reach: metrics.reach ?? 0,
+    shares: metrics.shares ?? 0,
   };
 }
 
@@ -61,7 +63,8 @@ export async function collectInsights(
   // 投稿済みかつ7日以上経過かつ未計測の投稿を取得
   const rows = await db
     .prepare(`
-      SELECT gc.id, gc.ig_media_id, gc.category
+      SELECT gc.id, gc.ig_media_id, gc.category,
+        COALESCE(NULLIF(TRIM(gc.format_type), ''), 'carousel') as format_type
       FROM generated_content gc
       WHERE gc.status = 'posted'
         AND gc.ig_media_id IS NOT NULL
@@ -73,7 +76,7 @@ export async function collectInsights(
       ORDER BY gc.posted_at ASC
       LIMIT 20
     `)
-    .all<{ id: number; ig_media_id: string; category: string }>();
+    .all<{ id: number; ig_media_id: string; category: string; format_type: string }>();
 
   const results: PostMetrics[] = [];
 
@@ -83,14 +86,25 @@ export async function collectInsights(
 
     await db
       .prepare(`
-        INSERT INTO post_performance (ig_media_id, category, saves, likes, comments, reach)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO post_performance (ig_media_id, category, saves, likes, comments, reach, shares, format_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `)
-      .bind(row.ig_media_id, row.category, metrics.saves, metrics.likes, metrics.comments, metrics.reach)
+      .bind(
+        row.ig_media_id,
+        row.category,
+        metrics.saves,
+        metrics.likes,
+        metrics.comments,
+        metrics.reach,
+        metrics.shares,
+        row.format_type,
+      )
       .run();
 
     results.push(metrics);
-    console.log(`Insights collected: ${row.ig_media_id} (${row.category}) saves=${metrics.saves}`);
+    console.log(
+      `Insights collected: ${row.ig_media_id} (${row.category}) saves=${metrics.saves} shares=${metrics.shares}`,
+    );
   }
 
   return results;

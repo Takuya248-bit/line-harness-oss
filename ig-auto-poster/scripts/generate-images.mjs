@@ -319,6 +319,10 @@ async function main() {
 
     try {
       const contentJson = JSON.parse(item.content_json);
+      if (item.format_type === "reel" || contentJson.duration != null) {
+        console.log(`[generate-images] Skip #${item.id} (reel / video pipeline)`);
+        continue;
+      }
       const jpegBuffers = await generateAllSlides(contentJson);
 
       // Base64エンコードしてWorker APIに送信

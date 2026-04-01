@@ -1,6 +1,6 @@
 import { sendNotification } from "./line-preview";
 
-interface CategoryScore {
+export interface CategoryScore {
   category: string;
   avgSaves: number;
   totalPosts: number;
