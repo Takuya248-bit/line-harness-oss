@@ -1,0 +1,2 @@
+run_id,target_node_id,status,error_type,error_detail,last_step,screenshot_url,idempotency_key,started_at,finished_at,experiment_id,cohort,metrics_note
+RUN_TEMPLATE,s01,queued,,,init,,TEMPLATE-REPLACE-ME,,,,n/a,日次のCV率・見積依頼率などはここにメモするか、別集計シートとリンク
