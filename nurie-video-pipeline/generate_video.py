@@ -243,8 +243,8 @@ def generate_animated_frames(df, current_rank, title, fonts, frame_dir,
     """1県分のアニメーションフレーム群を生成して保存。フレームパスのリストを返す。
 
     アニメーション:
-    - 0.0〜0.15: 全要素フェードイン（opacity 0→1）+ 右からの微スライド（20px）
-    - 0.15〜1.0: 完成状態ホールド
+    - 0.0〜0.4秒: 全要素フェードイン（opacity 0→1）+ 右からの微スライド（20px）
+    - 0.4秒〜末尾: 完成状態ホールド
     """
     if painted_ranks is None:
         painted_ranks = []
@@ -323,7 +323,8 @@ def generate_animated_frames(df, current_rank, title, fonts, frame_dir,
     paths = []
     for fi in range(total_frames):
         t = fi / max(total_frames - 1, 1)
-        anim_t = min(t / 0.15, 1.0)
+        anim_duration = 0.4 / sec_per_pref  # 0.4秒分を正規化
+        anim_t = min(t / anim_duration, 1.0)
         alpha = ease_out_cubic(anim_t)
         slide_x = int(20 * (1 - alpha))
 
