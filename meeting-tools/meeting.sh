@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Hammerspoon等の非ログインシェルから起動された場合に環境変数を読み込む
+if [ -z "${GROQ_API_KEY:-}" ] && [ -f "$HOME/.zshrc" ]; then
+  source "$HOME/.zshrc" 2>/dev/null || true
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MEETINGS_DIR="$SCRIPT_DIR/meetings"
 PID_FILE="$SCRIPT_DIR/.recording.pid"
