@@ -1,112 +1,99 @@
 #!/bin/bash
-# cooking-sfx-bot 自動起動スクリプト
-# cloudflaredクイックトンネル + LINE Webhook URL自動更新
-set -euo pipefail
+# cooking-sfx-bot: uvicorn + cloudflaredクイックトンネル
+# トンネルが死んだらexit → launchdが再起動
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG_DIR="$SCRIPT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
-# .envファイルから環境変数を読み込み
-ENV_FILE="$SCRIPT_DIR/.env"
-if [ -f "$ENV_FILE" ]; then
-  echo "[$(date)] Loading .env from $ENV_FILE"
-  set -a
-  source "$ENV_FILE"
-  set +a
+# .env読み込み
+if [ -f "$SCRIPT_DIR/.env" ]; then
+  set -a; source "$SCRIPT_DIR/.env"; set +a
 fi
+: "${LINE_CHANNEL_SECRET:?required}"
+: "${LINE_CHANNEL_ACCESS_TOKEN:?required}"
+: "${ANTHROPIC_API_KEY:?required}"
 
-# 必須環境変数チェック
-: "${LINE_CHANNEL_SECRET:?LINE_CHANNEL_SECRET is required}"
-: "${LINE_CHANNEL_ACCESS_TOKEN:?LINE_CHANNEL_ACCESS_TOKEN is required}"
-: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY is required}"
-
-SFX_DIR="${SFX_DIR:-$SCRIPT_DIR/assets/sfx}"
-SESSIONS_DIR="${SESSIONS_DIR:-/tmp/cooking-sfx-sessions}"
-LEARNING_DIR="${LEARNING_DIR:-$SCRIPT_DIR/data/learning}"
-PORT="${PORT:-8000}"
-
+export LINE_CHANNEL_SECRET LINE_CHANNEL_ACCESS_TOKEN ANTHROPIC_API_KEY
+export SFX_DIR="${SFX_DIR:-$SCRIPT_DIR/assets/sfx}"
+export SESSIONS_DIR="${SESSIONS_DIR:-/tmp/cooking-sfx-sessions}"
+export LEARNING_DIR="${LEARNING_DIR:-$SCRIPT_DIR/data/learning}"
+export PORT="${PORT:-8000}"
 mkdir -p "$SESSIONS_DIR" "$LEARNING_DIR"
 
-# --- 1. uvicornサーバー起動 ---
-echo "[$(date)] Starting uvicorn on port $PORT..."
-cd "$SCRIPT_DIR"
-SFX_DIR="$SFX_DIR" \
-SESSIONS_DIR="$SESSIONS_DIR" \
-LEARNING_DIR="$LEARNING_DIR" \
-python3 -m uvicorn app:app --host 0.0.0.0 --port "$PORT" \
-  > "$LOG_DIR/uvicorn.log" 2>&1 &
-UVICORN_PID=$!
-echo "[$(date)] uvicorn started (PID: $UVICORN_PID)"
+cleanup() {
+  echo "[$(date)] Shutting down..."
+  kill $UVICORN_PID $TUNNEL_PID 2>/dev/null || true
+  wait $UVICORN_PID $TUNNEL_PID 2>/dev/null || true
+  echo "[$(date)] Stopped."
+}
+trap cleanup EXIT
 
-# サーバー起動待ち
-for i in $(seq 1 10); do
-  if curl -sf "http://localhost:$PORT/health" > /dev/null 2>&1; then
-    echo "[$(date)] Server is ready"
-    break
-  fi
+# --- uvicorn ---
+cd "$SCRIPT_DIR"
+python3 -m uvicorn app:app --host 0.0.0.0 --port "$PORT" \
+  >> "$LOG_DIR/uvicorn.log" 2>&1 &
+UVICORN_PID=$!
+
+for i in $(seq 1 15); do
+  curl -sf "http://localhost:$PORT/health" > /dev/null 2>&1 && break
   sleep 1
 done
+echo "[$(date)] uvicorn ready (PID: $UVICORN_PID)"
 
-# --- 2. cloudflaredトンネル起動 ---
-echo "[$(date)] Starting cloudflared tunnel..."
+# --- cloudflared ---
 TUNNEL_LOG="$LOG_DIR/cloudflared.log"
+: > "$TUNNEL_LOG"
 cloudflared tunnel --url "http://localhost:$PORT" \
   > "$TUNNEL_LOG" 2>&1 &
 TUNNEL_PID=$!
-echo "[$(date)] cloudflared started (PID: $TUNNEL_PID)"
 
-# トンネルURL取得待ち
+# URLがログに出るまで待つ
 TUNNEL_URL=""
 for i in $(seq 1 30); do
-  TUNNEL_URL=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' "$TUNNEL_LOG" 2>/dev/null | head -1 || true)
-  if [ -n "$TUNNEL_URL" ]; then
-    break
-  fi
+  TUNNEL_URL=$(grep -ao 'https://[a-z0-9-]*\.trycloudflare\.com' "$TUNNEL_LOG" 2>/dev/null | head -1 || true)
+  [ -n "$TUNNEL_URL" ] && break
   sleep 1
 done
+[ -z "$TUNNEL_URL" ] && { echo "[$(date)] ERROR: No tunnel URL"; exit 1; }
 
-if [ -z "$TUNNEL_URL" ]; then
-  echo "[$(date)] ERROR: Failed to get tunnel URL"
-  kill $UVICORN_PID $TUNNEL_PID 2>/dev/null
-  exit 1
-fi
-echo "[$(date)] Tunnel URL: $TUNNEL_URL"
+# URLが実際に疎通するまで待つ（DNSの伝搬待ち）
+for i in $(seq 1 30); do
+  curl -sf --max-time 5 "$TUNNEL_URL/health" > /dev/null 2>&1 && break
+  sleep 2
+done
+echo "[$(date)] Tunnel ready: $TUNNEL_URL"
 
-# --- 3. LINE Webhook URL自動更新 ---
-WEBHOOK_URL="${TUNNEL_URL}/webhook"
-echo "[$(date)] Updating LINE webhook to: $WEBHOOK_URL"
+# --- webhook更新 ---
+for attempt in 1 2 3; do
+  RESP=$(curl -s -X PUT \
+    -H "Authorization: Bearer $LINE_CHANNEL_ACCESS_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"endpoint\": \"${TUNNEL_URL}/webhook\"}" \
+    "https://api.line.me/v2/bot/channel/webhook/endpoint" 2>&1)
+  # LINE APIは成功時に空ボディか{}を返す
+  if [ -z "$RESP" ] || [ "$RESP" = "{}" ]; then
+    echo "[$(date)] Webhook updated: ${TUNNEL_URL}/webhook"
+    break
+  fi
+  echo "[$(date)] Webhook attempt $attempt failed: $RESP"
+  sleep 3
+done
 
-RESPONSE=$(curl -sf -X PUT \
-  -H "Authorization: Bearer $LINE_CHANNEL_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "{\"endpoint\": \"$WEBHOOK_URL\"}" \
-  "https://api.line.me/v2/bot/channel/webhook/endpoint" 2>&1) || true
+echo "[$(date)] Running. Monitoring tunnel..."
 
-echo "[$(date)] LINE API response: $RESPONSE"
-
-# PUBLIC_URLをuvicornに伝える（ダウンロードリンク用）
-export PUBLIC_URL="$TUNNEL_URL"
-
-# --- 4. 状態表示 ---
-echo ""
-echo "========================================"
-echo "  cooking-sfx-bot is running!"
-echo "  Server:  http://localhost:$PORT"
-echo "  Tunnel:  $TUNNEL_URL"
-echo "  Webhook: $WEBHOOK_URL"
-echo "  Logs:    $LOG_DIR/"
-echo "========================================"
-echo ""
-
-# --- 5. シグナルハンドリング ---
-cleanup() {
-  echo "[$(date)] Shutting down..."
-  kill $UVICORN_PID $TUNNEL_PID 2>/dev/null
-  wait $UVICORN_PID $TUNNEL_PID 2>/dev/null
-  echo "[$(date)] Stopped."
-}
-trap cleanup SIGINT SIGTERM
-
-# フォアグラウンドで待機
-wait $UVICORN_PID
+# --- 監視ループ: cloudflaredプロセス死亡でexit → launchdが再起動 ---
+while true; do
+  sleep 30
+  # cloudflaredプロセスの生存確認
+  if ! kill -0 $TUNNEL_PID 2>/dev/null; then
+    echo "[$(date)] cloudflared process died, exiting for restart..."
+    exit 1
+  fi
+  # uvicornの生存確認
+  if ! kill -0 $UVICORN_PID 2>/dev/null; then
+    echo "[$(date)] uvicorn process died, exiting for restart..."
+    exit 1
+  fi
+done

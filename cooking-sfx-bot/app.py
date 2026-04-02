@@ -92,11 +92,22 @@ def process_video_async(user_id: str, message_id: str):
         timeline_text = format_timeline(result["timeline"])
         dl_url = get_download_url(user_id)
         review_url = get_review_url(user_id)
-        push_text(user_id, f"SE挿入完了!\n\nレビュー(動画見ながら調整):\n{review_url}\n\nダウンロード:\n{dl_url}\n\n{timeline_text}")
+        resp = f"SE挿入完了!\n\nレビュー(動画見ながら調整):\n{review_url}\n\nダウンロード:\n{dl_url}\n\n{timeline_text}"
+        push_text(user_id, resp)
+        conv_log.log_message(user_id, "[動画処理完了]", resp, context={
+            "type": "video_processed",
+            "timeline_count": len(result["timeline"]),
+            "duration": result["duration"],
+        })
 
     except Exception as e:
         logger.exception("Video processing failed")
-        push_text(user_id, f"処理中にエラーが発生しました: {str(e)[:100]}")
+        error_msg = f"処理中にエラーが発生しました: {str(e)[:100]}"
+        push_text(user_id, error_msg)
+        conv_log.log_message(user_id, "[動画処理エラー]", error_msg, understood=False, context={
+            "type": "video_error",
+            "error": str(e),
+        })
 
 
 @app.post("/webhook")
@@ -122,6 +133,7 @@ async def webhook(request: Request):
                 reply_token=event.reply_token,
                 messages=[TextMessage(text="動画を受け取りました。SE挿入中... (15-30秒)")],
             ))
+            conv_log.log_message(user_id, "[動画送信]", "SE挿入中...", context={"type": "video_received", "message_id": message.id})
             thread = threading.Thread(target=process_video_async, args=(user_id, message.id))
             thread.start()
 
@@ -135,16 +147,20 @@ async def webhook(request: Request):
                     f.write(content)
                 user_states[user_id] = {"mode": "se_add_category", "file": tmp_path}
                 api = get_api()
+                resp = "カテゴリを選んでください:\n切る / 混ぜる / 注ぐ / 演出 / リアクション / 転換 / その他"
                 api.reply_message(ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text="カテゴリを選んでください:\n切る / 混ぜる / 注ぐ / 演出 / リアクション / 転換 / その他")],
+                    messages=[TextMessage(text=resp)],
                 ))
+                conv_log.log_message(user_id, "[音声送信:SE追加]", resp)
             else:
                 api = get_api()
+                resp = "SE追加する場合は先に「SE追加」と送ってください。"
                 api.reply_message(ReplyMessageRequest(
                     reply_token=event.reply_token,
-                    messages=[TextMessage(text="SE追加する場合は先に「SE追加」と送ってください。")],
+                    messages=[TextMessage(text=resp)],
                 ))
+                conv_log.log_message(user_id, "[音声送信]", resp, understood=False, context={"type": "audio_without_mode"})
 
         elif isinstance(message, TextMessageContent):
             text = message.text.strip()
@@ -200,6 +216,13 @@ async def webhook(request: Request):
                 api.reply_message(ReplyMessageRequest(
                     reply_token=event.reply_token,
                     messages=[TextMessage(text=summary)],
+                ))
+
+            elif text == "改善レポート":
+                report = conv_log.get_improvement_report()
+                api.reply_message(ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=report)],
                 ))
 
             elif text == "会話履歴":

@@ -82,6 +82,43 @@ class ConversationLog:
         with open(path, "a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
+    def get_improvement_report(self) -> str:
+        """詰まりポイントを分析し、改善レポートを生成する。"""
+        misunderstood = self._read_jsonl(self._misunderstood_path)
+        all_msgs = self._read_jsonl(self._log_path)
+        if not all_msgs:
+            return "まだデータなし"
+
+        total = len(all_msgs)
+        errors = [r for r in misunderstood if r.get("context", {}).get("type") in ("video_error", "audio_without_mode")]
+        failed_adjustments = [r for r in misunderstood if r.get("context", {}).get("type") not in ("video_error", "audio_without_mode", None)]
+        text_misunderstood = [r for r in misunderstood if not r.get("context", {}).get("type")]
+
+        lines = [f"=== 改善レポート ==="]
+        lines.append(f"総やり取り: {total}件")
+        lines.append(f"詰まり合計: {len(misunderstood)}件 ({len(misunderstood)/max(total,1)*100:.0f}%)")
+
+        if errors:
+            lines.append(f"\n[処理エラー] {len(errors)}件")
+            error_types = Counter()
+            for r in errors[-5:]:
+                err = r.get("context", {}).get("error", "不明")[:60]
+                error_types[err] += 1
+            for err, cnt in error_types.most_common(3):
+                lines.append(f"  {cnt}回: {err}")
+
+        if text_misunderstood:
+            lines.append(f"\n[理解できなかった指示] {len(text_misunderstood)}件")
+            for r in text_misunderstood[-5:]:
+                lines.append(f"  「{r['user_text'][:40]}」")
+
+        if failed_adjustments:
+            lines.append(f"\n[調整失敗] {len(failed_adjustments)}件")
+            for r in failed_adjustments[-5:]:
+                lines.append(f"  「{r['user_text'][:40]}」")
+
+        return "\n".join(lines)
+
     def _read_jsonl(self, path: str) -> list[dict]:
         if not os.path.exists(path):
             return []

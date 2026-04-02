@@ -1,0 +1,122 @@
+[
+  {
+    "timestamp": 0.0,
+    "sfx": "misc/mouse_click.wav",
+    "volume_db": 2
+  },
+  {
+    "timestamp": 0.2,
+    "sfx": "intro/kirarin.wav",
+    "volume_db": 0
+  },
+  {
+    "timestamp": 2.0,
+    "sfx": "cutting/houchou_cut.wav",
+    "volume_db": 2
+  },
+  {
+    "timestamp": 3.25,
+    "sfx": "transition/hyut.wav",
+    "volume_db": 2
+  },
+  {
+    "timestamp": 4.0,
+    "sfx": "pouring/ekitai_sosogu.wav",
+    "volume_db": 0
+  },
+  {
+    "timestamp": 7.5,
+    "sfx": "misc/punipuni.wav",
+    "volume_db": 0
+  },
+  {
+    "timestamp": 9.5,
+    "sfx": "text_emphasis/pon.wav",
+    "volume_db": 0
+  },
+  {
+    "timestamp": 11.5,
+    "sfx": "misc/puyon.wav",
+    "volume_db": 0
+  },
+  {
+    "timestamp": 12.25,
+    "sfx": "pouring/awa.wav",
+    "volume_db": -2
+  },
+  {
+    "timestamp": 13.5,
+    "sfx": "misc/punipuni.wav",
+    "volume_db": 0
+  },
+  {
+    "timestamp": 15.0,
+    "sfx": "misc/coin.wav",
+    "volume_db": 0
+  },
+  {
+    "timestamp": 17.25,
+    "sfx": "intro/ikuzo.wav",
+    "volume_db": 0
+  },
+  {
+    "timestamp": 17.8,
+    "sfx": "mixing/kakimazeru_long.wav",
+    "volume_db": -6
+  },
+  {
+    "timestamp": 20.5,
+    "sfx": "text_emphasis/pon.wav",
+    "volume_db": -2
+  },
+  {
+    "timestamp": 24.0,
+    "sfx": "reaction_surprise/wow.wav",
+    "volume_db": 0
+  },
+  {
+    "timestamp": 25.25,
+    "sfx": "transition/hyut.wav",
+    "volume_db": 2
+  },
+  {
+    "timestamp": 27.5,
+    "sfx": "text_emphasis/typing.wav",
+    "volume_db": 0
+  },
+  {
+    "timestamp": 29.0,
+    "sfx": "reaction_surprise/bikkuri.wav",
+    "volume_db": 2
+  },
+  {
+    "timestamp": 29.5,
+    "sfx": "cutting/knife_cut_short.wav",
+    "volume_db": 2
+  },
+  {
+    "timestamp": 31.0,
+    "sfx": "cutting/houchou_cut.wav",
+    "volume_db": 0
+  },
+  {
+    "timestamp": 33.25,
+    "sfx": "misc/puyon.wav",
+    "volume_db": 2
+  },
+  {
+    "timestamp": 34.5,
+    "sfx": "misc/ahiru.wav",
+    "volume_db": 0
+  },
+  {
+    "timestamp": 36.75,
+    "sfx": "cutting/houchou_cut.wav",
+    "volume_db": 2
+  },
+  {
+    "timestamp": 37.8,
+    "sfx": "reaction_happy/umai.wav",
+    "volume_db": 3
+  }
+]
