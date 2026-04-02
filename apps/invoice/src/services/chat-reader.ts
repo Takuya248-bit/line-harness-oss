@@ -9,10 +9,13 @@ export interface FriendInfo {
   display_name: string;
 }
 
+// バリリンガルのline_account_id
+const BARILINGUAL_ACCOUNT_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
+
 export async function searchFriend(db: D1Database, name: string): Promise<FriendInfo[]> {
   const result = await db
-    .prepare('SELECT id, display_name FROM friends WHERE display_name LIKE ? LIMIT 10')
-    .bind(`%${name}%`)
+    .prepare('SELECT id, display_name FROM friends WHERE display_name LIKE ? AND line_account_id = ? LIMIT 10')
+    .bind(`%${name}%`, BARILINGUAL_ACCOUNT_ID)
     .all<FriendInfo>();
   return result.results ?? [];
 }

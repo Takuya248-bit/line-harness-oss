@@ -139,7 +139,11 @@
       const opts = { method, headers: apiHeaders(!!body) };
       if (body) opts.body = JSON.stringify(body);
       const res = await fetch(BASE + path, opts);
-      return res.json();
+      const json = await res.json();
+      if (json.error === 'Unauthorized') {
+        throw new Error('認証エラー: URLに ?key=YOUR_API_KEY を付けてアクセスしてください');
+      }
+      return json;
     }
 
     function hideAll() {

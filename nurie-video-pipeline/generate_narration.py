@@ -58,19 +58,42 @@ def generate_all_narrations(csv_path, output_dir, reverse=False):
 def combine_narrations_with_timing(output_dir, durations, sec_per_pref=3.5,
                                     intro_sec=5.0, output_path='assets/narration.wav',
                                     reverse=False):
-    """タイミングに合わせてナレーションを結合"""
+    """タイミングに合わせてナレーションを結合（マイルストーン・演出セクション対応）"""
     total = len(durations)
     ranks = list(range(total, 0, -1)) if reverse else list(range(1, total + 1))
 
-    # 総尺を計算
-    outro_sec = 6.0
-    total_duration_ms = int((intro_sec + sec_per_pref * total + outro_sec) * 1000)
+    # マイルストーン定義（動画側と同期）
+    milestones = {
+        45: 3, 40: 3, 35: 3, 30: 4, 25: 3,
+        20: 4, 15: 3, 10: 4, 5: 4,
+    }
+    drumroll_rank = 3
+    drumroll_sec = 4
+    top3_review_sec = 6
+    outro_sec = 7.0
+    endcard_sec = 5.0
+
+    # 各県の開始時刻を計算（マイルストーン挿入を考慮）
+    current_time = intro_sec
+    rank_start_times = {}
+    for rank in ranks:
+        # マイルストーン挿入
+        if rank in milestones:
+            current_time += milestones[rank]
+        # ドラムロール挿入
+        if rank == drumroll_rank:
+            current_time += drumroll_sec
+        rank_start_times[rank] = current_time
+        current_time += sec_per_pref
+
+    # 総尺（TOP3振り返り + アウトロ + エンドカード含む）
+    total_duration_ms = int((current_time + top3_review_sec + outro_sec + endcard_sec) * 1000)
 
     # 無音ベース
     combined = AudioSegment.silent(duration=total_duration_ms)
 
     # 各ナレーションを配置
-    for i, rank in enumerate(ranks):
+    for rank in ranks:
         wav_path = os.path.join(output_dir, f'narration_{rank:03d}.wav')
         if not os.path.exists(wav_path):
             continue
@@ -78,7 +101,7 @@ def combine_narrations_with_timing(output_dir, durations, sec_per_pref=3.5,
         narration = AudioSegment.from_wav(wav_path)
 
         # 配置タイミング（ms）— 各県の表示開始から0.5秒後
-        offset_ms = int((intro_sec + i * sec_per_pref + 0.5) * 1000)
+        offset_ms = int((rank_start_times[rank] + 0.5) * 1000)
 
         # ナレーションが表示時間を超えないようにトリミング
         max_dur_ms = int((sec_per_pref - 0.8) * 1000)
