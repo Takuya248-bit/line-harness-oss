@@ -95,13 +95,20 @@ discordInteractions.post('/discord/interactions', async (c) => {
       }
 
       // LINE送信
-      const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
-      await lineClient.pushMessage(row.line_user_id, [{ type: 'text', text: row.draft }]);
+      let lineSendOk = false;
+      try {
+        const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+        await lineClient.pushMessage(row.line_user_id, [{ type: 'text', text: row.draft }]);
+        lineSendOk = true;
+      } catch (err) {
+        console.error('LINE push error:', err);
+      }
 
       // D1更新
+      const newStatus = lineSendOk ? 'sent' : 'send_failed';
       await db
-        .prepare("UPDATE inquiry_queue SET status = 'sent', final_reply = ?, sent_at = datetime('now') WHERE id = ?")
-        .bind(row.draft, queueId)
+        .prepare(`UPDATE inquiry_queue SET status = ?, final_reply = ?, sent_at = datetime('now') WHERE id = ?`)
+        .bind(newStatus, row.draft, queueId)
         .run();
 
       // 修正ログ記録
@@ -112,13 +119,16 @@ discordInteractions.post('/discord/interactions', async (c) => {
         .bind(queueId, 'approved', row.draft, row.draft)
         .run();
 
-      // Discordメッセージ更新（ボタン除去+送信済み表示）
+      // Discordメッセージ更新（ボタン除去+結果表示）
+      const statusEmbed = lineSendOk
+        ? { color: 0x22c55e, description: '✅ LINE送信完了' }
+        : { color: 0xef4444, description: '❌ LINE送信失敗（ユーザーIDが無効）' };
+
       const msgId = body.message?.id;
       if (msgId && c.env.DISCORD_BOT_TOKEN) {
         const originalEmbeds = body.message?.embeds ?? [];
         originalEmbeds.push({
-          color: 0x22c55e,
-          description: '✅ LINE送信完了',
+          ...statusEmbed,
           timestamp: new Date().toISOString(),
         });
         await fetch(
@@ -223,13 +233,19 @@ discordInteractions.post('/discord/interactions', async (c) => {
       }
 
       // LINE送信
-      const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
-      await lineClient.pushMessage(row.line_user_id, [{ type: 'text', text: editedText }]);
+      let lineSendOk = false;
+      try {
+        const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+        await lineClient.pushMessage(row.line_user_id, [{ type: 'text', text: editedText }]);
+        lineSendOk = true;
+      } catch (err) {
+        console.error('LINE push error (edit):', err);
+      }
 
       // D1更新
       await db
-        .prepare("UPDATE inquiry_queue SET status = 'sent', final_reply = ?, sent_at = datetime('now') WHERE id = ?")
-        .bind(editedText, queueId)
+        .prepare(`UPDATE inquiry_queue SET status = ?, final_reply = ?, sent_at = datetime('now') WHERE id = ?`)
+        .bind(lineSendOk ? 'sent' : 'send_failed', editedText, queueId)
         .run();
 
       // 修正ログ
@@ -240,7 +256,8 @@ discordInteractions.post('/discord/interactions', async (c) => {
         .bind(queueId, 'manual_edit', editedText, row.draft, editedText)
         .run();
 
-      return c.json({ type: 4, data: { content: '✅ 修正版をLINE送信しました。', flags: 64 } });
+      const msg = lineSendOk ? '✅ 修正版をLINE送信しました。' : '❌ LINE送信失敗（修正内容はDBに保存済み）';
+      return c.json({ type: 4, data: { content: msg, flags: 64 } });
     }
 
     // regen_submit_<id> — 再生成してDiscordに新メッセージ
