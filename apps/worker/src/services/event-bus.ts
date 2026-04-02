@@ -29,6 +29,7 @@ import { LineClient } from '@line-crm/line-sdk';
 
 interface EventPayload {
   friendId?: string;
+  tagId?: string;
   eventData?: Record<string, unknown>;
 }
 
