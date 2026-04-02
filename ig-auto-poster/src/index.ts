@@ -1,10 +1,6 @@
 import { publishCarousel, publishReel } from "./instagram";
-import { generateContentV3 } from "./content-generator-v3";
 import { sendPreview, sendNotification, parsePostback } from "./line-preview";
-import { collectInsights } from "./insights";
-import type { CategoryScore } from "./optimizer";
-import { sendWeeklyReport } from "./optimizer";
-import { runPDCA } from "./pdca-engine";
+import { collectInsights, collectInsightsV4 } from "./insights";
 import { renderGalleryList, renderGalleryDetail } from "./gallery";
 import { fetchKnowledge, fetchGuardrails, formatKnowledgeForPrompt } from "./knowledge";
 import type { KnowledgeEntry } from "./knowledge";
@@ -34,40 +30,6 @@ async function getSetting(db: D1Database, key: string): Promise<string | null> {
     .bind(key)
     .first<{ value: string }>();
   return row?.value ?? null;
-}
-
-// --- V3 Cronハンドラー（カルーセル + リール） ---
-async function handleV3GenerateCron(env: Env): Promise<void> {
-  const content = await generateContentV3({
-    db: env.DB,
-    notionApiKey: env.NOTION_API_KEY ?? "",
-    notionDbId: env.NOTION_KNOWLEDGE_DB_ID ?? "",
-    unsplashKey: env.UNSPLASH_ACCESS_KEY,
-    serperKey: env.SERPER_API_KEY,
-    pexelsKey: env.PEXELS_API_KEY ?? "",
-  });
-
-  await env.DB
-    .prepare(
-      "INSERT INTO generated_content (template_type, content_json, caption, status, category, format_type, template_name) VALUES ('bali_v3', ?, ?, ?, ?, ?, ?)",
-    )
-    .bind(
-      content.content_json,
-      content.caption,
-      "pending_images",
-      content.category,
-      content.format_type,
-      content.template_name,
-    )
-    .run();
-
-  await sendNotification(
-    `新投稿生成\n形式: ${content.format_type}\nテンプレ: ${content.template_name}\nカテゴリ: ${content.category}\nタイトル: ${content.title}`,
-    env.LINE_OWNER_USER_ID,
-    env.LINE_CHANNEL_ACCESS_TOKEN,
-  );
-
-  console.log(`V3 content generated: ${content.title} (${content.category}) ${content.format_type}`);
 }
 
 async function handleV3PostCron(env: Env): Promise<void> {
@@ -121,22 +83,13 @@ async function handleV3PostCron(env: Env): Promise<void> {
 async function handleWeeklyInsightsCron(env: Env): Promise<void> {
   console.log("Weekly insights collection started");
 
+  // V3 legacy insights
   const metrics = await collectInsights(env.DB, env.IG_ACCESS_TOKEN);
-  console.log(`Collected insights for ${metrics.length} posts`);
+  console.log(`Collected v3 insights for ${metrics.length} posts`);
 
-  const pdcaSummary = await runPDCA(env.DB);
-  console.log(pdcaSummary);
-
-  const reportRows = await env.DB
-    .prepare(
-      `SELECT category, avg_saves as avgSaves, total_posts as totalPosts, weight as currentWeight
-       FROM category_weights ORDER BY avg_saves DESC`,
-    )
-    .all<CategoryScore>();
-
-  await sendWeeklyReport(reportRows.results, env.LINE_OWNER_USER_ID, env.LINE_CHANNEL_ACCESS_TOKEN);
-
-  console.log("Weekly insights and optimization complete");
+  // V4 insights (A/B test results)
+  await collectInsightsV4(env.DB, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
+  console.log("V4 insights collected");
 }
 
 // --- LINE Webhookハンドラー ---
@@ -179,7 +132,7 @@ async function handleLineWebhook(request: Request, env: Env): Promise<Response> 
           .prepare("UPDATE generated_content SET status = 'rejected' WHERE id = ?")
           .bind(parsed.id)
           .run();
-        await handleV3GenerateCron(env);
+        await sendNotification("リジェクトしました。V4パイプラインで次回生成されます。", env.LINE_OWNER_USER_ID, env.LINE_CHANNEL_ACCESS_TOKEN);
         break;
       }
       case "skip": {
@@ -220,12 +173,8 @@ export default {
       return;
     }
 
-    // 日次: UTC 0,8 → V3コンテンツ生成
-    if (hour === 0 || hour === 8) {
-      await handleV3GenerateCron(env);
-    }
-    // 日次: UTC 1,10 → 投稿（カルーセル / リール）
-    else if (hour === 1 || hour === 10) {
+    // 日次: UTC 1,10 → 投稿（カルーセル / リール、旧v3承認済みコンテンツ用）
+    if (hour === 1 || hour === 10) {
       await handleV3PostCron(env);
     }
   },
@@ -389,11 +338,6 @@ export default {
       }
 
       // --- Manual triggers ---
-      if (request.method === "POST" && url.pathname === "/generate") {
-        await handleV3GenerateCron(env);
-        return json({ success: true, message: "V3 content generated" });
-      }
-
       if (request.method === "POST" && url.pathname === "/collect-insights") {
         await handleWeeklyInsightsCron(env);
         return json({ success: true, message: "Insights collected and weights optimized" });
@@ -490,7 +434,6 @@ export default {
           "POST /gallery/:id/skip   - スキップ",
           "GET  /api/pending-images - 画像生成待ちコンテンツ取得",
           "POST /api/slides         - スライド画像アップロード",
-          "POST /generate           - V3コンテンツ手動生成",
           "POST /collect-insights   - Insights手動収集+最適化",
           "POST /settings/auto-approve - 自動承認切替 {enabled:bool}",
           "POST /line-webhook       - LINE Webhook",
