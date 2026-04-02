@@ -52,6 +52,59 @@ JSON形式:
 }`;
 }
 
+export function buildPromptForV2Plan(
+  category: string,
+  area: string,
+  neta: NetaEntry[],
+): string {
+  const netaList = neta
+    .map((n) => `- ${n.title}: ${n.content.slice(0, 200)}`)
+    .join("\n");
+
+  return `あなたはInstagramカルーセル投稿の構成作家です。
+
+エリア: ${area}
+カテゴリ: ${category}
+使えるネタ:
+${netaList}
+
+以下のJSONスキーマに従い、${area}の${category}を紹介するカルーセル投稿の構成をJSON形式で作成してください。
+
+条件:
+- spotsDataは5件（spotNumber 1〜5）
+- description は50文字以内
+- summaryData.spots[].oneLiner は15文字以内
+- imageUrlフィールドは含めない
+- 必ずJSONのみを返す（説明文・マークダウン不要）
+
+JSONスキーマ:
+{
+  "title": "エリア名+カテゴリを表す日本語タイトル",
+  "coverData": {
+    "catchCopy": "読者を引きつけるキャッチコピー（例: チャングーで行きたい！）",
+    "mainTitle": "カテゴリ名（例: おしゃれカフェ）",
+    "countLabel": "5選"
+  },
+  "spotsData": [
+    {
+      "spotNumber": 1,
+      "spotName": "スポット名",
+      "description": "50文字以内の説明"
+    }
+  ],
+  "summaryData": {
+    "title": "まとめタイトル",
+    "spots": [
+      {
+        "number": 1,
+        "name": "スポット名",
+        "oneLiner": "15文字以内のひとこと"
+      }
+    ]
+  }
+}`;
+}
+
 interface GroqPlanResponse {
   hook: string;
   slides: { heading: string; body: string; icon?: string; slideType: string }[];

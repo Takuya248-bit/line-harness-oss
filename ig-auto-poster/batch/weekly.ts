@@ -1,6 +1,6 @@
 import { groqChat, groqJson } from "../src/groq";
 import { collectAndStoreNeta } from "../src/pipeline/neta-collector";
-import { selectBuzzFormat, buildPromptForPlan, parseContentPlan } from "../src/pipeline/content-planner";
+import { selectBuzzFormat, buildPromptForPlan, buildPromptForV2Plan, parseContentPlan } from "../src/pipeline/content-planner";
 import { generateCarouselImages, selectDesign, DEFAULT_DESIGNS } from "../src/pipeline/media-generator";
 import { buildCaptionPrompt, formatCaption } from "../src/pipeline/caption-writer";
 import { buildScheduleDates } from "../src/pipeline/scheduler";
@@ -9,6 +9,9 @@ import { detectBottleneck, determineTestAxis, assignTestGroups } from "../src/ab
 import { d1Query, d1Execute } from "./d1-rest";
 import { uploadToR2 } from "./r2-upload";
 import type { NetaEntry, ABTestMeta, WeeklyReport, ContentPlan } from "../src/pipeline/types";
+import { buildV2Slides, type BaliContentV2 } from "../src/templates/index";
+import { renderV2Slides } from "../src/pipeline/satori-renderer";
+import { fetchSpotImages, fetchPexelsImage } from "../src/pipeline/image-fetcher";
 
 const env = (key: string): string => {
   const v = process.env[key];
@@ -54,6 +57,8 @@ async function main() {
   const r2PublicUrl = env("R2_PUBLIC_URL");
   const igToken = env("IG_ACCESS_TOKEN");
   const igAccountId = env("IG_BUSINESS_ACCOUNT_ID");
+  const pexelsKey = optEnv("PEXELS_API_KEY");
+  const useSatoriV2 = !!pexelsKey;
 
   const week = await getWeekString();
   console.log(`=== Weekly Batch ${week} ===`);
@@ -185,7 +190,128 @@ async function main() {
       });
     }
 
-    // 構成生成（Groq）
+    // 構成生成 & 画像生成
+    let imageBuffers: Buffer[];
+
+    if (useSatoriV2) {
+      // V2: Satori + 写真背景
+      const area = "バリ島";
+      const v2Prompt = buildPromptForV2Plan(category, area, neta);
+      interface V2PlanRaw {
+        title: string;
+        coverData: { catchCopy: string; mainTitle: string; countLabel: string };
+        spotsData: { spotNumber: number; spotName: string; description: string }[];
+        summaryData: { title: string; spots: { number: number; name: string; oneLiner: string }[] };
+      }
+      let v2Raw: V2PlanRaw;
+      try {
+        v2Raw = await groqJson<V2PlanRaw>(
+          groqKey,
+          [{ role: "user", content: v2Prompt }],
+          { temperature: 0.8, maxTokens: 2048 },
+        );
+      } catch (e) {
+        console.error(`V2 plan generation failed for ${category}, falling back to V1:`, e);
+        // V1フォールバック（後段で再利用）
+        const prompt = buildPromptForPlan(formatName, category, neta);
+        let plan: ContentPlan;
+        try {
+          const planJson = await groqJson<{ hook: string; slides: { heading: string; body: string; icon?: string; slideType: string }[]; ctaText: string }>(
+            groqKey,
+            [{ role: "user", content: prompt }],
+            { temperature: 0.8, maxTokens: 2048 },
+          );
+          plan = parseContentPlan(JSON.stringify(planJson), "carousel", formatName, category, neta);
+        } catch (e2) {
+          console.error(`Plan generation failed for ${category}:`, e2);
+          continue;
+        }
+        try {
+          imageBuffers = await generateCarouselImages(plan, design);
+        } catch (e2) {
+          console.error(`Image generation failed for ${category}:`, e2);
+          continue;
+        }
+        // V2フォールバック時はキャプション生成へスキップ
+        const captionPromptFb = buildCaptionPrompt(plan);
+        let captionBodyFb: string;
+        try {
+          captionBodyFb = await groqChat(groqKey, [{ role: "user", content: captionPromptFb }], { temperature: 0.8, maxTokens: 512 });
+        } catch (e2) {
+          captionBodyFb = plan.hook;
+        }
+        const captionFb = formatCaption(plan.hook, captionBodyFb.trim(), plan.ctaText, category);
+        await d1Execute(cfAccountId, d1DbId, cfApiToken,
+          `INSERT INTO schedule_queue (content_type, content_json, caption, media_urls, scheduled_date, scheduled_time, status, ab_test_meta) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)`,
+          ["carousel", JSON.stringify({ slides: plan.slides }), captionFb, JSON.stringify([]), scheduleDates[i], "18:00", JSON.stringify(abMeta)],
+        );
+        previewLines.push(`${scheduleDates[i]}: ${plan.hook} (${formatName}/${category}) ${abMeta.isControl ? "[C]" : "[T]"} [V1-fb]`);
+        console.log(`Post ${i + 1}/7 generated (V1 fallback): ${plan.hook}`);
+        continue;
+      }
+
+      // spotNamesを取得してPexels画像補完
+      const spotNames = v2Raw.spotsData.map((s) => s.spotName);
+      const spotImageUrls = await fetchSpotImages(area, category, spotNames);
+      const coverImageUrl = await fetchPexelsImage(`${area} ${category} bali`);
+
+      const v2Content: BaliContentV2 = {
+        category,
+        area,
+        title: v2Raw.title,
+        coverData: {
+          imageUrl: coverImageUrl,
+          catchCopy: v2Raw.coverData.catchCopy,
+          mainTitle: v2Raw.coverData.mainTitle,
+          countLabel: v2Raw.coverData.countLabel,
+        },
+        spotsData: v2Raw.spotsData.map((s, idx) => ({
+          imageUrl: spotImageUrls[idx] ?? coverImageUrl,
+          spotNumber: s.spotNumber,
+          spotName: s.spotName,
+          description: s.description,
+        })),
+        summaryData: v2Raw.summaryData,
+        caption: "",
+        attributions: [],
+      };
+
+      const v2Nodes = buildV2Slides(v2Content);
+      try {
+        imageBuffers = await renderV2Slides(v2Nodes);
+      } catch (e) {
+        console.error(`V2 render failed for ${category}:`, e);
+        continue;
+      }
+
+      // R2アップロード
+      const mediaUrlsV2: string[] = [];
+      for (let j = 0; j < imageBuffers.length; j++) {
+        const key = `v4/${week}/${i}/slide-${j + 1}.png`;
+        try {
+          await uploadToR2(cfAccountId, r2Bucket, cfApiToken, key, imageBuffers[j]!, "image/png");
+          mediaUrlsV2.push(`${r2PublicUrl}/${key}`);
+        } catch (e) {
+          console.error(`R2 upload failed for slide ${j}:`, e);
+        }
+      }
+
+      if (mediaUrlsV2.length === 0) {
+        console.error(`No images uploaded for post ${i}, skipping`);
+        continue;
+      }
+
+      const captionV2 = formatCaption(v2Raw.title, v2Raw.summaryData.title, v2Raw.coverData.catchCopy, category);
+      await d1Execute(cfAccountId, d1DbId, cfApiToken,
+        `INSERT INTO schedule_queue (content_type, content_json, caption, media_urls, scheduled_date, scheduled_time, status, ab_test_meta) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)`,
+        ["carousel", JSON.stringify({ slides: v2Content.spotsData }), captionV2, JSON.stringify(mediaUrlsV2), scheduleDates[i], "18:00", JSON.stringify(abMeta)],
+      );
+      previewLines.push(`${scheduleDates[i]}: ${v2Raw.title} (V2/${category}) ${abMeta.isControl ? "[C]" : "[T]"}`);
+      console.log(`Post ${i + 1}/7 generated (V2): ${v2Raw.title}`);
+      continue;
+    }
+
+    // V1パス（PEXELS_API_KEY未設定時）
     const prompt = buildPromptForPlan(formatName, category, neta);
     let plan: ContentPlan;
     try {
@@ -200,8 +326,7 @@ async function main() {
       continue;
     }
 
-    // 画像生成（sharp）
-    let imageBuffers: Buffer[];
+    // 画像生成（sharp / V1）
     try {
       imageBuffers = await generateCarouselImages(plan, design);
     } catch (e) {
