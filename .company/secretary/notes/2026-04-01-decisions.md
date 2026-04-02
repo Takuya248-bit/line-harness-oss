@@ -27,3 +27,13 @@
 ### Chrome操作ルール
 - 決定: Chromeの強制終了・プロファイル削除は絶対禁止
 - 理由: ユーザーのログイン情報・拡張機能・ブックマークが失われるため。CDPが必要な場合はユーザーに再起動を依頼
+
+## 21:30 開発ワークフロー分担の変更
+
+### 5ステップ開発ループ
+- 決定: Claude Code=設計・判断 / Cursor=実装・修正 / Codex=レビュー の3ツール5ステップ体制に変更
+- 旧: Claude Code=設計 / Codex exec=実装 / Codex review=レビュー
+- 新: ① Claude Code設計 → ② Cursor実装 → ③ Codex review → ④ Claude改善指示 → ⑤ Cursor修正
+- 理由: Cursorは対話的IDE実装に強く、Codexはヘッドレスレビューに特化。役割が明確に分離
+- 最優先ルール化: コード変更は必ずdev-loopを通す。Claude Codeが10行超の実装を自分で書かない
+- dev-loopスキル・スクリプト・auto-routing.md を全て更新済み
