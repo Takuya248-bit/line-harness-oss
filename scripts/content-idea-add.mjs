@@ -6,10 +6,10 @@
  * 例: node scripts/content-idea-add.mjs "バリ留学の費用比較2026" "seo_article,x_barilingual" education "実体験ベースの費用内訳" high
  */
 import process from "node:process";
+import { notionFetch, createPage } from "./lib/notion-helpers.mjs";
 
-const token = process.env.NOTION_TOKEN;
 const dbId = process.env.NOTION_DB_CONTENT_ID;
-if (!token || !dbId) { console.error("Set NOTION_TOKEN and NOTION_DB_CONTENT_ID"); process.exit(1); }
+if (!process.env.NOTION_TOKEN || !dbId) { console.error("Set NOTION_TOKEN and NOTION_DB_CONTENT_ID"); process.exit(1); }
 
 const args = process.argv.slice(2).filter(a => a !== "--force");
 const force = process.argv.includes("--force");
@@ -30,11 +30,7 @@ if (filterConditions.length > 0) {
     ? filterConditions[0]
     : { or: filterConditions };
 
-  const queryRes = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Notion-Version": "2022-06-28", "Content-Type": "application/json" },
-    body: JSON.stringify({ filter, page_size: 5 }),
-  });
+  const queryRes = await notionFetch(`/v1/databases/${dbId}/query`, "POST", { filter, page_size: 5 });
 
   if (queryRes.ok) {
     const queryBody = await queryRes.json();
@@ -55,22 +51,13 @@ if (filterConditions.length > 0) {
   }
 }
 
-const res = await fetch("https://api.notion.com/v1/pages", {
-  method: "POST",
-  headers: { Authorization: `Bearer ${token}`, "Notion-Version": "2022-06-28", "Content-Type": "application/json" },
-  body: JSON.stringify({
-    parent: { database_id: dbId },
-    properties: {
-      title_field: { title: [{ text: { content: title } }] },
-      status: { select: { name: "idea" } },
-      channel: { multi_select: channels.split(",").filter(Boolean).map(name => ({ name: name.trim() })) },
-      ...(category && { category: { select: { name: category } } }),
-      ...(angle && { angle: { rich_text: [{ text: { content: angle } }] } }),
-      ...(priority && { priority: { select: { name: priority } } }),
-      ...(knowledgeRef && { knowledge_ref: { rich_text: [{ text: { content: knowledgeRef } }] } }),
-    },
-  }),
+const body = await createPage(dbId, {
+  title_field: { title: [{ text: { content: title } }] },
+  status: { select: { name: "idea" } },
+  channel: { multi_select: channels.split(",").filter(Boolean).map(name => ({ name: name.trim() })) },
+  ...(category && { category: { select: { name: category } } }),
+  ...(angle && { angle: { rich_text: [{ text: { content: angle } }] } }),
+  ...(priority && { priority: { select: { name: priority } } }),
+  ...(knowledgeRef && { knowledge_ref: { rich_text: [{ text: { content: knowledgeRef } }] } }),
 });
-if (!res.ok) { const e = await res.json(); console.error(`Error ${res.status}: ${JSON.stringify(e)}`); process.exit(1); }
-const body = await res.json();
 console.log(`OK: ${body.url}`);

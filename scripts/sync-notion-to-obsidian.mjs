@@ -13,11 +13,11 @@
  *   OBSIDIAN_VAULT_PATH     (default: ~/obsidian-vault)
  */
 import process from "node:process";
-import { writeFileSync, readFileSync, mkdirSync, existsSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { queryAll as _queryAll, notionFetch } from "./lib/notion-helpers.mjs";
 
-const token = process.env.NOTION_TOKEN;
-if (!token) {
+if (!process.env.NOTION_TOKEN) {
   console.error("Missing NOTION_TOKEN");
   process.exit(1);
 }
@@ -25,8 +25,6 @@ if (!token) {
 const vaultBase =
   process.env.OBSIDIAN_VAULT_PATH ||
   join(process.env.HOME, "obsidian-vault");
-
-const notionVersion = "2022-06-28";
 
 const DB_CONFIG = {
   knowledge: {
@@ -168,29 +166,7 @@ ${resolution}
 // ── notion fetch ──────────────────────────────────────────────────────────────
 
 async function fetchAllPages(dbId) {
-  const pages = [];
-  let cursor;
-  do {
-    const body = { page_size: 100 };
-    if (cursor) body.start_cursor = cursor;
-    const res = await fetch(
-      `https://api.notion.com/v1/databases/${dbId}/query`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Notion-Version": notionVersion,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      },
-    );
-    if (!res.ok) throw new Error(`Notion query error: ${res.status} for db ${dbId}`);
-    const data = await res.json();
-    pages.push(...data.results);
-    cursor = data.has_more ? data.next_cursor : null;
-  } while (cursor);
-  return pages;
+  return _queryAll(dbId);
 }
 
 // ── sync one DB ───────────────────────────────────────────────────────────────

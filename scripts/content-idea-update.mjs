@@ -6,9 +6,9 @@
  * 例: node scripts/content-idea-update.mjs abc123 published https://example.com/article
  */
 import process from "node:process";
+import { updatePage, getPage } from "./lib/notion-helpers.mjs";
 
-const token = process.env.NOTION_TOKEN;
-if (!token) { console.error("Set NOTION_TOKEN and NOTION_DB_CONTENT_ID"); process.exit(1); }
+if (!process.env.NOTION_TOKEN) { console.error("Set NOTION_TOKEN and NOTION_DB_CONTENT_ID"); process.exit(1); }
 
 const VALID_STATUSES = ["idea", "planning", "writing", "review", "published", "dropped"];
 const args = process.argv.slice(2).filter(a => a !== "--no-promo");
@@ -19,27 +19,16 @@ if (!pageId || !status) { console.error("Usage: content-idea-update.mjs <notion-
 if (!VALID_STATUSES.includes(status)) { console.error(`Invalid status: ${status}. Must be one of: ${VALID_STATUSES.join(", ")}`); process.exit(1); }
 if (status === "published" && !publishedUrl) { console.warn("Warning: status=published but published_url not specified"); }
 
-const properties = {
+const body = await updatePage(pageId, {
   status: { select: { name: status } },
   ...(publishedUrl && { published_url: { url: publishedUrl } }),
-};
-
-const res = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
-  method: "PATCH",
-  headers: { Authorization: `Bearer ${token}`, "Notion-Version": "2022-06-28", "Content-Type": "application/json" },
-  body: JSON.stringify({ properties }),
 });
-if (!res.ok) { const e = await res.json(); console.error(`Error ${res.status}: ${JSON.stringify(e)}`); process.exit(1); }
-const body = await res.json();
 console.log(`OK: ${body.url}`);
 
 // プロモツイート候補生成（published 変更時のみ）
 if (status === "published" && !noPromo) {
-  const pageRes = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
-    headers: { Authorization: `Bearer ${token}`, "Notion-Version": "2022-06-28" },
-  });
-  if (pageRes.ok) {
-    const page = await pageRes.json();
+  const page = await getPage(pageId);
+  {
     const props = page.properties || {};
 
     const titleRaw = props.title_field?.title?.[0]?.plain_text

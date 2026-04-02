@@ -7,48 +7,17 @@
 import process from "node:process";
 import fs from "node:fs";
 import path from "node:path";
+import { queryAll } from "./lib/notion-helpers.mjs";
 
-const token = process.env.NOTION_TOKEN;
 const contentDbId = process.env.NOTION_DB_CONTENT_ID;
 const csDbId = process.env.NOTION_DB_CS_ID;
 
-if (!token || !contentDbId || !csDbId) {
+if (!process.env.NOTION_TOKEN || !contentDbId || !csDbId) {
   console.error("Set NOTION_TOKEN, NOTION_DB_CONTENT_ID, NOTION_DB_CS_ID");
   process.exit(1);
 }
 
 const appendProgress = process.argv.includes("--append-progress");
-
-const NOTION_VERSION = "2022-06-28";
-const headers = {
-  Authorization: `Bearer ${token}`,
-  "Notion-Version": NOTION_VERSION,
-  "Content-Type": "application/json",
-};
-
-async function queryAll(dbId, filter) {
-  const pages = [];
-  let cursor;
-  do {
-    const body = { page_size: 100 };
-    if (filter) body.filter = filter;
-    if (cursor) body.start_cursor = cursor;
-    const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const e = await res.json();
-      console.error(`Error ${res.status}: ${JSON.stringify(e)}`);
-      process.exit(1);
-    }
-    const data = await res.json();
-    pages.push(...data.results);
-    cursor = data.has_more ? data.next_cursor : null;
-  } while (cursor);
-  return pages;
-}
 
 function getSelect(page, prop) {
   return page.properties[prop]?.select?.name ?? null;

@@ -5,46 +5,16 @@
  * 環境変数: NOTION_TOKEN, NOTION_DB_KNOWLEDGE_ID, NOTION_DB_CONTENT_ID
  */
 import process from "node:process";
+import { queryAll, createPage, getText } from "./lib/notion-helpers.mjs";
 
-const token = process.env.NOTION_TOKEN;
 const knowledgeDbId = process.env.NOTION_DB_KNOWLEDGE_ID;
 const contentDbId = process.env.NOTION_DB_CONTENT_ID;
-if (!token || !knowledgeDbId || !contentDbId) {
+if (!process.env.NOTION_TOKEN || !knowledgeDbId || !contentDbId) {
   console.error("Set NOTION_TOKEN, NOTION_DB_KNOWLEDGE_ID, NOTION_DB_CONTENT_ID");
   process.exit(1);
 }
 
 const autoFlag = process.argv.includes("--auto");
-
-/** Notion Database を全ページ取得（ページネーション対応） */
-async function queryAll(dbId, filter) {
-  const pages = [];
-  let cursor;
-  do {
-    const body = { page_size: 100 };
-    if (cursor) body.start_cursor = cursor;
-    if (filter) body.filter = filter;
-    const res = await fetch(`https://api.notion.com/v1/databases/${dbId}/query`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Notion-Version": "2022-06-28", "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) { const e = await res.json(); console.error(`Query error ${res.status}: ${JSON.stringify(e)}`); process.exit(1); }
-    const data = await res.json();
-    pages.push(...data.results);
-    cursor = data.has_more ? data.next_cursor : null;
-  } while (cursor);
-  return pages;
-}
-
-/** Notion ページのプロパティからテキストを取得するユーティリティ */
-function getText(prop) {
-  if (!prop) return "";
-  if (prop.title) return prop.title.map(t => t.plain_text).join("");
-  if (prop.rich_text) return prop.rich_text.map(t => t.plain_text).join("");
-  if (prop.select) return prop.select?.name ?? "";
-  return "";
-}
 
 // 1. ナレッジDB全取得
 console.log("ナレッジDB取得中...");
@@ -115,29 +85,19 @@ for (const [cat, items] of candidates) {
   const priority = resolvePriority(items.length);
   const knowledgeRef = items.map(i => i.id).join(",");
 
-  const res = await fetch("https://api.notion.com/v1/pages", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Notion-Version": "2022-06-28", "Content-Type": "application/json" },
-    body: JSON.stringify({
-      parent: { database_id: contentDbId },
-      properties: {
-        title_field: { title: [{ text: { content: title } }] },
-        status: { select: { name: "idea" } },
-        channel: { multi_select: [{ name: channel }] },
-        category: { select: { name: cat } },
-        angle: { rich_text: [{ text: { content: angle } }] },
-        priority: { select: { name: priority } },
-        knowledge_ref: { rich_text: [{ text: { content: knowledgeRef } }] },
-      },
-    }),
-  });
-
-  if (!res.ok) {
-    const e = await res.json();
-    console.error(`  [${cat}] 失敗 ${res.status}: ${JSON.stringify(e)}`);
-  } else {
-    const body = await res.json();
+  try {
+    const body = await createPage(contentDbId, {
+      title_field: { title: [{ text: { content: title } }] },
+      status: { select: { name: "idea" } },
+      channel: { multi_select: [{ name: channel }] },
+      category: { select: { name: cat } },
+      angle: { rich_text: [{ text: { content: angle } }] },
+      priority: { select: { name: priority } },
+      knowledge_ref: { rich_text: [{ text: { content: knowledgeRef } }] },
+    });
     console.log(`  [${cat}] 投入OK: ${body.url}`);
+  } catch (e) {
+    console.error(`  [${cat}] 失敗: ${e.message}`);
   }
 }
 console.log("完了。");

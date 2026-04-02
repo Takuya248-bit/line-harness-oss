@@ -4,12 +4,12 @@
  * 例: node scripts/cs-case-close.mjs abc123 "料金は月額9,800円と案内しました"
  */
 import process from "node:process";
+import { notionFetch, getPage, updatePage, createPage } from "./lib/notion-helpers.mjs";
 
-const token = process.env.NOTION_TOKEN;
 const knowledgeDbId = process.env.NOTION_DB_KNOWLEDGE_ID;
 const csDbId = process.env.NOTION_DB_CS_ID;
 const contentDbId = process.env.NOTION_DB_CONTENT_ID;
-if (!token) { console.error("Set NOTION_TOKEN"); process.exit(1); }
+if (!process.env.NOTION_TOKEN) { console.error("Set NOTION_TOKEN"); process.exit(1); }
 
 const [,, pageId, resolution] = process.argv;
 if (!pageId || !resolution) {
@@ -28,47 +28,32 @@ const CATEGORY_MAP = {
 };
 
 // 1. ページ取得（category と faq_candidate を読む）
-const pageRes = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
-  headers: { Authorization: `Bearer ${token}`, "Notion-Version": "2022-06-28" },
-});
-if (!pageRes.ok) { const e = await pageRes.json(); console.error(`Get error ${pageRes.status}: ${JSON.stringify(e)}`); process.exit(1); }
-const page = await pageRes.json();
+const page = await getPage(pageId);
 
 const faqCandidate = page.properties?.faq_candidate?.checkbox ?? false;
 const csCategory = page.properties?.category?.select?.name ?? "other";
 const caseTitle = page.properties?.title_field?.title?.[0]?.plain_text ?? "CSケース";
 
 // 2. ステータスを resolved に更新
-const updateRes = await fetch(`https://api.notion.com/v1/pages/${pageId}`, {
-  method: "PATCH",
-  headers: { Authorization: `Bearer ${token}`, "Notion-Version": "2022-06-28", "Content-Type": "application/json" },
-  body: JSON.stringify({
-    properties: {
-      status: { select: { name: "resolved" } },
-      resolved_at: { date: { start: new Date().toISOString() } },
-      resolution: { rich_text: [{ text: { content: resolution.slice(0, 2000) } }] },
-    },
-  }),
+await updatePage(pageId, {
+  status: { select: { name: "resolved" } },
+  resolved_at: { date: { start: new Date().toISOString() } },
+  resolution: { rich_text: [{ text: { content: resolution.slice(0, 2000) } }] },
 });
-if (!updateRes.ok) { const e = await updateRes.json(); console.error(`Update error ${updateRes.status}: ${JSON.stringify(e)}`); process.exit(1); }
 console.log(`Closed: ${pageId}`);
 
 // 3. 同カテゴリのresolved件数チェック → Content Pipeline DBへSEO記事ネタ自動投入
 if (csDbId && contentDbId) {
   // 同カテゴリのresolved件数を取得
-  const csQueryRes = await fetch(`https://api.notion.com/v1/databases/${csDbId}/query`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Notion-Version": "2022-06-28", "Content-Type": "application/json" },
-    body: JSON.stringify({
-      filter: {
-        and: [
-          { property: "status", select: { equals: "resolved" } },
-          { property: "category", select: { equals: csCategory } },
-        ],
-      },
-      sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
-      page_size: 10,
-    }),
+  const csQueryRes = await notionFetch(`/v1/databases/${csDbId}/query`, "POST", {
+    filter: {
+      and: [
+        { property: "status", select: { equals: "resolved" } },
+        { property: "category", select: { equals: csCategory } },
+      ],
+    },
+    sorts: [{ timestamp: "last_edited_time", direction: "descending" }],
+    page_size: 10,
   });
 
   if (csQueryRes.ok) {
@@ -79,18 +64,14 @@ if (csDbId && contentDbId) {
     if (resolvedCount >= 3) {
       // Content Pipeline DBに同カテゴリのseo_articleネタがあるかチェック
       const seoTitle = `${csCategory}に関するよくある質問まとめ`;
-      const contentCheckRes = await fetch(`https://api.notion.com/v1/databases/${contentDbId}/query`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Notion-Version": "2022-06-28", "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filter: {
-            and: [
-              { property: "channel", multi_select: { contains: "seo_article" } },
-              { property: "title_field", title: { contains: csCategory } },
-            ],
-          },
-          page_size: 5,
-        }),
+      const contentCheckRes = await notionFetch(`/v1/databases/${contentDbId}/query`, "POST", {
+        filter: {
+          and: [
+            { property: "channel", multi_select: { contains: "seo_article" } },
+            { property: "title_field", title: { contains: csCategory } },
+          ],
+        },
+        page_size: 5,
       });
 
       let alreadyExists = false;
@@ -108,28 +89,15 @@ if (csDbId && contentDbId) {
         const angle = recentTitles.join("\n");
         const priority = resolvedCount >= 5 ? "high" : "medium";
 
-        const contentRes = await fetch("https://api.notion.com/v1/pages", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}`, "Notion-Version": "2022-06-28", "Content-Type": "application/json" },
-          body: JSON.stringify({
-            parent: { database_id: contentDbId },
-            properties: {
-              title_field: { title: [{ text: { content: seoTitle } }] },
-              status: { select: { name: "idea" } },
-              channel: { multi_select: [{ name: "seo_article" }] },
-              category: { select: { name: knCategory } },
-              ...(angle && { angle: { rich_text: [{ text: { content: angle.slice(0, 2000) } }] } }),
-              priority: { select: { name: priority } },
-            },
-          }),
+        const contentPage = await createPage(contentDbId, {
+          title_field: { title: [{ text: { content: seoTitle } }] },
+          status: { select: { name: "idea" } },
+          channel: { multi_select: [{ name: "seo_article" }] },
+          category: { select: { name: knCategory } },
+          ...(angle && { angle: { rich_text: [{ text: { content: angle.slice(0, 2000) } }] } }),
+          priority: { select: { name: priority } },
         });
-
-        if (contentRes.ok) {
-          console.log(`このカテゴリの問い合わせが${resolvedCount}件目です。SEO記事ネタとして登録しました。`);
-        } else {
-          const e = await contentRes.json();
-          console.error(`Content Pipeline error ${contentRes.status}: ${JSON.stringify(e)}`);
-        }
+        console.log(`このカテゴリの問い合わせが${resolvedCount}件目です。SEO記事ネタとして登録しました。`);
       }
     }
   }
@@ -141,22 +109,14 @@ if (faqCandidate) {
   const knCategory = CATEGORY_MAP[csCategory] ?? "method";
   const tags = ["CS", "FAQ", csCategory].filter(Boolean);
 
-  const knRes = await fetch("https://api.notion.com/v1/pages", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Notion-Version": "2022-06-28", "Content-Type": "application/json" },
-    body: JSON.stringify({
-      parent: { database_id: knowledgeDbId },
-      properties: {
-        title_field: { title: [{ text: { content: caseTitle } }] },
-        category: { select: { name: knCategory } },
-        subcategory: { rich_text: [{ text: { content: "cs_faq" } }] },
-        content: { rich_text: [{ text: { content: resolution.slice(0, 2000) } }] },
-        tags: { multi_select: tags.map(name => ({ name })) },
-        source: { select: { name: "client_feedback" } },
-        reliability: { select: { name: "unverified" } },
-      },
-    }),
+  await createPage(knowledgeDbId, {
+    title_field: { title: [{ text: { content: caseTitle } }] },
+    category: { select: { name: knCategory } },
+    subcategory: { rich_text: [{ text: { content: "cs_faq" } }] },
+    content: { rich_text: [{ text: { content: resolution.slice(0, 2000) } }] },
+    tags: { multi_select: tags.map(name => ({ name })) },
+    source: { select: { name: "client_feedback" } },
+    reliability: { select: { name: "unverified" } },
   });
-  if (!knRes.ok) { const e = await knRes.json(); console.error(`Knowledge error ${knRes.status}: ${JSON.stringify(e)}`); process.exit(1); }
   console.log(`Knowledge added: category=${knCategory}, tags=${tags.join(",")}`);
 }
