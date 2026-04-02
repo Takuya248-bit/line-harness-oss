@@ -1,0 +1,37 @@
+{
+  "run_id": "dry-s01-full",
+  "target_node_id": "s01",
+  "status": "success",
+  "last_step": "done",
+  "started_at": "2026-03-31T11:52:36.666Z",
+  "finished_at": "2026-03-31T11:52:36.667Z",
+  "applied_steps": [
+    "precheck",
+    "node.conversion",
+    "node.condition_on",
+    "node.friend_info_policy",
+    "node.tags_add",
+    "node.schedule",
+    "node.actions",
+    "transitions",
+    "messages",
+    "verify",
+    "done"
+  ],
+  "applied_transition_ids": [
+    "T_002"
+  ],
+  "applied_message_ids": [
+    "S_01_D00_1_M01",
+    "S_01_D00_1_M02",
+    "S_01_D01_2_M01",
+    "S_01_D01_2_M02",
+    "S_01_D03_3_M01",
+    "S_01_D03_3_M02",
+    "S_01_D03_3_M03",
+    "S_01_D05_4_M01",
+    "S_01_D05_4_M02",
+    "S_01_D05_4_M03"
+  ],
+  "note": "Dry-run completed."
+}

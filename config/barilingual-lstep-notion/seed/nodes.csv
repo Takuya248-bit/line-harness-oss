@@ -1,0 +1,18 @@
+node_id,display_name,phase,conversion,condition_on,friend_info_policy,tags_add,schedule,actions,enabled,source_version
+friend_add,友だち追加,Fase_1a,,,,,,,true,balilingual-lstep-v3-overview-local.html
+s01,S_01 アンケート誘導,Fase_1a〜1b,,,,,,,true,balilingual-lstep-v3-overview-local.html
+anket_status,アンケート後 検討状況カルーセル,Fase_1b〜1c,,,,,,,true,balilingual-lstep-v3-overview-local.html
+estimate,見積ルート,Fase_2c,,,,,,,true,balilingual-lstep-v3-overview-local.html
+chat,チャット相談ルート,Fase_2a,,,,,,,true,balilingual-lstep-v3-overview-local.html
+video,ビデオ相談ルート,Fase_2b,,,,,,,true,balilingual-lstep-v3-overview-local.html
+mayoi,まだ迷っているルート,Fase_1c,,,,,,,true,balilingual-lstep-v3-overview-local.html
+s02,S_02_xxx コース別シナリオ群,Fase_1c〜2x,,,,,,,true,balilingual-lstep-v3-overview-local.html
+s05,S_05 長期ナーチャリング,Fase_6/99,,,,,,,true,balilingual-lstep-v3-overview-local.html
+s06,S_06 渡航準備,Fase_4c〜5,,,,,,,true,balilingual-lstep-v3-overview-local.html
+fase0,Fase_0 留学関心なし,Fase_0,,,,,,,true,balilingual-lstep-v3-overview-local.html
+s03,s03,,,,,,,,true,balilingual-lstep-v3-overview-local.html
+schat,schat,,,,,,,,true,balilingual-lstep-v3-overview-local.html
+s04,s04,,,,,,,,true,balilingual-lstep-v3-overview-local.html
+ab_a,ab_a,,,,,,,,true,balilingual-lstep-v3-overview-local.html
+ab_b,ab_b,,,,,,,,true,balilingual-lstep-v3-overview-local.html
+cv_hub,cv_hub,,,,,,,,true,balilingual-lstep-v3-overview-local.html

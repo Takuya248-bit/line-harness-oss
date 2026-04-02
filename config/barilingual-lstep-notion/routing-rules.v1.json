@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "description": "Barilingual Lstep routing rules with action timestamps/counts and unblock re-entry policy.",
+  "required_state_fields": [
+    "phase",
+    "current_node_id",
+    "ab_bucket",
+    "tags_current",
+    "action_timestamps.first_friend_add_at",
+    "action_timestamps.last_friend_add_at",
+    "action_counts.friend_add_count",
+    "action_counts.estimate_request_count",
+    "action_counts.chat_consult_count",
+    "action_counts.line_register_count",
+    "block_state.was_blocked_before",
+    "block_state.blocked_at",
+    "block_state.unblocked_at",
+    "block_state.reentry_at"
+  ],
+  "nodes": {
+    "anket_status": {
+      "transitions": [
+        {
+          "to": "estimate",
+          "priority": 1,
+          "when": "event.type == 'click' && event.value == 'estimate'",
+          "effects": {
+            "increment_counts": ["estimate_request_count"],
+            "set_timestamps": ["first_estimate_request_at", "last_estimate_request_at"],
+            "add_tags": ["intent_estimate"]
+          }
+        },
+        {
+          "to": "chat",
+          "priority": 2,
+          "when": "event.type == 'click' && event.value == 'chat'",
+          "effects": {
+            "increment_counts": ["chat_consult_count"],
+            "set_timestamps": ["first_chat_consult_at", "last_chat_consult_at"],
+            "add_tags": ["intent_chat"]
+          }
+        },
+        {
+          "to": "video",
+          "priority": 3,
+          "when": "event.type == 'click' && event.value == 'video'",
+          "effects": {
+            "add_tags": ["intent_video"]
+          }
+        },
+        {
+          "to": "mayoi",
+          "priority": 4,
+          "when": "event.type == 'click' && event.value == 'mayoi'",
+          "effects": {
+            "add_tags": ["intent_mayoi"]
+          }
+        }
+      ]
+    },
+    "mayoi": {
+      "transitions": [
+        {
+          "to": "fase0",
+          "priority": 1,
+          "when": "event.type == 'click' && event.value == 'not_interested'",
+          "effects": {
+            "add_tags": ["delivery_stopped"]
+          }
+        },
+        {
+          "to": "s02",
+          "priority": 2,
+          "when": "event.type == 'click' && event.value != 'not_interested'",
+          "effects": {
+            "add_tags": ["course_selected"]
+          }
+        }
+      ]
+    },
+    "reentry_hub": {
+      "transitions": [
+        {
+          "to": "s05",
+          "priority": 1,
+          "when": "event.type == 'reentry' && state.days_since_unblocked <= 1",
+          "effects": {
+            "add_tags": ["reentry_warmup"],
+            "set_flags": {
+              "suppression_mode": "gentle_24h"
+            }
+          }
+        },
+        {
+          "to": "anket_status",
+          "priority": 2,
+          "when": "event.type == 'reentry' && state.days_since_unblocked >= 2 && ['estimate','chat','video'].includes(state.last_intent)",
+          "effects": {
+            "add_tags": ["reentry_resume_intent"]
+          }
+        },
+        {
+          "to": "s01",
+          "priority": 3,
+          "when": "event.type == 'reentry' && state.days_since_unblocked >= 8",
+          "effects": {
+            "add_tags": ["reentry_reonboarding"]
+          }
+        }
+      ]
+    }
+  },
+  "test_cases": [
+    {
+      "name": "estimate click increments count",
+      "node": "anket_status",
+      "event": { "type": "click", "value": "estimate", "at": "2026-04-01T10:00:00Z" },
+      "state": {
+        "days_since_unblocked": 0,
+        "last_intent": "",
+        "action_counts": {
+          "estimate_request_count": 1
+        }
+      },
+      "expect": { "to": "estimate", "count_delta": { "estimate_request_count": 1 } }
+    },
+    {
+      "name": "not interested goes fase0",
+      "node": "mayoi",
+      "event": { "type": "click", "value": "not_interested", "at": "2026-04-01T10:00:00Z" },
+      "state": {
+        "days_since_unblocked": 0,
+        "last_intent": ""
+      },
+      "expect": { "to": "fase0" }
+    },
+    {
+      "name": "reentry within 24h goes gentle s05",
+      "node": "reentry_hub",
+      "event": { "type": "reentry", "value": "friend_add", "at": "2026-04-01T10:00:00Z" },
+      "state": {
+        "days_since_unblocked": 0,
+        "last_intent": "estimate"
+      },
+      "expect": { "to": "s05" }
+    },
+    {
+      "name": "reentry with prior intent resumes intent flow",
+      "node": "reentry_hub",
+      "event": { "type": "reentry", "value": "friend_add", "at": "2026-04-01T10:00:00Z" },
+      "state": {
+        "days_since_unblocked": 3,
+        "last_intent": "chat"
+      },
+      "expect": { "to": "anket_status" }
+    },
+    {
+      "name": "long-gap reentry goes re-onboarding",
+      "node": "reentry_hub",
+      "event": { "type": "reentry", "value": "friend_add", "at": "2026-04-01T10:00:00Z" },
+      "state": {
+        "days_since_unblocked": 14,
+        "last_intent": ""
+      },
+      "expect": { "to": "s01" }
+    }
+  ]
+}

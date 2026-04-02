@@ -1,0 +1,23 @@
+transition_id,from_node_id,to_node_id,trigger_type,trigger_detail,priority,stop_current_scenario,enabled
+T_001,anket_status,estimate,click,normal routing,1,false,true
+T_002,anket_status,chat,click,normal routing,2,false,true
+T_003,anket_status,video,click,normal routing,3,false,true
+T_004,anket_status,mayoi,click,normal routing,4,false,true
+T_005,estimate,s03,click,normal routing,5,false,true
+T_006,chat,schat,click,normal routing,6,false,true
+T_007,video,s04,click,normal routing,7,false,true
+T_008,mayoi,s02,click,normal routing,8,false,true
+T_009,s03,ab_a,click,normal routing,9,false,true
+T_010,s03,ab_b,click,normal routing,10,false,true
+T_011,schat,ab_a,click,normal routing,11,false,true
+T_012,schat,ab_b,click,normal routing,12,false,true
+T_013,s04,ab_a,click,normal routing,13,false,true
+T_014,s04,ab_b,click,normal routing,14,false,true
+T_015,s02,ab_a,click,normal routing,15,false,true
+T_016,s02,ab_b,click,normal routing,16,false,true
+T_017,ab_a,cv_hub,click,normal routing,17,false,true
+T_018,ab_b,cv_hub,click,normal routing,18,false,true
+T_019,ab_a,s05,click,normal routing,19,false,true
+T_020,ab_b,s05,click,normal routing,20,false,true
+T_021,cv_hub,s06,click,normal routing,21,false,true
+T_022,mayoi,fase0,click,normal routing,22,false,true
