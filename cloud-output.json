@@ -1,0 +1,554 @@
+{
+  "schema_version": 1,
+  "rewrites": [
+    {
+      "message_id": "S_01_D00_1_M01",
+      "content": "はじめまして！バリリンガルです🌴\n\n1つだけ聞かせてください。\n\n「英語が話せたら、何をしたいですか？」\n\n旅行、海外移住、キャリアアップ、自由な働き方——\nその夢を、バリで叶えた方がたくさんいます。\n\nあなたに合った情報をお届けするために、30秒のアンケートにご協力ください😊",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「突然ですが」削除。末尾を柔らかく短縮。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_01_D00_1_M02",
+      "content": "📋 30秒アンケートに答える（無料）",
+      "cta_label": "📋 30秒アンケートに答える（無料）",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_01_D01_2_M01",
+      "content": "バリ島は、実は「英語が一番伸びやすい環境」の1つです。\n\n理由はシンプルで——授業以外でも英語を使う場面があふれているから。\nカフェ、ビーチ、ジム、毎日の生活すべてが英語の練習になります。\n\nあなたに合ったプランをご提案するために、アンケートだけ教えてください👇",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "冒頭の「登録してくれましたよね」を削除。本題を先出し。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_01_D01_2_M02",
+      "content": "📋 アンケート（まだの方）",
+      "cta_label": "📋 アンケート（まだの方）",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_01_D03_3_M01",
+      "content": "バリの1日、少しだけお見せします。\n\n朝8時　静かなビーチを歩きながら予習。\n午前中　マンツーマンレッスン。発音・会話・文法を2人で集中的に。\nランチ　チャングーのカフェで留学仲間と英語だけで話す。\n夕方　プールサイドで自習。聞こえるのはバリの波の音。\n\nこんな環境で英語を学びたいと思ったら、アンケートに答えてみてください。あなたに合ったプランをご提案します。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "冒頭の📸絵文字・見出し行を削除してすっきり。本文の流れはほぼ維持。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_01_D03_3_M02",
+      "content": "▶ バリリンガルのコースを見る",
+      "cta_label": "▶ バリリンガルのコースを見る",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_01_D03_3_M03",
+      "content": "⚙ 条件付きアクション（Day3送信後に評価）: [アンケート_回答済]がない場合 → S_01停止 + フェーズ99 + S_05開始",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "systemメッセージにつき変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_01_D05_4_M01",
+      "content": "最後に1つだけお願いがあります🙏\n\n「英語、話せるようになりたいな」という気持ちが少しでもあれば——アンケートに答えてみてください。\n\n目標・英語レベル・ライフスタイルに合わせた情報だけをお届けします。関係ない情報はお送りしません。\n\nたった4問、30秒です。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "構造を整理し2段落に集約。内容は維持。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_01_D05_4_M02",
+      "content": "📋 最後のお願い：アンケートに答える",
+      "cta_label": "📋 最後のお願い：アンケートに答える",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_01_D05_4_M03",
+      "content": "⚙ 完了アクション: フェーズ99 + メニュー_05",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "systemメッセージにつき変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_02_D00_1_M01",
+      "content": "プランを選んでいただきありがとうございます！✨\n\n同じプランを選んだ方には、共通点があります。\n「環境を変えて、英語も人生も動かしたい」という気持ちです。\n\n今日からあなたが選んだプランに特化した情報をお届けします。\nまずはコースの詳細をご覧ください——",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「4日間」の言及を削除。共通点の表現を少し具体化。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_02_D00_1_M02",
+      "content": "▶ コース詳細をチェックする",
+      "cta_label": "▶ コース詳細をチェックする",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_02_D01_2_M01",
+      "content": "おはようございます☀️\n\nバリリンガルで過ごす1日をご紹介します。\n\n8:30　海沿いを歩いて学校へ。東南アジアの朝の空気は気持ちいい。\n9:00　マンツーマンレッスン開始。前日の復習から入るので置いてけぼりになりません。\n11:00　少人数（最大3名）で会話練習。失敗しても笑って直せる環境です。\n13:00　チャングーのカフェでランチ＆自習。Wi-Fiも電源も完備。\n16:00　授業終了。ビーチ、プール、ヨガ——好きに過ごせます。\n19:00　留学生たちと夕飯。全員、英語で話す。これが一番の練習になります。\n\n毎日これを繰り返すと、3週間で「口が動く」感覚が変わります。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「小グループ」を「少人数」に統一。語尾を自然に整えた。内容変更なし。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_02_D02_3_M01",
+      "content": "今日は卒業生の話をさせてください。\n\nAさん（32歳・会社員）\n「TOEIC 420点で入学。英語コンプレックスをずっと持っていました。バリで3週間過ごして、帰国後4ヶ月でTOEIC 610点に。点数より大きかったのは、英語を話すことへの恐怖がなくなったこと。今は外国人のクライアントを担当しています。」\n\nBさん（27歳・フリーランス）\n「ワーホリ前に2ヶ月滞在。現地で就活して3社から内定をもらいました。バリリンガルで模擬面接を繰り返したことが決め手だったと思います。」\n\n2人に共通するのは、バリで「英語を使う勇気」を手に入れたことです。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「——」ダッシュ演出を削除してすっきり。内容は維持。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_02_D02_3_M02",
+      "content": "▶ 他の卒業生の声を読む",
+      "cta_label": "▶ 他の卒業生の声を読む",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_02_D03_4_M01",
+      "content": "よくある心配に、正直にお答えします。\n\n「英語ゼロでも大丈夫？」\n大丈夫です。入学者の約40%が英語ほぼゼロからのスタートです。レベル別に授業を組むので、置いてけぼりにはなりません。\n\n「仕事しながら行けるの？」\n可能です。週3日をリモートにあてながら受講した方、有給を使って2週間集中した方、育休中に来た方もいます。\n\n「実際いくらかかるの？」\n授業料・宿泊・平日の食事・空港送迎がセット。航空券（3〜7万円）と生活費（1日2,000〜4,000円）を足しても、想像より現実的です。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "❓絵文字と→矢印を削除し読みやすく整理。内容変更なし。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_02_D03_4_M02",
+      "content": "▶ 費用シミュレーターを使う（無料）",
+      "cta_label": "▶ 費用シミュレーターを使う（無料）",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_02_D04_5_M01",
+      "content": "4日間、読んでいただきありがとうございます。\n\n正直にお伝えします。\nバリリンガルは「安い英会話スクール」ではありません。\n\nただ——「本気で変わりたい人」の英語力と人生を変えてきた実績があります。\n\n今月の残り枠は◯席です。\n「迷っているうちに枠が埋まった」という連絡を毎月いただいています。\n\n無料見積りは5分で届きます。まず金額を確認してみてください。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「申し込みより先に」という表現を削除し、末尾をシンプルに。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_02_D04_5_M02",
+      "content": "💰 無料見積りを依頼する（5分で届く）",
+      "cta_label": "💰 無料見積りを依頼する（5分で届く）",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_02_D04_5_M03",
+      "content": "💬 30分の無料相談を予約する",
+      "cta_label": "💬 30分の無料相談を予約する",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_02_D04_5_M04",
+      "content": "⚙ 完了アクション: フェーズ99 + S_05開始 + メニュー_05切替",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "systemメッセージにつき変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_03_D00_1_M01",
+      "content": "お見積りをお送りしました📋\n\n金額を見て「思ったより現実的だな」と感じる方が多いです。\n\n含まれるもの：授業料・宿泊（個室）・平日の食事・空港送迎\n別途かかるもの：入学金30,000円・航空券・週末の食費\n\n気になる点があれば、このLINEに直接メッセージを送ってください。担当スタッフがお答えします😊",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「不明な点」→「気になる点」に変更。全体的に自然な言い回しに整えた。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_03_D00_1_M02",
+      "content": "▶ お見積りを確認する",
+      "cta_label": "▶ お見積りを確認する",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_03_D02_2_M01",
+      "content": "見積りを見てどう思いましたか？😊\n\n参考までに——見積りを受け取った方のうち、約6割が1週間以内に相談か申し込みに進んでいます。\n\n「やっぱり高いな」と感じた方も、一度相談してみてください。期間やプランの組み合わせで費用を調整できる場合があります。\n\nバリの生活費は日本より安いです。\n食事：1食200〜400円 / カフェ：1日500〜1,000円 / マッサージ：800〜1,500円\n「生活費がかかって無理」という心配は、現地に来ると消えることが多いです。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「バリでの生活費は」→「バリの生活費は」に整理。内容変更なし。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_03_D05_3_M01",
+      "content": "見積りから数日が経ちました。\n\n「申し込みたいけど、もう一声ほしい」という方へ——\n\n今月お申し込みの方には、入学金（30,000円）を無料にしています。\n来月以降は通常料金に戻ります。\n\n「相談してから決めたい」という方は、30分のオンライン面談でOKです。プラン・時期・費用を一緒に整理します。強引な案内は一切しません。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「強引な勧誘」→「強引な案内」に変更。全体は維持。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_03_D05_3_M02",
+      "content": "✅ このまま申し込む（入学金無料）",
+      "cta_label": "✅ このまま申し込む（入学金無料）",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_03_D05_3_M03",
+      "content": "💬 30分だけ話を聞く（無料・勧誘なし）",
+      "cta_label": "💬 30分だけ話を聞く（無料・勧誘なし）",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_03_D07_4_M01",
+      "content": "最後のご連絡です。\n\n今月の残り枠が◯席になりました。\n\n「行きたいな」という気持ちがあるなら、今が一番動きやすいタイミングです。\n\n来月も同じ料金で行けるかどうかは、正直わかりません。\n（円安・物価上昇の影響で、料金改定を検討しています）\n\n今なら入学金無料＋バリ観光ツアーをプレゼント。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「来月また同じ金額で」→「来月も同じ料金で」に整理。末尾を短縮。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_03_D07_4_M02",
+      "content": "✅ 今月中に申し込む（特典あり）",
+      "cta_label": "✅ 今月中に申し込む（特典あり）",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_03_D07_4_M03",
+      "content": "💬 まず相談だけする",
+      "cta_label": "💬 まず相談だけする",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_03_D07_4_M04",
+      "content": "⚙ 完了アクション: フェーズ99 + S_05開始 + メニュー_05切替",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "systemメッセージにつき変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_04_D00_1_M01",
+      "content": "今日は時間を作ってくれてありがとうございました😊\n\n話を聞いて、[名前]さんにはバリリンガルが合うと感じました。\n（理由は、お話しした通りです）\n\n申し込みはこちらから——フォームに入力するだけで完了です。\n迷っている場合は「仮申し込み」という形でも構いません。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「話してみて」→「話を聞いて」に変更。括弧内の表現を自然に整えた。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_04_D00_1_M02",
+      "content": "✅ 申し込みフォームへ（3分で完了）",
+      "cta_label": "✅ 申し込みフォームへ（3分で完了）",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_04_D01_2_M01",
+      "content": "昨日の相談を、改めて整理しました📝\n\n希望プラン：[プラン名]\n希望期間：[X]週間\n渡航候補：[時期]\n懸念点：[相談中に出た懸念点]\n\n懸念点については、[解決策]で対応できます。\n\n「行く」と決めたら、フォームからすぐにお申し込みいただけます。もう一度話したい場合は、このLINEに「もう1回聞きたい」と送ってください。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "チェックマーク絵文字を削除してプレーンな箇条書きに。末尾の誘導を柔らかく整えた。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_04_D01_2_M02",
+      "content": "✅ 申し込みフォームへ",
+      "cta_label": "✅ 申し込みフォームへ",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_04_D03_3_M01",
+      "content": "1つだけ聞かせてください。\n\n今、申し込みを迷っている理由は何ですか？\n\n① お金のこと\n② タイミング・時期のこと\n③ 効果があるか不安\n④ 家族や職場への説明\n⑤ その他\n\n「①」の方——費用を抑える方法が2〜3個あります。\n「②」の方——今がベストなタイミングである理由をお伝えできます。\n\nこのLINEに番号を送ってみてください。個別にお返事します😊",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「費用を下げる」→「費用を抑える」に変更。全体は維持。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_04_D05_4_M01",
+      "content": "今月末で、今の特典が終わります。\n\n入学金無料（通常30,000円）\nバリ観光ツアープレゼント\n\n相談から申し込みまでの平均日数は11日です。\n今日で相談から5日目——そろそろ結論が出るタイミングです。\n\n「やっぱりやめる」という結論でも構いません。\nただ「行きたかったけど踏み出せなかった」だけは、避けてほしいと思っています。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "✨絵文字を削除。「出そうな」→「出る」に整えた。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_04_D05_4_M02",
+      "content": "✅ 申し込んで特典を受け取る",
+      "cta_label": "✅ 申し込んで特典を受け取る",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_04_D05_4_M03",
+      "content": "💬 もう一度だけ話したい",
+      "cta_label": "💬 もう一度だけ話したい",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_04_D05_4_M04",
+      "content": "⚙ 完了アクション: フェーズ99 + S_05開始 + メニュー_05切替",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "systemメッセージにつき変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_05_D01_1_M01",
+      "content": "1年後の自分を、少しだけ想像してみてください。\n\n今と何も変わっていない自分と、\n英語が話せて、選択肢が広がった自分。\n\nどちらに近づきたいですか？\n\n「いつか行こう」は、いつまでも「いつか」のままです。\nバリリンガルに来た方たちはみんな「もっと早く来ればよかった」と言います。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「選択肢が増えた」→「選択肢が広がった」に変更。「突然ですが」を削除。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_05_D01_1_M02",
+      "content": "▶ まずコースだけ見てみる",
+      "cta_label": "▶ まずコースだけ見てみる",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_05_D07_2_M01",
+      "content": "今日はバリの話をします🌴\n\n「チャングー」というエリアをご存知ですか？\n世界中のリモートワーカーや英語学習者が集まる、今最も注目されている場所の1つです。\n\nここに来ると気づくことがあります。\n「英語って、勉強するものじゃなくて、使うものだ」と。\n\n授業後にカフェでオーストラリア人と話す。ビーチで南アフリカ人にサーフィンを教わる。シェアハウスでドイツ人と料理を作る。\n\nこういう「偶然の英語」が、実力を一番伸ばします。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「授業を終えたあと」→「授業後に」と短縮。全体は維持。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_05_D07_2_M02",
+      "content": "▶ チャングーの環境を詳しく見る",
+      "cta_label": "▶ チャングーの環境を詳しく見る",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_05_D14_3_M01",
+      "content": "「バリ留学、実際いくらかかるの？」\nよく聞かれるので、正直に書きます。\n\nバリリンガルの費用に含まれるもの\n授業料（週15〜25コマ）/ 個室宿泊 / 平日の食事（朝・昼）/ 空港送迎\n\n別途かかるもの\n航空券：往復3〜7万円（LCC利用の場合）\n週末の食費：1日1,000〜2,000円\nマッサージ・観光など：気分次第\n\n1ヶ月で換算すると、日本で英会話スクールに通い続ける費用とそれほど変わらない方も多いです。\n\n気になる方は、費用シミュレーターで試算してみてください。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "【】見出しを削除してプレーンな構成に変更。絵文字も削除してシンプル化。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_05_D14_3_M02",
+      "content": "💰 費用シミュレーターで計算する（無料）",
+      "cta_label": "💰 費用シミュレーターで計算する（無料）",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_05_D21_4_M01",
+      "content": "少しだけ、卒業生の話をさせてください。\n\nCさん（29歳・会社員）\n「転職活動で英語力が武器になりました。面接官に『この英語力、どこで身につけたんですか？』と聞かれて。バリリンガルって答えたら話が盛り上がって、内定をもらいました。」\n\nDさん（34歳・主婦）\n「育休中に3週間来ました。子どもが生まれてからずっと自分のことを後回しにしていたので。帰国してから英語を使う仕事のパートを見つけて、今は週3日働いています。あの3週間は、私の人生で一番大事な投資でした。」\n\n2人に共通しているのは「行動した」という事実だけです。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「——」ダッシュを削除。体験談末尾を「〜と思います」から断定形に変更。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_05_D35_5_M01",
+      "content": "GW・夏休み・年末年始——その2〜3ヶ月前から、問い合わせが急増します。\n\n今がそのタイミングです。\n\n毎年「枠が取れなかった」という連絡をいただきます。\n人気の時期は、予約が入ってから1週間で満席になることもあります。\n\n「いつか行こう」の「いつか」が、今です。\n無料見積りだけでも、取り寄せてみてください。後から断ることもできます。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "冒頭の文を自然な語順に整えた。内容変更なし。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_05_D35_5_M02",
+      "content": "💰 無料見積りを取り寄せる（後から断れます）",
+      "cta_label": "💰 無料見積りを取り寄せる（後から断れます）",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_05_D35_5_M03",
+      "content": "💬 30分だけ話を聞く",
+      "cta_label": "💬 30分だけ話を聞く",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_05_D42_6_M01",
+      "content": "これが最後のメッセージです。\n\nこのメッセージを読んでいるということは、まだ「行きたい」という気持ちが残っているのだと思います。\n\nその気持ちを大切にしてください。\n\n「やらなかった後悔」は「やった後悔」より長く続きます。\n\n今月中に動いた方には、入学金無料＋バリ観光ツアーをご用意しています。\n次にご連絡するのは、また気持ちが動いたときで構いません。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「正直に言うと——」を削除してすっきり。内容は維持。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_05_D42_6_M02",
+      "content": "✅ 最後の特典つきで申し込む",
+      "cta_label": "✅ 最後の特典つきで申し込む",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_05_D42_6_M03",
+      "content": "💰 まず見積りだけ確認する",
+      "cta_label": "💰 まず見積りだけ確認する",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_05_D42_6_M04",
+      "content": "⚙ 完了アクション: タグ[配信停止] + フェーズ99",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "systemメッセージにつき変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_CHAT_D01_1_M01",
+      "content": "昨日はLINEを追加してくれてありがとうございます😊\n\n「チャットで相談したい」と選んでいただきましたね。\n\n担当スタッフが対応します。\n今、気になっていることを教えてください。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「まず、今どんなことが気になっていますか？」→「今、気になっていることを教えてください」に変更。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_CHAT_D03_2_M01",
+      "content": "改めてご連絡します😊\n\n「相談しようと思っていたけど、なんとなく後回しに…」という方、多いです。\n\nまずは見積りだけ取り寄せてみませんか？\n\n料金を見てから「やっぱりやめる」という判断でも全然OKです。\n見積りを受け取った方の6割以上が「思ったより安かった」とおっしゃっています。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「見積りを見た方のうち」→「見積りを受け取った方の」に整理。全体は維持。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_CHAT_D03_2_M02",
+      "content": "💰 無料で見積りを取り寄せる",
+      "cta_label": "💰 無料で見積りを取り寄せる",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_CHAT_D05_3_M01",
+      "content": "最後にもう一度だけ😊\n\n決めなくて大丈夫です。\n「話を聞いてみる」だけでも、きっと何かが動きます。\n\n30分のオンライン相談で、疑問に全部お答えします。\n費用・時期・英語レベル・仕事との両立——何でも聞いてください。\n\n「相談したら断りにくくなりそう」という心配は不要です。強引なご案内は一切しません。",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "「あなたの疑問に」→「疑問に」と短縮。「強引な勧誘」→「強引なご案内」に変更。",
+      "changed_fields": ["content"]
+    },
+    {
+      "message_id": "S_CHAT_D05_3_M02",
+      "content": "💬 30分だけ話を聞く（勧誘なし）",
+      "cta_label": "💬 30分だけ話を聞く（勧誘なし）",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_CHAT_D05_3_M03",
+      "content": "💰 見積りだけ確認する",
+      "cta_label": "💰 見積りだけ確認する",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "変更なし",
+      "changed_fields": []
+    },
+    {
+      "message_id": "S_CHAT_D05_3_M04",
+      "content": "⚙ 完了アクション: 成約時はS_06開始 / 未成約時はS_05開始 + メニュー_05切替",
+      "cta_label": "",
+      "cta_action": "",
+      "variant_note": "",
+      "rewrite_notes": "systemメッセージにつき変更なし",
+      "changed_fields": []
+    }
+  ]
+}

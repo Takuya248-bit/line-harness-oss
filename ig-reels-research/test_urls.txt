@@ -1,0 +1,3 @@
+# テスト用: 参考動画のうち2本で類似度スコアリングを検証
+https://youtube.com/shorts/PfBmXzJCGyc?si=v0PIMczijeOGsUl4
+https://youtube.com/shorts/8ExvYhojhYI?si=0V9zVcqF5_GemB4P
