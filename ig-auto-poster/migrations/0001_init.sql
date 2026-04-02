@@ -5,5 +5,5 @@ CREATE TABLE IF NOT EXISTS ig_post_state (
   last_posted_at TEXT
 );
 
--- Initialize with default state
-INSERT INTO ig_post_state (id, content_index) VALUES (1, 0);
+-- Initialize with default state (skip if already exists)
+INSERT OR IGNORE INTO ig_post_state (id, content_index) VALUES (1, 0);
