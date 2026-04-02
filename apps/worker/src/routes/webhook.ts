@@ -209,11 +209,11 @@ webhook.post('/webhook', async (c) => {
             }
 
             // Discord通知
-            if (classResult.module === 'inquiry' && c.env.DISCORD_WEBHOOK_URL) {
+            if (classResult.module === 'inquiry' && c.env.DISCORD_BOT_TOKEN && c.env.DISCORD_CHANNEL_ID) {
               const friend = await db.prepare(
                 'SELECT display_name FROM friends WHERE line_user_id = ? LIMIT 1'
               ).bind(userId).first<any>();
-              await notifyDiscord(c.env.DISCORD_WEBHOOK_URL, {
+              await notifyDiscord(c.env.DISCORD_BOT_TOKEN, c.env.DISCORD_CHANNEL_ID, {
                 username: friend?.display_name ?? userId,
                 message: text,
                 module: classResult.module,
@@ -871,8 +871,8 @@ ${incomingText}
       }
 
       // Discord通知（inquiry のみ。全メッセージ通知は騒がしいため）
-      if (classResult.module === 'inquiry' && env?.DISCORD_WEBHOOK_URL) {
-        await notifyDiscord(env.DISCORD_WEBHOOK_URL, {
+      if (classResult.module === 'inquiry' && env?.DISCORD_BOT_TOKEN && env?.DISCORD_CHANNEL_ID) {
+        await notifyDiscord(env.DISCORD_BOT_TOKEN, env.DISCORD_CHANNEL_ID, {
           username: friend?.display_name ?? event.source?.userId ?? 'unknown',
           message: incomingText,
           module: classResult.module,

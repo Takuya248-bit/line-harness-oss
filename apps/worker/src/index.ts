@@ -47,6 +47,7 @@ import { savedFilters } from './routes/saved-filters.js';
 import { processPhaseTransitions } from './services/phase-cron.js';
 import { osDashboard } from './routes/os-dashboard.js';
 import { osIntake } from './routes/os-intake.js';
+import { discordInteractions } from './routes/discord-interactions.js';
 import { checkDormantFriends, sendWeeklyReport } from './services/os-cron.js';
 
 export type Env = {
@@ -77,6 +78,10 @@ export type Env = {
     // Lステップ proxy forwarding
     LSTEP_WEBHOOK_URL?: string;
     DISCORD_WEBHOOK_URL?: string;
+    DISCORD_BOT_TOKEN?: string;
+    DISCORD_APP_PUBLIC_KEY?: string;
+    DISCORD_CHANNEL_ID?: string;
+    GROQ_API_KEY?: string;
     // Notion knowledge DB
     NOTION_API_KEY?: string;
     NOTION_KNOWLEDGE_DB_ID?: string;
@@ -166,6 +171,7 @@ app.route('/', friendFields);
 app.route('/', savedFilters);
 app.route('/', osDashboard);
 app.route('/', osIntake);
+app.route('/', discordInteractions);
 
 // Short link: /r/:ref → landing page with LINE open button
 app.get('/r/:ref', (c) => {

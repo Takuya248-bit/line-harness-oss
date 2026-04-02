@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import { classify } from '../../../../os/core/classifier.js';
 import { tryQuickAnswer, handleInquiry } from '../../../../os/modules/inquiry/handler.js';
 import { notifyDiscord } from '../services/discord-notify.js';
+import { generateDraftWithGroq } from '../services/groq-draft.js';
 import type { Env } from '../index.js';
 
 const osIntake = new Hono<Env>();
@@ -81,11 +82,14 @@ osIntake.post('/api/os/intake', async (c) => {
 
   // 3. ドラフト生成 (inquiry のみ)
   let draft: string | undefined;
+  let draftSource: string | undefined;
+
   if (classResult.module === 'inquiry') {
     const quickDraft = tryQuickAnswer(message);
     if (quickDraft) {
       draft = quickDraft;
-    } else if (c.env.ANTHROPIC_API_KEY) {
+      draftSource = 'template';
+    } else if (c.env.GROQ_API_KEY) {
       try {
         // 直近の履歴をD1から取得（uidがあれば）
         let historyText = '';
@@ -136,23 +140,14 @@ ${message}
 
 上記を踏まえて返信ドラフトを作成してください。`;
 
-        const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': c.env.ANTHROPIC_API_KEY,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 500,
-            system: systemPrompt,
-            messages: [{ role: 'user', content: userPrompt }],
-          }),
+        const groqDraft = await generateDraftWithGroq({
+          systemPrompt,
+          userPrompt,
+          groqApiKey: c.env.GROQ_API_KEY,
         });
-        if (apiRes.ok) {
-          const data = await apiRes.json() as { content: { text: string }[] };
-          draft = data.content?.[0]?.text;
+        if (groqDraft) {
+          draft = groqDraft;
+          draftSource = 'groq';
         }
       } catch (err) {
         console.error('Draft generation error:', err);
@@ -160,19 +155,51 @@ ${message}
     }
   }
 
-  // 4. Discord通知
-  if (c.env.DISCORD_WEBHOOK_URL) {
+  // 4. inquiry_queue保存
+  let inquiryQueueId: number | null = null;
+  if (draft && uid) {
     try {
-      await notifyDiscord(c.env.DISCORD_WEBHOOK_URL, {
+      const result = await db.prepare(
+        `INSERT INTO inquiry_queue (line_user_id, username, message, draft, module, confidence, phase, tags, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`
+      ).bind(uid, name, message, draft, classResult.module, classResult.confidence, phase || null, tags || null).run();
+      inquiryQueueId = result.meta.last_row_id;
+    } catch (err) {
+      console.error('inquiry_queue insert error:', err);
+    }
+  }
+
+  // 5. Discord通知
+  if (c.env.DISCORD_BOT_TOKEN && c.env.DISCORD_CHANNEL_ID) {
+    try {
+      const discordMsgId = await notifyDiscord(c.env.DISCORD_BOT_TOKEN, c.env.DISCORD_CHANNEL_ID, {
         username: name,
         message,
         module: classResult.module,
         confidence: classResult.confidence,
         phase: phase || undefined,
         draft,
+        inquiryId: inquiryQueueId ? String(inquiryQueueId) : undefined,
+        draftSource,
       });
+      if (discordMsgId && inquiryQueueId) {
+        await db.prepare('UPDATE inquiry_queue SET discord_message_id = ? WHERE id = ?').bind(discordMsgId, inquiryQueueId).run();
+      }
     } catch (err) {
       console.error('Discord notify error:', err);
+    }
+  } else if (c.env.DISCORD_WEBHOOK_URL) {
+    // フォールバック（旧Webhook、ボタンなし）
+    try {
+      await fetch(c.env.DISCORD_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          embeds: [{ title: '📩 INQUIRY', description: message.slice(0, 200), color: 0x3b82f6,
+            fields: [{ name: 'ユーザー', value: name, inline: true }, ...(draft ? [{ name: '💬 ドラフト', value: draft.slice(0, 1000), inline: false }] : [])] }],
+        }),
+      });
+    } catch (err) {
+      console.error('Discord webhook fallback error:', err);
     }
   }
 
