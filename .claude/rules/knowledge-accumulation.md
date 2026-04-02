@@ -2,14 +2,16 @@
 description: リサーチ・CS完了時に知識DBへ自動蓄積するルール
 alwaysApply: false
 globs:
+  - "**/scripts/knowledge-save.mjs"
   - "**/scripts/knowledge-add.mjs"
 ---
 
 # 知識DB自動蓄積ルール
 
-作業完了時に「この情報は次回以降も使えるか？」を判断し、YESならNotionに投入する。
+作業完了時に「この情報は次回以降も使えるか？」を判断し、YESなら投入する。
 
-投入コマンド: `node scripts/knowledge-add.mjs <category> <subcat> <title> <content> [tags] [source] [reliability]`
+投入コマンド: `node scripts/knowledge-save.mjs <category> <subcat> <title> <content> [tags] [source] [reliability] [url]`
+保存先: Notion DB + Obsidian Vault（QMD検索対象）に同時保存。SNSネタはNotionのtags/categoryでフィルタ可能。
 カテゴリ: market / technology / method / case / locale / people / ai_news / regulation / education
 source: firsthand / student_feedback / client_feedback / observation / research / auto / experiment
 
