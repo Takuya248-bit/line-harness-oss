@@ -1,3 +1,11 @@
+---
+description: 業務OSパイプラインのデータフロー・audit・approval定義
+alwaysApply: false
+globs:
+  - "**/os/modules/**"
+  - "**/os/tenants/**"
+---
+
 # 業務OSパイプラインルール
 
 ## データフロー

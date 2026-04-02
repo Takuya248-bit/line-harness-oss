@@ -1,6 +1,9 @@
 ---
 description: 日次/セッション/週次のレビューとトークン効率チェック
-alwaysApply: true
+alwaysApply: false
+globs:
+  - "**/secretary/notes/*-review.md"
+  - "**/secretary/notes/*-progress.md"
 ---
 
 # レビューワークフロー（日次・セッション・週次）

@@ -32,6 +32,7 @@ alwaysApply: true
 
 ## GUI自動操作系（Lstep等のブラウザ操作）
 
+- Lstep操作が発生したら、該当操作の独立スクリプトが未作成なら自動でスクリプト化する（standalone-execution.md参照）
 - 操作は独立スクリプト(Puppeteer/Playwright)で実行。Claude Codeはスクリプト起動+結果判断のみ
 - 操作前の状態確認: DOM要素のテキスト/属性をJSONログで取得（スクリーンショット不要）
 - 操作後の証跡: 操作ログ(実行アクション+対象セレクター+結果)をJSONファイルに保存

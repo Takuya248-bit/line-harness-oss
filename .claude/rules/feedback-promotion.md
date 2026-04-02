@@ -1,6 +1,8 @@
 ---
 description: フィードバック昇格フロー（2回同種指摘→ルール化）
-alwaysApply: true
+alwaysApply: false
+globs:
+  - "**/memory/feedback_*.md"
 ---
 
 # フィードバック昇格ルール

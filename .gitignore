@@ -7,12 +7,22 @@ dist/
 .env.local
 *.log
 .DS_Store
+.dev-loop/
 .env.production
 .env.staging
 apps/web/out/
 .dev.vars
 ig-auto-poster/wrangler.toml
 scripts/coconala-images/
+
+# Claude Code internal
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+
+# Sensitive / runtime
+cooking-sfx-bot/.env.key
+cooking-sfx-bot/logs/
+cooking-sfx-bot/data/
 
 # スクショは自動除外。必要なものだけリネームしてコミット
 スクリーンショット*
