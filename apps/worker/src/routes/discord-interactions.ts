@@ -320,5 +320,194 @@ ${row.draft}`,
     }
   }
 
+  // --- X投稿承認ハンドラ (xpost_approve / xpost_edit / xpost_reject) ---
+  // x-auto-poster から送られるボタン通知を処理する
+  // approve → GitHub API で review JSON の status を "approved" に更新
+  // reject  → GitHub API で review JSON の status を "rejected" に更新
+  // edit    → モーダルを表示してテキスト編集 → approved に更新
+
+  if (body.type === 3) {
+    // xpost_approve_{postId}
+    if (customId.startsWith('xpost_approve_')) {
+      const postId = customId.replace('xpost_approve_', '');
+      const result = await updateXPostStatus(c.env, postId, 'approved', null);
+      if (!result.ok) {
+        return c.json({ type: 4, data: { content: `❌ 更新失敗: ${result.error}`, flags: 64 } });
+      }
+      // Discordメッセージのボタンを除去
+      const msgId = body.message?.id;
+      if (msgId && c.env.DISCORD_BOT_TOKEN) {
+        const originalEmbeds = body.message?.embeds ?? [];
+        originalEmbeds.push({ color: 0x22c55e, description: `✅ 承認済み (postId: ${postId})`, timestamp: new Date().toISOString() });
+        await fetch(`https://discord.com/api/v10/channels/${body.channel_id}/messages/${msgId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bot ${c.env.DISCORD_BOT_TOKEN}` },
+          body: JSON.stringify({ embeds: originalEmbeds, components: [] }),
+        });
+      }
+      return c.json({ type: 7, data: {} });
+    }
+
+    // xpost_reject_{postId}
+    if (customId.startsWith('xpost_reject_')) {
+      const postId = customId.replace('xpost_reject_', '');
+      const result = await updateXPostStatus(c.env, postId, 'rejected', null);
+      const msg = result.ok ? `🚫 却下しました (postId: ${postId})` : `❌ 更新失敗: ${result.error}`;
+      const msgId = body.message?.id;
+      if (msgId && c.env.DISCORD_BOT_TOKEN && result.ok) {
+        const originalEmbeds = body.message?.embeds ?? [];
+        originalEmbeds.push({ color: 0x6b7280, description: `🚫 却下 (postId: ${postId})`, timestamp: new Date().toISOString() });
+        await fetch(`https://discord.com/api/v10/channels/${body.channel_id}/messages/${msgId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bot ${c.env.DISCORD_BOT_TOKEN}` },
+          body: JSON.stringify({ embeds: originalEmbeds, components: [] }),
+        });
+      }
+      return c.json({ type: 4, data: { content: msg, flags: 64 } });
+    }
+
+    // xpost_edit_{postId} — テキスト編集モーダルを表示
+    if (customId.startsWith('xpost_edit_')) {
+      const postId = customId.replace('xpost_edit_', '');
+      return c.json({
+        type: 9, // MODAL
+        data: {
+          custom_id: `xpost_edit_submit_${postId}`,
+          title: 'X投稿テキストを編集',
+          components: [
+            {
+              type: 1,
+              components: [
+                {
+                  type: 4,
+                  custom_id: 'edited_text',
+                  label: '編集後のテキスト',
+                  style: 2,
+                  placeholder: '引用RTコメントまたはリプライ文を入力',
+                  required: true,
+                },
+              ],
+            },
+          ],
+        },
+      });
+    }
+  }
+
+  // xpost_edit_submit_{postId} — 編集テキストで approved 更新
+  if (body.type === 5 && customId.startsWith('xpost_edit_submit_')) {
+    const postId = customId.replace('xpost_edit_submit_', '');
+    const getValue = (id: string): string => {
+      for (const row of body.data?.components ?? []) {
+        for (const comp of row.components) {
+          if (comp.custom_id === id) return comp.value;
+        }
+      }
+      return '';
+    };
+    const editedText = getValue('edited_text');
+    const result = await updateXPostStatus(c.env, postId, 'approved', editedText);
+    const msg = result.ok
+      ? `✅ 編集して承認しました (postId: ${postId})`
+      : `❌ 更新失敗: ${result.error}`;
+    return c.json({ type: 4, data: { content: msg, flags: 64 } });
+  }
+
   return c.json({ type: 1 });
 });
+
+/**
+ * GitHub API を使って x-auto-poster の review JSON ファイルの
+ * 対象エントリのステータスを更新する
+ *
+ * postId 形式: YYYY-MM-DD-{account}-{index}  (例: 2026-04-03-eru_linecustom-q0)
+ * reviewFile:  review/YYYY-MM-DD-{account}.json
+ */
+async function updateXPostStatus(
+  env: any,
+  postId: string,
+  status: 'approved' | 'rejected',
+  editedText: string | null,
+): Promise<{ ok: boolean; error?: string }> {
+  // postId から reviewFile のパスを導出
+  // 形式: YYYY-MM-DD-{account}-{q?}{index}
+  const match = postId.match(/^(\d{4}-\d{2}-\d{2})-(.+)-q?(\d+)$/);
+  if (!match) {
+    return { ok: false, error: `postId 形式が不正: ${postId}` };
+  }
+  const [, date, account, idxStr] = match;
+  const isQuote = postId.includes('-q');
+  const idx = parseInt(idxStr, 10);
+  const reviewFilePath = `review/${date}-${account}.json`;
+
+  const githubToken = (env as any).GITHUB_TOKEN;
+  const githubRepo = (env as any).XPOSTER_GITHUB_REPO ?? 'kimuratakuya/x-auto-poster';
+
+  if (!githubToken) {
+    return { ok: false, error: 'GITHUB_TOKEN が未設定' };
+  }
+
+  // ファイル取得
+  const apiUrl = `https://api.github.com/repos/${githubRepo}/contents/${reviewFilePath}`;
+  const getRes = await fetch(apiUrl, {
+    headers: {
+      Authorization: `token ${githubToken}`,
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'line-harness-worker',
+    },
+  });
+
+  if (!getRes.ok) {
+    return { ok: false, error: `GitHub GET 失敗: ${getRes.status}` };
+  }
+
+  const fileData = (await getRes.json()) as { content: string; sha: string };
+  const decoded = atob(fileData.content.replace(/\n/g, ''));
+  const candidates = JSON.parse(decoded) as any[];
+
+  // 対象エントリを特定して更新
+  // quote の場合は type:"quote" or status:"pending_approval" のエントリを index 順に
+  // reply の場合は type:"reply" のエントリを index 順に
+  const filtered = isQuote
+    ? candidates.filter((c) => c.type !== 'reply')
+    : candidates.filter((c) => c.type === 'reply');
+
+  if (idx >= filtered.length) {
+    return { ok: false, error: `インデックス ${idx} が範囲外 (count: ${filtered.length})` };
+  }
+
+  const target = filtered[idx];
+  target.status = status;
+  target.approvedAt = new Date().toISOString();
+  if (editedText) {
+    if (isQuote) {
+      target.quoteText = editedText;
+    } else {
+      target.replyText = editedText;
+    }
+  }
+
+  // ファイルを更新
+  const updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(candidates, null, 2))));
+  const putRes = await fetch(apiUrl, {
+    method: 'PUT',
+    headers: {
+      Authorization: `token ${githubToken}`,
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'line-harness-worker',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: `x-auto-poster: ${status} postId=${postId}`,
+      content: updatedContent,
+      sha: fileData.sha,
+    }),
+  });
+
+  if (!putRes.ok) {
+    const err = await putRes.text();
+    return { ok: false, error: `GitHub PUT 失敗: ${putRes.status} ${err.slice(0, 100)}` };
+  }
+
+  return { ok: true };
+}

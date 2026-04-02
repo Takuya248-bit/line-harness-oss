@@ -85,6 +85,9 @@ export type Env = {
     // Notion knowledge DB
     NOTION_API_KEY?: string;
     NOTION_KNOWLEDGE_DB_ID?: string;
+    // x-auto-poster GitHub 連携（Discord ボタン承認）
+    GITHUB_TOKEN?: string;
+    XPOSTER_GITHUB_REPO?: string;
   };
 };
 
