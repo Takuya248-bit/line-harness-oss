@@ -109,3 +109,63 @@ export async function collectInsights(
 
   return results;
 }
+
+export async function collectInsightsV4(
+  db: D1Database,
+  accessToken: string,
+  accountId: string,
+): Promise<void> {
+  const posts = await db
+    .prepare(
+      `SELECT sq.id AS queue_id, sq.ig_media_id, sq.ab_test_meta
+       FROM schedule_queue sq
+       WHERE sq.status = 'posted'
+         AND sq.ig_media_id IS NOT NULL
+         AND sq.id NOT IN (SELECT queue_id FROM ab_test_results)
+         AND sq.posted_at <= datetime('now', '-2 days')
+       LIMIT 20`,
+    )
+    .all<{ queue_id: number; ig_media_id: string; ab_test_meta: string }>();
+
+  for (const post of posts.results) {
+    const url = `https://graph.facebook.com/v21.0/${post.ig_media_id}/insights?metric=saved,reach,shares&access_token=${accessToken}`;
+    const res = await fetch(url);
+    if (!res.ok) continue;
+
+    const data = (await res.json()) as { data: { name: string; values: { value: number }[] }[] };
+    const metrics: Record<string, number> = {};
+    for (const m of data.data) {
+      metrics[m.name] = m.values[0]?.value ?? 0;
+    }
+
+    const reach = metrics.reach ?? 0;
+    const saves = metrics.saved ?? 0;
+    const shares = metrics.shares ?? 0;
+    const saveRate = reach > 0 ? saves / reach : 0;
+
+    const meta = JSON.parse(post.ab_test_meta || "{}") as { testWeek?: string; isControl?: boolean; testVariant?: string };
+    const testRow = meta.testWeek
+      ? await db.prepare("SELECT id FROM ab_tests WHERE test_week = ? LIMIT 1").bind(meta.testWeek).first<{ id: number }>()
+      : null;
+
+    if (testRow) {
+      await db
+        .prepare(
+          `INSERT INTO ab_test_results (test_id, queue_id, is_control, variant_value, reach, saves, shares, save_rate, collected_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        )
+        .bind(testRow.id, post.queue_id, meta.isControl ? 1 : 0, meta.testVariant ?? "", reach, saves, shares, saveRate)
+        .run();
+    }
+  }
+
+  const sevenDaysAgo = Math.floor((Date.now() - 7 * 86400000) / 1000);
+  const now = Math.floor(Date.now() / 1000);
+  const profileUrl = `https://graph.facebook.com/v21.0/${accountId}/insights?metric=profile_views&period=day&since=${sevenDaysAgo}&until=${now}&access_token=${accessToken}`;
+  const profileRes = await fetch(profileUrl);
+  if (profileRes.ok) {
+    const profileData = (await profileRes.json()) as { data: { values: { value: number }[] }[] };
+    const totalViews = profileData.data[0]?.values?.reduce((s: number, v: { value: number }) => s + v.value, 0) ?? 0;
+    console.log(`Profile views (7d): ${totalViews}`);
+  }
+}
