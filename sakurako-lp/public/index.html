@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>酒と旅ゆく櫻子チャン | YouTubeコンサル</title>
+  <meta name="description" content="顔出しなし・登録者30万人のYouTuberが教える、ショート動画の戦略設計〜収益化コンサル。200件以上の支援実績。">
+  <meta property="og:title" content="酒と旅ゆく櫻子チャン | YouTubeコンサル">
+  <meta property="og:description" content="顔出しなし・登録者30万人。ショート動画の戦略設計〜収益化を支援。">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Cormorant+Garamond:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-deep: #08080d;
+      --bg-card: #111118;
+      --bg-card-hover: #1a1a24;
+      --copper: #c8956c;
+      --copper-light: #ddb08a;
+      --gold: #d4a853;
+      --gold-dim: rgba(212, 168, 83, 0.15);
+      --text-primary: #e8e4df;
+      --text-secondary: #9a958e;
+      --text-muted: #5c584f;
+      --line-green: #06C755;
+      --line-green-hover: #05b34c;
+      --accent-glow: rgba(200, 149, 108, 0.08);
+      --serif: 'Shippori Mincho', serif;
+      --sans: 'Zen Kaku Gothic New', sans-serif;
+      --display: 'Cormorant Garamond', serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      font-size: 16px;
+    }
+
+    body {
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: var(--sans);
+      line-height: 1.8;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ============ NOISE TEXTURE OVERLAY ============ */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ============ UTILITY ============ */
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .section-label {
+      font-family: var(--display);
+      font-size: 0.85rem;
+      font-weight: 300;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--copper);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-family: var(--serif);
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 600;
+      line-height: 1.4;
+      color: var(--text-primary);
+    }
+
+    .fade-in {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ============ HERO ============ */
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 120px 24px 80px;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -20%;
+      right: -10%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(200, 149, 108, 0.06) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -10%;
+      left: -15%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(212, 168, 83, 0.04) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      max-width: 800px;
+    }
+
+    .hero-tag {
+      display: inline-block;
+      font-family: var(--display);
+      font-size: 0.8rem;
+      font-weight: 300;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--copper);
+      border: 1px solid rgba(200, 149, 108, 0.3);
+      padding: 8px 24px;
+      margin-bottom: 40px;
+      opacity: 0;
+      animation: fadeUp 1s 0.3s forwards;
+    }
+
+    .hero-headline {
+      font-family: var(--serif);
+      font-size: clamp(2rem, 6vw, 3.6rem);
+      font-weight: 800;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
+      margin-bottom: 24px;
+      opacity: 0;
+      animation: fadeUp 1s 0.5s forwards;
+    }
+
+    .hero-headline .accent {
+      background: linear-gradient(135deg, var(--copper) 0%, var(--gold) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 1rem;
+      color: var(--text-secondary);
+      line-height: 1.9;
+      margin-bottom: 48px;
+      opacity: 0;
+      animation: fadeUp 1s 0.7s forwards;
+    }
+
+    /* ---- Stats Row ---- */
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      margin-bottom: 56px;
+      opacity: 0;
+      animation: fadeUp 1s 0.9s forwards;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-number {
+      font-family: var(--display);
+      font-size: clamp(2.4rem, 5vw, 3.2rem);
+      font-weight: 300;
+      color: var(--copper-light);
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    .stat-number span {
+      font-size: 0.45em;
+      color: var(--text-muted);
+      margin-left: 2px;
+    }
+
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+      letter-spacing: 0.05em;
+    }
+
+    /* ---- CTA Button ---- */
+    .cta-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--line-green);
+      color: #fff;
+      font-weight: 700;
+      font-size: 1.05rem;
+      padding: 18px 48px;
+      border-radius: 60px;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 4px 24px rgba(6, 199, 85, 0.25);
+      opacity: 0;
+      animation: fadeUp 1s 1.1s forwards;
+    }
+
+    .cta-line:hover {
+      background: var(--line-green-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(6, 199, 85, 0.35);
+    }
+
+    .cta-line svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .cta-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 16px;
+      opacity: 0;
+      animation: fadeUp 1s 1.2s forwards;
+    }
+
+    /* ---- Decorative line ---- */
+    .hero-divider {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1px;
+      height: 80px;
+      background: linear-gradient(to bottom, var(--copper), transparent);
+      opacity: 0;
+      animation: fadeIn 1s 1.5s forwards;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* ============ PROBLEMS ============ */
+    .problems {
+      padding: 120px 0;
+      position: relative;
+    }
+
+    .problems-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .problem-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(200, 149, 108, 0.08);
+      border-radius: 12px;
+      padding: 32px 28px;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .problem-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(200, 149, 108, 0.15);
+      transform: translateY(-4px);
+    }
+
+    .problem-icon {
+      font-size: 1.4rem;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .problem-text {
+      font-family: var(--serif);
+      font-size: 1rem;
+      font-weight: 400;
+      line-height: 1.7;
+      color: var(--text-secondary);
+    }
+
+    .problem-text em {
+      color: var(--copper-light);
+      font-style: normal;
+      font-weight: 600;
+    }
+
+    /* ============ METHOD ============ */
+    .method {
+      padding: 120px 0;
+      position: relative;
+    }
+
+    .method::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(200, 149, 108, 0.15), transparent);
+    }
+
+    .method-header {
+      text-align: center;
+      margin-bottom: 80px;
+    }
+
+    .method-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 40px;
+    }
+
+    .method-item {
+      text-align: center;
+    }
+
+    .method-number {
+      font-family: var(--display);
+      font-size: 4rem;
+      font-weight: 300;
+      color: rgba(200, 149, 108, 0.15);
+      line-height: 1;
+      margin-bottom: 20px;
+    }
+
+    .method-name {
+      font-family: var(--serif);
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+    }
+
+    .method-desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    /* ============ SERVICES ============ */
+    .services {
+      padding: 120px 0;
+      position: relative;
+    }
+
+    .services::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(200, 149, 108, 0.15), transparent);
+    }
+
+    .services-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .service-cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+
+    .service-card {
+      background: var(--bg-card);
+      border: 1px solid rgba(200, 149, 108, 0.08);
+      border-radius: 16px;
+      padding: 40px 36px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .service-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(to right, var(--copper), var(--gold));
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+
+    .service-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(200, 149, 108, 0.2);
+      transform: translateY(-4px);
+    }
+
+    .service-card:hover::before {
+      opacity: 1;
+    }
+
+    .service-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      color: var(--copper);
+      background: var(--gold-dim);
+      padding: 4px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+
+    .service-name {
+      font-family: var(--serif);
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+
+    .service-desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+
+    .service-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: 1px solid var(--copper);
+      color: var(--copper-light);
+      font-family: var(--sans);
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 12px 28px;
+      border-radius: 40px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      margin-top: 8px;
+    }
+
+    .service-cta:hover {
+      background: var(--copper);
+      color: var(--bg-deep);
+    }
+
+    .service-features {
+      list-style: none;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(200, 149, 108, 0.08);
+    }
+
+    .service-features li {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      padding: 4px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .service-features li::before {
+      content: '—';
+      position: absolute;
+      left: 0;
+      color: var(--text-muted);
+    }
+
+    /* ============ TESTIMONIALS ============ */
+    .testimonials {
+      padding: 120px 0;
+      position: relative;
+    }
+
+    .testimonials::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(200, 149, 108, 0.15), transparent);
+    }
+
+    .testimonials-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .testimonial-list {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .testimonial {
+      background: var(--bg-card);
+      border: 1px solid rgba(200, 149, 108, 0.06);
+      border-radius: 16px;
+      padding: 36px 32px;
+      position: relative;
+    }
+
+    .testimonial-quote {
+      font-family: var(--serif);
+      font-size: 1rem;
+      line-height: 1.9;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .testimonial-quote::before {
+      content: '"';
+      font-family: var(--display);
+      font-size: 3rem;
+      color: rgba(200, 149, 108, 0.2);
+      position: absolute;
+      top: 16px;
+      left: 24px;
+      line-height: 1;
+    }
+
+    .testimonial-author {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .testimonial-result {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--gold);
+      background: var(--gold-dim);
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-left: 12px;
+    }
+
+    /* ============ PROFILE ============ */
+    .profile {
+      padding: 120px 0;
+      position: relative;
+    }
+
+    .profile::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(200, 149, 108, 0.15), transparent);
+    }
+
+    .profile-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .profile-avatar {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      margin: 0 auto 32px;
+      overflow: hidden;
+      border: 3px solid rgba(200, 149, 108, 0.3);
+    }
+
+    .profile-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .profile-name {
+      font-family: var(--serif);
+      font-size: 1.6rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .profile-handle {
+      font-family: var(--display);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 32px;
+    }
+
+    .profile-bio {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      line-height: 2;
+      text-align: left;
+    }
+
+    .profile-bio p + p {
+      margin-top: 16px;
+    }
+
+    .profile-highlights {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 40px;
+      padding-top: 32px;
+      border-top: 1px solid rgba(200, 149, 108, 0.08);
+    }
+
+    .profile-highlights .stat-number {
+      font-size: 2rem;
+    }
+
+    /* ============ FAQ ============ */
+    .faq {
+      padding: 120px 0;
+      position: relative;
+    }
+
+    .faq::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(200, 149, 108, 0.15), transparent);
+    }
+
+    .faq-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .faq-list {
+      max-width: 720px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .faq-item {
+      border: 1px solid rgba(200, 149, 108, 0.08);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--bg-card);
+    }
+
+    .faq-question {
+      width: 100%;
+      background: none;
+      border: none;
+      padding: 24px 28px;
+      text-align: left;
+      font-family: var(--serif);
+      font-size: 1rem;
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: color 0.3s;
+    }
+
+    .faq-question:hover {
+      color: var(--copper-light);
+    }
+
+    .faq-question .icon {
+      font-size: 1.2rem;
+      color: var(--copper);
+      transition: transform 0.3s;
+      flex-shrink: 0;
+      margin-left: 16px;
+    }
+
+    .faq-item.open .faq-question .icon {
+      transform: rotate(45deg);
+    }
+
+    .faq-answer {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .faq-answer-inner {
+      padding: 0 28px 24px;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+
+    /* ============ FINAL CTA ============ */
+    .final-cta {
+      padding: 120px 0 80px;
+      text-align: center;
+      position: relative;
+    }
+
+    .final-cta::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(200, 149, 108, 0.15), transparent);
+    }
+
+    .final-cta-headline {
+      font-family: var(--serif);
+      font-size: clamp(1.6rem, 4vw, 2.6rem);
+      font-weight: 800;
+      line-height: 1.4;
+      margin-bottom: 20px;
+    }
+
+    .final-cta-sub {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      margin-bottom: 48px;
+      line-height: 1.8;
+    }
+
+    .final-cta .cta-line {
+      opacity: 1;
+      animation: none;
+      font-size: 1.1rem;
+      padding: 20px 56px;
+    }
+
+    /* ============ FOOTER ============ */
+    .footer {
+      padding: 40px 0;
+      text-align: center;
+      border-top: 1px solid rgba(200, 149, 108, 0.06);
+    }
+
+    .footer p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+
+    .footer-note {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 16px;
+      line-height: 1.7;
+    }
+
+    /* ============ FLOATING CTA (Mobile) ============ */
+    .floating-cta {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 12px 20px;
+      background: linear-gradient(to top, var(--bg-deep) 60%, transparent);
+      text-align: center;
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .floating-cta.show {
+      transform: translateY(0);
+    }
+
+    .floating-cta .cta-line {
+      opacity: 1;
+      animation: none;
+      width: 100%;
+      max-width: 400px;
+      justify-content: center;
+      padding: 16px 32px;
+      font-size: 1rem;
+    }
+
+    /* ============ RESPONSIVE ============ */
+    @media (max-width: 768px) {
+      .hero { padding: 100px 20px 60px; min-height: auto; }
+      .hero-stats { gap: 24px; flex-wrap: wrap; }
+      .stat-number { font-size: 2rem; }
+      .method-grid { grid-template-columns: 1fr; gap: 48px; }
+      .service-cards { grid-template-columns: 1fr; }
+      .profile-highlights { gap: 24px; flex-wrap: wrap; }
+      .problems, .method, .services, .testimonials, .profile, .faq, .final-cta {
+        padding: 80px 0;
+      }
+      .service-card { padding: 32px 24px; }
+      .testimonial { padding: 28px 24px; }
+    }
+
+    @media (max-width: 480px) {
+      .hero-headline { font-size: 1.7rem; }
+      .hero-stats { gap: 16px; }
+      .stat { min-width: 80px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ======== HERO ======== -->
+  <section class="hero">
+    <div class="hero-inner">
+      <span class="hero-tag">YouTube Consulting</span>
+      <h1 class="hero-headline">
+        顔出しなしで<br>
+        <span class="accent">登録者30万人</span>にした<br>
+        全戦略を、あなたに。
+      </h1>
+      <p class="hero-sub">
+        ショート動画に特化し、ゼロから複数チャンネルを成長させた<br>
+        実証済みメソッドで、あなたのチャンネルを設計します。
+      </p>
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-number">30<span>万人</span></div>
+          <div class="stat-label">チャンネル登録者</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">5<span>億回</span></div>
+          <div class="stat-label">総再生回数</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">200<span>件+</span></div>
+          <div class="stat-label">コンサル実績</div>
+        </div>
+      </div>
+      <a href="#services" class="cta-line cta-scroll" id="heroCta">
+        コンサルメニューを見る
+      </a>
+      <p class="cta-sub">あなたに合ったプランを見つけてください</p>
+    </div>
+    <div class="hero-divider"></div>
+  </section>
+
+  <!-- ======== PROBLEMS ======== -->
+  <section class="problems">
+    <div class="container">
+      <div class="problems-header fade-in">
+        <p class="section-label">Problems</p>
+        <h2 class="section-title">こんな悩み、ありませんか？</h2>
+      </div>
+      <div class="problem-grid">
+        <div class="problem-card fade-in">
+          <span class="problem-icon">&#x25CB;</span>
+          <p class="problem-text">投稿しても<em>再生回数が伸びない</em>。何が悪いのかわからない。</p>
+        </div>
+        <div class="problem-card fade-in">
+          <span class="problem-icon">&#x25CB;</span>
+          <p class="problem-text"><em>収益化の条件</em>が遠すぎて、モチベーションが続かない。</p>
+        </div>
+        <div class="problem-card fade-in">
+          <span class="problem-icon">&#x25CB;</span>
+          <p class="problem-text">企画の<em>ネタが尽きて</em>、毎回の投稿が苦痛になっている。</p>
+        </div>
+        <div class="problem-card fade-in">
+          <span class="problem-icon">&#x25CB;</span>
+          <p class="problem-text"><em>顔出しなし</em>で本当に伸ばせるの？と不安。</p>
+        </div>
+        <div class="problem-card fade-in">
+          <span class="problem-icon">&#x25CB;</span>
+          <p class="problem-text">VTuber事務所の<em>オーディション</em>に何度も落ちている。</p>
+        </div>
+        <div class="problem-card fade-in">
+          <span class="problem-icon">&#x25CB;</span>
+          <p class="problem-text">企業アカウントを任されたが、<em>成果の出し方</em>がわからない。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== METHOD ======== -->
+  <section class="method">
+    <div class="container">
+      <div class="method-header fade-in">
+        <p class="section-label">Method</p>
+        <h2 class="section-title">櫻子メソッド ── 3つの柱</h2>
+      </div>
+      <div class="method-grid">
+        <div class="method-item fade-in">
+          <div class="method-number">01</div>
+          <h3 class="method-name">構造設計</h3>
+          <p class="method-desc">
+            運ではなく構造で伸ばす。チャンネルのポジション設計、
+            ターゲット分析、投稿フレームワークを体系化。
+          </p>
+        </div>
+        <div class="method-item fade-in">
+          <div class="method-number">02</div>
+          <h3 class="method-name">データ検証</h3>
+          <p class="method-desc">
+            感覚ではなくデータで判断。再生維持率・CTR・視聴者属性から
+            改善ポイントを特定し、次の一手を決める。
+          </p>
+        </div>
+        <div class="method-item fade-in">
+          <div class="method-number">03</div>
+          <h3 class="method-name">収益化導線</h3>
+          <p class="method-desc">
+            再生数だけで終わらない。広告収益・楽曲印税・案件・
+            コンテンツ販売まで、複数の収益源を設計。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== SERVICES ======== -->
+  <section class="services" id="services">
+    <div class="container">
+      <div class="services-header fade-in">
+        <p class="section-label">Services</p>
+        <h2 class="section-title">コンサルメニュー</h2>
+      </div>
+      <div class="service-cards">
+        <div class="service-card fade-in">
+          <span class="service-badge">POPULAR</span>
+          <h3 class="service-name">30分スポットコンサル</h3>
+          <p class="service-desc">
+            今抱えている悩みをピンポイントで解決。チャンネル分析、
+            企画ブレスト、サムネ・タイトル添削、収益化アドバイス。
+          </p>
+          <ul class="service-features">
+            <li>30分のライブ対話形式</li>
+            <li>チャンネルの現状分析</li>
+            <li>具体的な改善アクション提示</li>
+          </ul>
+          <a href="https://line.me/R/ti/p/@827rakrp" class="service-cta" data-plan="30分スポットコンサル">このプランについて相談する →</a>
+        </div>
+
+        <div class="service-card fade-in">
+          <span class="service-badge">RECOMMENDED</span>
+          <h3 class="service-name">コンサルレポート制作</h3>
+          <p class="service-desc">
+            チャンネルを徹底分析し、改善点・企画案・サムネ案・
+            収益化ルート設計をレポートとして納品。
+          </p>
+          <ul class="service-features">
+            <li>チャンネル構造の詳細分析</li>
+            <li>複数の企画・サムネ・タイトル案</li>
+            <li>収益化ロードマップ付き</li>
+          </ul>
+          <a href="https://line.me/R/ti/p/@827rakrp" class="service-cta" data-plan="コンサルレポート制作">このプランについて相談する →</a>
+        </div>
+
+        <div class="service-card fade-in">
+          <span class="service-badge">SPECIALIZED</span>
+          <h3 class="service-name">オーディション対策レポート</h3>
+          <p class="service-desc">
+            大手事務所への合格実績をもとに、
+            応募書類の添削・提出動画の企画改善を支援。
+          </p>
+          <ul class="service-features">
+            <li>事務所別の合格ノウハウ</li>
+            <li>応募フォーム・書類の添削</li>
+            <li>提出動画の企画・改善指導</li>
+          </ul>
+          <a href="https://line.me/R/ti/p/@827rakrp" class="service-cta" data-plan="オーディション対策レポート">このプランについて相談する →</a>
+        </div>
+
+        <div class="service-card fade-in">
+          <span class="service-badge">STARTER</span>
+          <h3 class="service-name">アカウント開設サービス</h3>
+          <p class="service-desc">
+            ゼロからスタートしたい方向け。アカウント開設から
+            初期設定、チャンネル設計、初回動画の企画制作まで。
+          </p>
+          <ul class="service-features">
+            <li>画面共有での開設サポート</li>
+            <li>チャンネル設計・方向性決定</li>
+            <li>初回動画の企画・制作指導</li>
+          </ul>
+          <a href="https://line.me/R/ti/p/@827rakrp" class="service-cta" data-plan="アカウント開設サービス">このプランについて相談する →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== TESTIMONIALS ======== -->
+  <section class="testimonials">
+    <div class="container">
+      <div class="testimonials-header fade-in">
+        <p class="section-label">Voices</p>
+        <h2 class="section-title">お客様の声</h2>
+      </div>
+      <div class="testimonial-list">
+        <div class="testimonial fade-in">
+          <p class="testimonial-quote">
+            コンサル後すぐに企画を見直したら、1ヶ月で110万回再生を達成。
+            それまで伸び悩んでいたのが嘘みたいです。構造的に何が悪かったか
+            明確に指摘してもらえたのが大きかった。
+          </p>
+          <span class="testimonial-author">A.K さん / ライフスタイル系クリエイター</span>
+          <span class="testimonial-result">1ヶ月で110万回再生</span>
+        </div>
+        <div class="testimonial fade-in">
+          <p class="testimonial-quote">
+            1ヶ月の企画改善で収益化を達成できました。自分では気づけなかった
+            サムネとタイトルの問題点を具体的に教えてもらい、すぐに数字に反映されました。
+          </p>
+          <span class="testimonial-author">S.M さん / 個人クリエイター</span>
+          <span class="testimonial-result">1ヶ月で収益化達成</span>
+        </div>
+        <div class="testimonial fade-in">
+          <p class="testimonial-quote">
+            社内YouTube立ち上げから改善まで伴走いただき、累計6,000万回再生を突破。
+            外部パートナーとしてこれ以上ない方です。データに基づいた提案が的確でした。
+          </p>
+          <span class="testimonial-author">T.N さん / 企業アカウント担当</span>
+          <span class="testimonial-result">累計6,000万回再生</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== PROFILE ======== -->
+  <section class="profile">
+    <div class="container">
+      <div class="profile-inner fade-in">
+        <div class="profile-avatar"><img src="./avatar.jpg" alt="酒と旅ゆく櫻子チャン" loading="lazy"></div>
+        <h2 class="profile-name">酒と旅ゆく櫻子チャン</h2>
+        <p class="profile-handle">@sake_tabi_sakurakochan</p>
+        <div class="profile-bio">
+          <p>
+            顔出しなし・知識ゼロからYouTubeを始め、ショート動画に特化した戦略で
+            約1年半で登録者30万人を達成。2つ目のチャンネルは4ヶ月で10万人を突破し、
+            再現性のあるメソッドとして体系化。
+          </p>
+          <p>
+            SNSマーケターとして別名義で2年以上・200件以上のアカウント運用を支援。
+            個人クリエイターから企業アカウントまで幅広く対応。
+            10年の営業経験を活かしたトーク力で、
+            大手事務所オーディション合格実績は10社以上。
+          </p>
+          <p>
+            「机上の理論ではなく、運用データと経験に基づいた戦略」で
+            あなたのチャンネルに最適なプランを設計します。
+          </p>
+        </div>
+        <div class="profile-highlights">
+          <div class="stat">
+            <div class="stat-number">10<span>年</span></div>
+            <div class="stat-label">営業経験</div>
+          </div>
+          <div class="stat">
+            <div class="stat-number">2<span>年+</span></div>
+            <div class="stat-label">SNSマーケ歴</div>
+          </div>
+          <div class="stat">
+            <div class="stat-number">10<span>社+</span></div>
+            <div class="stat-label">オーディション合格</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== FAQ ======== -->
+  <section class="faq">
+    <div class="container">
+      <div class="faq-header fade-in">
+        <p class="section-label">FAQ</p>
+        <h2 class="section-title">よくある質問</h2>
+      </div>
+      <div class="faq-list">
+        <div class="faq-item fade-in">
+          <button class="faq-question">
+            YouTubeを始めたばかりでも大丈夫ですか？
+            <span class="icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              もちろんです。アカウント開設サービスでは、ゼロからの方向けにチャンネル設計・初回動画の企画制作まで一緒に進めます。初心者の方ほど、最初の設計で大きな差がつきます。
+            </div>
+          </div>
+        </div>
+        <div class="faq-item fade-in">
+          <button class="faq-question">
+            顔出しなしでも本当に伸ばせますか？
+            <span class="icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              私自身が顔出しなしで登録者30万人を達成しています。顔出しの有無よりも、企画設計とデータに基づく改善サイクルが重要です。具体的な方法はコンサルでお伝えします。
+            </div>
+          </div>
+        </div>
+        <div class="faq-item fade-in">
+          <button class="faq-question">
+            コンサル後の成果は保証されますか？
+            <span class="icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              成果を保証するものではありませんが、200件以上の支援実績から得たメソッドで、あなたのチャンネルに最適な戦略を提案します。行動に移していただければ、数字の変化を実感いただけるケースがほとんどです。
+            </div>
+          </div>
+        </div>
+        <div class="faq-item fade-in">
+          <button class="faq-question">
+            企業アカウントの相談もできますか？
+            <span class="icon">+</span>
+          </button>
+          <div class="faq-answer">
+            <div class="faq-answer-inner">
+              はい、企業向けのYouTube運用支援も行っています。戦略設計、社内研修、企画制作コンサル、立ち上げ支援など、事業成果を見据えた運用設計をご提案します。まずはLINEからご相談ください。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== FINAL CTA ======== -->
+  <section class="final-cta">
+    <div class="container fade-in">
+      <h2 class="final-cta-headline">
+        気になるプランがあれば<br>お気軽にご相談ください。
+      </h2>
+      <p class="final-cta-sub">
+        あなたの状況に合わせて最適なプランをご提案します。<br>
+        まずはメニューからお選びください。
+      </p>
+      <a href="#services" class="cta-line cta-scroll">
+        コンサルメニューに戻る
+      </a>
+    </div>
+  </section>
+
+  <!-- ======== FOOTER ======== -->
+  <footer class="footer">
+    <div class="container">
+      <p>&copy; 2026 酒と旅ゆく櫻子チャン. All rights reserved.</p>
+      <p class="footer-note">
+        本サービスは成果を保証するものではありません。
+      </p>
+    </div>
+  </footer>
+
+  <!-- ======== FLOATING CTA ======== -->
+  <div class="floating-cta" id="floatingCta">
+    <a href="#services" class="cta-line cta-scroll">
+      コンサルメニューを見る
+    </a>
+  </div>
+
+  <script>
+    // ---- Intersection Observer for fade-in ----
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry, i) => {
+        if (entry.isIntersecting) {
+          setTimeout(() => {
+            entry.target.classList.add('visible');
+          }, i * 80);
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+    // ---- Floating CTA visibility ----
+    const floatingCta = document.getElementById('floatingCta');
+    const heroCta = document.getElementById('heroCta');
+    const heroObserver = new IntersectionObserver(([entry]) => {
+      floatingCta.classList.toggle('show', !entry.isIntersecting);
+    }, { threshold: 0 });
+    heroObserver.observe(heroCta);
+
+    // ---- FAQ Accordion ----
+    document.querySelectorAll('.faq-question').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const item = btn.parentElement;
+        const answer = item.querySelector('.faq-answer');
+        const isOpen = item.classList.contains('open');
+
+        // Close all
+        document.querySelectorAll('.faq-item.open').forEach(openItem => {
+          openItem.classList.remove('open');
+          openItem.querySelector('.faq-answer').style.maxHeight = '0';
+        });
+
+        if (!isOpen) {
+          item.classList.add('open');
+          answer.style.maxHeight = answer.scrollHeight + 'px';
+        }
+      });
+    });
+  </script>
+</body>
+</html>
