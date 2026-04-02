@@ -10,7 +10,7 @@ compatibility_flags = ["nodejs_compat"]
 # 18:00 (UTC 10:00) - 承認済み投稿
 # 毎週月曜 10:00 (UTC 02:00) - Insights収集+最適化
 [triggers]
-crons = ["0 0,8 * * *", "0 1,10 * * *", "0 2 * * 1"]
+crons = ["0 0,8 * * *", "0 1,9,10 * * *", "0 2 * * 1"]
 
 [[r2_buckets]]
 binding = "IMAGES"

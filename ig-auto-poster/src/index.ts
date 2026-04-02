@@ -8,6 +8,8 @@ import { runPDCA } from "./pdca-engine";
 import { renderGalleryList, renderGalleryDetail } from "./gallery";
 import { fetchKnowledge, fetchGuardrails, formatKnowledgeForPrompt } from "./knowledge";
 import type { KnowledgeEntry } from "./knowledge";
+import { handleDailyPostCron } from "./worker/cron-poster";
+import { handleApproval } from "./worker/approval-api";
 
 export interface Env {
   IMAGES: R2Bucket;
@@ -22,6 +24,7 @@ export interface Env {
   NOTION_API_KEY: string;
   NOTION_KNOWLEDGE_DB_ID: string;
   PEXELS_API_KEY?: string;
+  GROQ_API_KEY?: string;
 }
 
 // --- 設定取得ヘルパー ---
@@ -151,6 +154,14 @@ async function handleLineWebhook(request: Request, env: Env): Promise<Response> 
     if (event.type !== "postback" || !event.postback) continue;
     if (event.source?.userId !== env.LINE_OWNER_USER_ID) continue;
 
+    // V4 postback handling
+    if (event.postback?.data.startsWith("v4_")) {
+      const action = event.postback.data.replace("v4_", "");
+      const result = await handleApproval(env.DB, action);
+      await sendNotification(result.message, env.LINE_OWNER_USER_ID, env.LINE_CHANNEL_ACCESS_TOKEN);
+      continue;
+    }
+
     const parsed = parsePostback(event.postback.data);
     if (!parsed) continue;
 
@@ -203,6 +214,12 @@ export default {
       return;
     }
 
+    // V4: 毎日 UTC 9:00 (バリ 17:00) → スケジュールキューから投稿
+    if (hour === 9) {
+      await handleDailyPostCron(env.DB, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
+      return;
+    }
+
     // 日次: UTC 0,8 → V3コンテンツ生成
     if (hour === 0 || hour === 8) {
       await handleV3GenerateCron(env);
@@ -231,6 +248,14 @@ export default {
       });
 
     try {
+      // --- V4 Approval API ---
+      if (request.method === "POST" && url.pathname === "/api/v4/approve") {
+        const body = await request.json() as { action: string };
+        if (!body.action) return json({ ok: false, message: "action required" }, 400);
+        const result = await handleApproval(env.DB, body.action);
+        return json(result, result.ok ? 200 : 400);
+      }
+
       // --- LINE Webhook ---
       if (request.method === "POST" && url.pathname === "/line-webhook") {
         return handleLineWebhook(request, env);
