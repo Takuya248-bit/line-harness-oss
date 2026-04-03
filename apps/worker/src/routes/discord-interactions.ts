@@ -348,22 +348,31 @@ ${row.draft}`,
       return c.json({ type: 7, data: {} });
     }
 
-    // xpost_reject_{postId}
+    // xpost_reject_{postId} — 却下理由入力モーダルを表示
     if (customId.startsWith('xpost_reject_')) {
       const postId = customId.replace('xpost_reject_', '');
-      const result = await updateXPostStatus(c.env, postId, 'rejected', null);
-      const msg = result.ok ? `🚫 却下しました (postId: ${postId})` : `❌ 更新失敗: ${result.error}`;
-      const msgId = body.message?.id;
-      if (msgId && c.env.DISCORD_BOT_TOKEN && result.ok) {
-        const originalEmbeds = body.message?.embeds ?? [];
-        originalEmbeds.push({ color: 0x6b7280, description: `🚫 却下 (postId: ${postId})`, timestamp: new Date().toISOString() });
-        await fetch(`https://discord.com/api/v10/channels/${body.channel_id}/messages/${msgId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bot ${c.env.DISCORD_BOT_TOKEN}` },
-          body: JSON.stringify({ embeds: originalEmbeds, components: [] }),
-        });
-      }
-      return c.json({ type: 4, data: { content: msg, flags: 64 } });
+      return c.json({
+        type: 9, // MODAL
+        data: {
+          custom_id: `xpost_reject_submit_${postId}`,
+          title: '却下理由を入力',
+          components: [
+            {
+              type: 1,
+              components: [
+                {
+                  type: 4,
+                  custom_id: 'reject_reason',
+                  label: '却下理由（次回以降の生成品質向上に使用）',
+                  style: 2,
+                  placeholder: '例: ニュース記事へのリプライは不要、タメ口になっている、等',
+                  required: true,
+                },
+              ],
+            },
+          ],
+        },
+      });
     }
 
     // xpost_edit_{postId} — テキスト編集モーダルを表示
@@ -413,8 +422,118 @@ ${row.draft}`,
     return c.json({ type: 4, data: { content: msg, flags: 64 } });
   }
 
+  // xpost_reject_submit_{postId} — 却下理由付きで rejected 更新 + 学習データ保存
+  if (body.type === 5 && customId.startsWith('xpost_reject_submit_')) {
+    const postId = customId.replace('xpost_reject_submit_', '');
+    const getValue = (id: string): string => {
+      for (const row of body.data?.components ?? []) {
+        for (const comp of row.components) {
+          if (comp.custom_id === id) return comp.value;
+        }
+      }
+      return '';
+    };
+    const reason = getValue('reject_reason');
+
+    // review JSON を rejected に更新
+    const result = await updateXPostStatus(c.env, postId, 'rejected', null);
+
+    // 却下理由を学習データとして保存（GitHub API で data/rejection-lessons/{account}.json に追記）
+    if (result.ok && reason) {
+      await saveRejectionLesson(c.env, postId, reason);
+    }
+
+    // Discordメッセージ更新（ボタン除去+却下理由表示）
+    const msgId = body.message?.id;
+    if (msgId && c.env.DISCORD_BOT_TOKEN) {
+      const originalEmbeds = body.message?.embeds ?? [];
+      originalEmbeds.push({
+        color: 0x6b7280,
+        description: `🚫 却下 (postId: ${postId})\n理由: ${reason}`,
+        timestamp: new Date().toISOString(),
+      });
+      await fetch(`https://discord.com/api/v10/channels/${body.channel_id}/messages/${msgId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bot ${c.env.DISCORD_BOT_TOKEN}` },
+        body: JSON.stringify({ embeds: originalEmbeds, components: [] }),
+      });
+    }
+
+    const msg = result.ok
+      ? `🚫 却下しました。理由「${reason}」を学習データに保存しました。`
+      : `❌ 更新失敗: ${result.error}`;
+    return c.json({ type: 4, data: { content: msg, flags: 64 } });
+  }
+
   return c.json({ type: 1 });
 });
+
+/**
+ * 却下理由を学習データとして GitHub リポジトリに保存する
+ * data/rejection-lessons/{account}.json に追記
+ */
+async function saveRejectionLesson(
+  env: any,
+  postId: string,
+  reason: string,
+): Promise<void> {
+  const match = postId.match(/^(\d{4}-\d{2}-\d{2})-(.+)-q?(\d+)$/);
+  if (!match) return;
+  const [, date, account] = match;
+
+  const githubToken = env.GITHUB_TOKEN;
+  const githubRepo = env.XPOSTER_GITHUB_REPO ?? 'kimuratakuya/x-auto-poster';
+  if (!githubToken) return;
+
+  const filePath = `data/rejection-lessons/${account}.json`;
+  const apiUrl = `https://api.github.com/repos/${githubRepo}/contents/${filePath}`;
+  const headers = {
+    Authorization: `token ${githubToken}`,
+    Accept: 'application/vnd.github.v3+json',
+    'User-Agent': 'line-harness-worker',
+    'Content-Type': 'application/json',
+  };
+
+  // 既存ファイルを取得（なければ空配列）
+  let existing: any[] = [];
+  let sha: string | undefined;
+  try {
+    const getRes = await fetch(apiUrl, { headers });
+    if (getRes.ok) {
+      const fileData = (await getRes.json()) as { content: string; sha: string };
+      sha = fileData.sha;
+      existing = JSON.parse(atob(fileData.content.replace(/\n/g, '')));
+    }
+  } catch {
+    // ファイルが存在しない場合は空配列のまま
+  }
+
+  // 学習データを追記
+  existing.push({
+    postId,
+    date,
+    reason,
+    rejectedAt: new Date().toISOString(),
+  });
+
+  // ファイルを更新/作成
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(existing, null, 2))));
+  const putBody: any = {
+    message: `learn: rejection lesson for ${account} (${reason.slice(0, 50)})`,
+    content,
+  };
+  if (sha) putBody.sha = sha;
+
+  try {
+    await fetch(apiUrl, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(putBody),
+    });
+  } catch (err) {
+    console.error('saveRejectionLesson error:', err);
+  }
+}
 
 /**
  * GitHub API を使って x-auto-poster の review JSON ファイルの
