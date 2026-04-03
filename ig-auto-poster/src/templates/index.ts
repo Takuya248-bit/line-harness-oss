@@ -83,6 +83,6 @@ export function buildV2Slides(content: BaliContentV2): SatoriNode[] {
     nodes.push(buildBaliSpotNode(spot));
   }
   nodes.push(buildBaliSummaryNode(content.summaryData));
-  nodes.push(buildBaliCtaNode(content.ctaImageUrl));
+  nodes.push(buildBaliCtaNode(content.ctaImageUrl, content.category));
   return nodes;
 }

@@ -80,8 +80,9 @@ ${netaList}
 
 条件:
 - spotsDataは5件（spotNumber 1〜5）
-- description は50文字以内
-- summaryData.spots[].oneLiner は15文字以内
+- description は80文字以内（その場所の魅力・特徴・雰囲気を具体的に）
+- area, priceLevel, highlight は必須
+- summaryData.spots[].oneLiner は20文字以内
 - imageUrlフィールドは含めない
 - 必ずJSONのみを返す（説明文・マークダウン不要）
 
@@ -97,7 +98,7 @@ JSONスキーマ:
     {
       "spotNumber": 1,
       "spotName": "スポット名",
-      "description": "50文字以内の説明",
+      "description": "80文字以内の説明（魅力・特徴・雰囲気を具体的に）",
       "area": "エリア名（例: ウブド、スミニャック、チャングー）",
       "priceLevel": "$ / $$ / $$$",
       "highlight": "おすすめポイント（30文字以内）"
@@ -133,15 +134,20 @@ export function buildPromptForV2PlanWithRealSpots(
 
   const styleFields = (() => {
     if (infoStyle === "simple") {
-      return `      "description": "50文字以内の説明"`;
+      return `      "description": "80文字以内の説明（魅力・特徴・雰囲気を具体的に）",
+      "area": "エリア名",
+      "priceLevel": "$ / $$ / $$$",
+      "highlight": "おすすめポイント（30文字以内）"`;
     }
     if (infoStyle === "rich") {
-      return `      "description": "50文字以内の説明",
+      return `      "description": "80文字以内の説明（魅力・特徴・雰囲気を具体的に）",
+      "area": "エリア名",
       "priceLevel": "$ / $$ / $$$",
       "highlight": "おすすめポイント（30文字以内）"`;
     }
     // practical
-    return `      "description": "50文字以内の説明",
+    return `      "description": "80文字以内の説明（魅力・特徴・雰囲気を具体的に）",
+      "area": "エリア名",
       "priceLevel": "$ / $$ / $$$",
       "hours": "営業時間（例: 8:00-22:00）",
       "recommendedMenu": "おすすめメニュー（20文字以内）"`;
