@@ -128,7 +128,16 @@ ${netaList}
 export function buildPromptForV2PlanWithRealSpots(
   category: string,
   area: string,
-  spots: { name: string; area: string; website?: string | null }[],
+  spots: {
+    name: string;
+    area: string;
+    website?: string | null;
+    rating?: number | null;
+    review_count?: number | null;
+    reviews_json?: string | null;
+    opening_hours?: string | null;
+    price_level?: string | null;
+  }[],
   infoStyle: "simple" | "rich" | "practical",
   neta: NetaEntry[],
 ): string {
@@ -139,7 +148,28 @@ export function buildPromptForV2PlanWithRealSpots(
     .join("\n");
 
   const spotsList = spots
-    .map((s, i) => `${i + 1}. ${s.name}（${s.area}）${s.website ? ` / ${s.website}` : ""}`)
+    .map((s, i) => {
+      let line = `${i + 1}. ${s.name}（${s.area}）`;
+      if (s.rating) line += ` ★${s.rating}`;
+      if (s.review_count) line += `（${s.review_count}件）`;
+      if (s.price_level) line += ` ${s.price_level}`;
+      if (s.website) line += ` / ${s.website}`;
+      if (s.opening_hours) line += `\n   営業: ${s.opening_hours.split("\n")[0]}`;
+      if (s.reviews_json) {
+        try {
+          const reviews = JSON.parse(s.reviews_json) as { text: string; rating: number }[];
+          if (reviews.length > 0) {
+            line += `\n   口コミ: 「${reviews[0]!.text.slice(0, 80)}」`;
+            if (reviews.length > 1) {
+              line += `\n   口コミ2: 「${reviews[1]!.text.slice(0, 80)}」`;
+            }
+          }
+        } catch {
+          /* ignore invalid json */
+        }
+      }
+      return line;
+    })
     .join("\n");
 
   return `あなたはバリ島在住のインスタグラマーです。実際に訪れた場所の情報を発信しています。
@@ -153,9 +183,10 @@ ${spotsList}
 
 重要ルール:
 - ${NO_DIRECT_PROMO_RULE}
-- 上記スポットの名前を変えない。そのまま使う
-- descriptionは具体的な体験談風に書く（メニュー名、価格、雰囲気、おすすめの時間帯など）
-- テンプレ的な表現（「〜が魅力」「〜で有名」）は避け、実際に行った人が書くようなリアルな文章にする
+- 上記スポットの名前・評価・口コミ内容を変えない。そのまま使う
+- LLMの役割はデータ整形のみ。新しい情報を捏造しない
+- descriptionには上記の口コミ情報を要約・日本語整形して使う
+- テンプレ的な表現（「〜が魅力」「〜で有名」）は避け、口コミベースのリアルな文章にする
 
 JSONのみを返してください。
 
@@ -170,7 +201,7 @@ JSONのみを返してください。
     {
       "spotNumber": 1,
       "spotName": "実在店名（リストの名前をそのまま使用）",
-      "description": "150文字以内。具体的な体験（看板メニューの名前と価格、店内の雰囲気、Wi-Fi速度、おすすめ席、混雑する時間帯、周辺のおすすめなど）を盛り込む",
+      "description": "150文字以内。リストの口コミ・評価のみを要約し日本語整形する。新規の事実・推測は入れない",
       "area": "正確なエリア名",
       "priceLevel": "$ / $$ / $$$",
       "highlight": "一番の魅力を30文字以内で"

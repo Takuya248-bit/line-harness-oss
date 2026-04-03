@@ -78,7 +78,7 @@ async function main() {
     console.error("Neta collection failed (continuing):", e);
   }
 
-  // Step 1.5: スポット収集 (Overpass/OpenStreetMap - 認証不要・無料)
+  // Step 1.5: スポット収集 (Google Places API New)
   console.log("--- Step 1.5: スポット収集 ---");
   try {
     await d1Execute(cfAccountId, d1DbId, cfApiToken,
@@ -94,12 +94,33 @@ async function main() {
         price_level TEXT,
         description TEXT,
         used_count INTEGER DEFAULT 0,
+        rating REAL,
+        review_count INTEGER,
+        reviews_json TEXT,
+        opening_hours TEXT,
         fetched_at TEXT DEFAULT (datetime('now')),
         created_at TEXT DEFAULT (datetime('now'))
       )`,
     );
-    const newSpots = await collectSpots(cfAccountId, d1DbId, cfApiToken, "cafe", 50);
-    console.log(`Collected ${newSpots} new spots from OpenStreetMap`);
+    for (const sql of [
+      "ALTER TABLE real_spots ADD COLUMN rating REAL",
+      "ALTER TABLE real_spots ADD COLUMN review_count INTEGER",
+      "ALTER TABLE real_spots ADD COLUMN reviews_json TEXT",
+      "ALTER TABLE real_spots ADD COLUMN opening_hours TEXT",
+    ] as const) {
+      try {
+        await d1Execute(cfAccountId, d1DbId, cfApiToken, sql);
+      } catch {
+        /* column may already exist */
+      }
+    }
+    const googlePlacesApiKey = process.env.GOOGLE_PLACES_API_KEY;
+    if (googlePlacesApiKey) {
+      const newSpots = await collectSpots(cfAccountId, d1DbId, cfApiToken, googlePlacesApiKey, "cafe", 20);
+      console.log(`Collected ${newSpots} new spots from Google Places`);
+    } else {
+      console.warn("GOOGLE_PLACES_API_KEY not set, skipping spot collection");
+    }
   } catch (e) {
     console.error("Spot collection failed (continuing):", e);
   }
@@ -230,10 +251,20 @@ async function main() {
       const infoStyle = "rich" as const;
 
       // real_spotsから実在スポットを取得
-      interface RealSpotRow { id: number; name: string; area: string; website: string | null }
+      interface RealSpotRow {
+        id: number;
+        name: string;
+        area: string;
+        website: string | null;
+        rating: number | null;
+        review_count: number | null;
+        reviews_json: string | null;
+        opening_hours: string | null;
+        price_level: string | null;
+      }
       const realSpots = await d1Query<RealSpotRow>(
         cfAccountId, d1DbId, cfApiToken,
-        "SELECT id, name, area, website FROM real_spots WHERE category = ? ORDER BY used_count ASC, RANDOM() LIMIT 5",
+        "SELECT id, name, area, website, rating, review_count, reviews_json, opening_hours, price_level FROM real_spots WHERE category = ? ORDER BY rating DESC, used_count ASC LIMIT 5",
         [category === "cafe" ? "cafe" : category],
       );
       for (const spot of realSpots) {

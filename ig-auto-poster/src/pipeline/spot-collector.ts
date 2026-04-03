@@ -1,64 +1,136 @@
 import { d1Query, d1Execute } from "../../batch/d1-rest";
 
-interface OverpassElement {
-  type: string;
-  id: number;
-  lat: number;
-  lon: number;
-  tags: Record<string, string>;
-}
+const PLACES_SEARCH_TEXT_URL = "https://places.googleapis.com/v1/places:searchText";
 
-interface OverpassResponse {
-  elements: OverpassElement[];
-}
+const FIELD_MASK =
+  "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.priceLevel,places.websiteUri,places.regularOpeningHours,places.reviews,places.location";
 
-const AMENITY_MAP: Record<string, string> = {
-  cafe: "cafe",
-  restaurant: "restaurant",
+const SEARCH_QUERIES: Record<string, string> = {
+  cafe: "best cafes in Bali",
+  restaurant: "best restaurants in Bali",
+  spot: "best tourist attractions in Bali",
+  food: "best local food warung in Bali",
+  beach: "best beaches in Bali",
 };
+
+interface GooglePlace {
+  id: string;
+  displayName: { text: string; languageCode: string };
+  formattedAddress: string;
+  rating?: number;
+  userRatingCount?: number;
+  priceLevel?: string;
+  websiteUri?: string;
+  regularOpeningHours?: {
+    weekdayDescriptions: string[];
+  };
+  reviews?: {
+    text?: { text: string; languageCode?: string };
+    rating?: number;
+    relativePublishTimeDescription?: string;
+  }[];
+  location?: { latitude: number; longitude: number };
+}
+
+interface GooglePlacesResponse {
+  places?: GooglePlace[];
+  nextPageToken?: string;
+}
+
+function mapPriceLevel(level?: string): string | null {
+  if (!level) return null;
+  const m: Record<string, string> = {
+    PRICE_LEVEL_FREE: "",
+    PRICE_LEVEL_INEXPENSIVE: "$",
+    PRICE_LEVEL_MODERATE: "$$",
+    PRICE_LEVEL_EXPENSIVE: "$$$",
+    PRICE_LEVEL_VERY_EXPENSIVE: "$$$$",
+  };
+  const out = m[level];
+  if (out === "") return null;
+  return out ?? null;
+}
+
+function extractArea(formattedAddress: string): string {
+  const parts = formattedAddress
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length >= 2) return parts[1]!;
+  return formattedAddress.trim();
+}
+
+function topReviewsForDb(
+  reviews?: GooglePlace["reviews"],
+): { text: string; rating: number }[] {
+  if (!reviews?.length) return [];
+  const sorted = [...reviews].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+  return sorted
+    .slice(0, 2)
+    .map((r) => ({
+      text: (r.text?.text ?? "").trim(),
+      rating: r.rating ?? 0,
+    }))
+    .filter((r) => r.text.length > 0);
+}
+
+async function searchTextWithRetry(
+  apiKey: string,
+  body: { textQuery: string; languageCode: string; maxResultCount: number },
+): Promise<GooglePlacesResponse> {
+  let lastErr: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(PLACES_SEARCH_TEXT_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": FIELD_MASK,
+      },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      return (await res.json()) as GooglePlacesResponse;
+    }
+    const status = res.status;
+    if (status === 429 || status >= 500) {
+      const detail = await res.text();
+      lastErr = new Error(`Google Places API error: ${status} ${detail}`);
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 5000 * (attempt + 1)));
+      continue;
+    }
+    throw new Error(`Google Places API error: ${status} ${await res.text()}`);
+  }
+  throw lastErr ?? new Error("Google Places API: exhausted retries");
+}
 
 export async function collectSpots(
   cfAccountId: string,
   d1DbId: string,
   cfApiToken: string,
+  googlePlacesApiKey: string,
   category: string = "cafe",
-  limit: number = 50,
+  limit: number = 20,
 ): Promise<number> {
-  const amenity = AMENITY_MAP[category] ?? "cafe";
-
-  // 既にデータがあればスキップ（週1回の収集で十分）
   const existingCount = await d1Query<{ cnt: number }>(
-    cfAccountId, d1DbId, cfApiToken,
+    cfAccountId,
+    d1DbId,
+    cfApiToken,
     "SELECT COUNT(*) as cnt FROM real_spots WHERE category = ?",
     [category],
   );
   if ((existingCount[0]?.cnt ?? 0) >= 10) {
-    return 0; // 十分なデータあり
+    return 0;
   }
 
-  // Overpass API: バリ島エリア内のカフェを検索（認証不要・完全無料）
-  const query = `[out:json][timeout:25];area["name"="Bali"]["admin_level"="4"]->.bali;node["amenity"="${amenity}"](area.bali);out body ${limit};`;
+  const textQuery = SEARCH_QUERIES[category] ?? SEARCH_QUERIES.cafe;
+  const data = await searchTextWithRetry(googlePlacesApiKey, {
+    textQuery,
+    languageCode: "ja",
+    maxResultCount: Math.min(Math.max(1, limit), 20),
+  });
 
-  // リトライ（Overpass APIはサーバー混雑でタイムアウトすることがある）
-  let res: Response | null = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    res = await fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `data=${encodeURIComponent(query)}`,
-    });
-    if (res.ok) break;
-    if (attempt < 2) await new Promise((r) => setTimeout(r, 5000 * (attempt + 1)));
-  }
-
-  if (!res || !res.ok) {
-    throw new Error(`Overpass API error: ${res?.status ?? "no response"}`);
-  }
-
-  const data = (await res.json()) as OverpassResponse;
-  const places = data.elements.filter((e) => e.tags?.name);
-
-  // 既存のOSM IDを取得して重複スキップ
+  const places = data.places ?? [];
   const existingRows = await d1Query<{ foursquare_id: string }>(
     cfAccountId,
     d1DbId,
@@ -69,22 +141,53 @@ export async function collectSpots(
 
   let insertCount = 0;
   for (const place of places) {
-    const osmId = `osm:${place.id}`;
-    if (existingIds.has(osmId)) continue;
+    const rating = place.rating;
+    const userRatingCount = place.userRatingCount;
+    if (rating === undefined || userRatingCount === undefined) continue;
+    if (rating < 4.5 || userRatingCount < 100) continue;
 
-    const name = place.tags.name;
-    const area = place.tags["addr:city"] ?? place.tags["addr:street"] ?? "";
-    const website = place.tags.website ?? place.tags["contact:website"] ?? null;
-    const cuisine = place.tags.cuisine ?? null;
+    const placeKey = `google:${place.id}`;
+    if (existingIds.has(placeKey)) continue;
+
+    const name = place.displayName?.text?.trim();
+    if (!name) continue;
+
+    const formattedAddress = place.formattedAddress?.trim() ?? "";
+    const area = extractArea(formattedAddress);
+    const website = place.websiteUri ?? null;
+    const lat = place.location?.latitude ?? null;
+    const lon = place.location?.longitude ?? null;
+    const priceLevel = mapPriceLevel(place.priceLevel);
+    const openingHours = place.regularOpeningHours?.weekdayDescriptions?.length
+      ? place.regularOpeningHours.weekdayDescriptions.join("\n")
+      : null;
+    const topRev = topReviewsForDb(place.reviews);
+    const reviewsJson = topRev.length > 0 ? JSON.stringify(topRev) : null;
 
     await d1Execute(
       cfAccountId,
       d1DbId,
       cfApiToken,
-      `INSERT INTO real_spots (foursquare_id, name, area, category, website, latitude, longitude, description, used_count)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
-      [osmId, name, area, category, website, place.lat, place.lon, cuisine],
+      `INSERT INTO real_spots (
+        foursquare_id, name, area, category, website, latitude, longitude,
+        description, used_count, rating, review_count, reviews_json, opening_hours, price_level
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?, ?, ?)`,
+      [
+        placeKey,
+        name,
+        area || formattedAddress || "Bali",
+        category,
+        website,
+        lat,
+        lon,
+        rating,
+        userRatingCount,
+        reviewsJson,
+        openingHours,
+        priceLevel,
+      ],
     );
+    existingIds.add(placeKey);
     insertCount++;
   }
 
