@@ -10,7 +10,10 @@ interface PexelsResponse {
   photos: PexelsPhoto[];
 }
 
-export async function fetchPexelsImage(query: string): Promise<string> {
+export async function fetchPexelsImage(
+  query: string,
+  excludeUrls?: Set<string>,
+): Promise<string> {
   const apiKey = process.env.PEXELS_API_KEY;
   if (!apiKey) return FALLBACK_URL;
 
@@ -18,7 +21,7 @@ export async function fetchPexelsImage(query: string): Promise<string> {
     const url = new URL("https://api.pexels.com/v1/search");
     url.searchParams.set("query", query);
     url.searchParams.set("orientation", "portrait");
-    url.searchParams.set("per_page", "5");
+    url.searchParams.set("per_page", "15");
 
     const res = await fetch(url.toString(), {
       headers: { Authorization: apiKey },
@@ -29,7 +32,12 @@ export async function fetchPexelsImage(query: string): Promise<string> {
     const data = (await res.json()) as PexelsResponse;
     if (!data.photos || data.photos.length === 0) return FALLBACK_URL;
 
-    const photo = data.photos[Math.floor(Math.random() * data.photos.length)];
+    // 重複排除: excludeUrlsに含まれない写真を優先
+    const candidates = excludeUrls
+      ? data.photos.filter((p) => !excludeUrls.has(p.src.large2x))
+      : data.photos;
+    const pool = candidates.length > 0 ? candidates : data.photos;
+    const photo = pool[Math.floor(Math.random() * pool.length)];
     return photo.src.large2x;
   } catch {
     return FALLBACK_URL;
@@ -43,26 +51,40 @@ export async function fetchSpotImages(
   spotAreas?: string[],
 ): Promise<string[]> {
   void area;
-  const results = await Promise.all(
-    spotNames.map(async (spotName, idx) => {
-      // 1. 実在店名 + bali + category
-      const url1 = await fetchPexelsImage(`${spotName} bali ${category}`);
-      if (url1 !== FALLBACK_URL) return url1;
+  const usedUrls = new Set<string>();
+  const results: string[] = [];
 
-      // 2. エリア名 + bali + category（エリア情報がある場合）
+  // 順次実行で重複排除を確実にする
+  for (let idx = 0; idx < spotNames.length; idx++) {
+    const spotName = spotNames[idx]!;
+    let chosen = FALLBACK_URL;
+
+    // 1. 実在店名 + cafe + bali
+    const url1 = await fetchPexelsImage(`${spotName} cafe bali`, usedUrls);
+    if (url1 !== FALLBACK_URL) { chosen = url1; }
+    else {
+      // 2. エリア名 + bali + category
       const spotArea = spotAreas?.[idx];
-      if (spotArea) {
-        const url2 = await fetchPexelsImage(`${spotArea} bali ${category}`);
-        if (url2 !== FALLBACK_URL) return url2;
+      if (spotArea && spotArea.length > 0) {
+        const url2 = await fetchPexelsImage(`${spotArea} bali ${category}`, usedUrls);
+        if (url2 !== FALLBACK_URL) { chosen = url2; }
       }
+    }
 
-      // 3. ジェネリック検索
-      const url3 = await fetchPexelsImage(`bali ${category} interior`);
-      if (url3 !== FALLBACK_URL) return url3;
+    if (chosen === FALLBACK_URL) {
+      // 3. ジェネリック: bali cafe interior
+      const url3 = await fetchPexelsImage(`bali ${category} interior`, usedUrls);
+      if (url3 !== FALLBACK_URL) { chosen = url3; }
+    }
 
-      // 4. 最終フォールバック
-      return fetchPexelsImage(`bali coffee shop`);
-    })
-  );
+    if (chosen === FALLBACK_URL) {
+      // 4. 最終: tropical cafe
+      chosen = await fetchPexelsImage(`tropical cafe coffee`, usedUrls);
+    }
+
+    if (chosen !== FALLBACK_URL) usedUrls.add(chosen);
+    results.push(chosen);
+  }
+
   return results;
 }

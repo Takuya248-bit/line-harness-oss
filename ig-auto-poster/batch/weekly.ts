@@ -340,15 +340,18 @@ async function main() {
       };
 
       const v2Nodes = buildV2Slides(v2Content);
+      console.log(`  V2 slides: ${v2Nodes.length} nodes, spots: ${v2Raw.spotsData.length}`);
       try {
         imageBuffers = await renderV2Slides(v2Nodes);
       } catch (e) {
         console.error(`V2 render failed for ${category}:`, e);
         continue;
       }
+      console.log(`  Rendered: ${imageBuffers.length} images`);
 
       // R2残骸削除 + アップロード
-      await deleteR2Prefix(cfAccountId, r2Bucket, cfApiToken, `v4/${week}/${i}/`);
+      const deleted = await deleteR2Prefix(cfAccountId, r2Bucket, cfApiToken, `v4/${week}/${i}/`);
+      if (deleted > 0) console.log(`  Cleaned ${deleted} old files`);
       const mediaUrlsV2: string[] = [];
       for (let j = 0; j < imageBuffers.length; j++) {
         const key = `v4/${week}/${i}/slide-${j + 1}.png`;
