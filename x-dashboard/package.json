@@ -3,7 +3,8 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "build:web": "cd web && npm run build",
+    "deploy": "npm run build:web && wrangler deploy",
     "db:migrate": "wrangler d1 execute x-dashboard-db --local --file=src/db/schema.sql",
     "db:migrate:remote": "wrangler d1 execute x-dashboard-db --remote --file=src/db/schema.sql"
   },
