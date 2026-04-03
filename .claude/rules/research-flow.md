@@ -1,6 +1,9 @@
 ---
 description: リサーチ時のQMD優先ルーティングとGroq要約委譲ルール
-alwaysApply: true
+alwaysApply: false
+globs:
+  - "scripts/summarize-url.mjs"
+  - "scripts/knowledge-save.mjs"
 ---
 
 # リサーチフロー（トークン節約）

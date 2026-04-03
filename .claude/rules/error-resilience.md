@@ -1,6 +1,10 @@
 ---
 description: エラーリカバリ・リトライルール（全エージェント必須）
-alwaysApply: true
+alwaysApply: false
+globs:
+  - "**/*.ts"
+  - "**/*.mjs"
+  - "scripts/**"
 ---
 
 # エラーリカバリ・レジリエンスルール（全エージェント必須）

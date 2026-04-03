@@ -1,6 +1,10 @@
 ---
 description: エージェント共通操作（コンテキスト読み込み・作業ログ）
-alwaysApply: true
+alwaysApply: false
+globs:
+  - ".company/secretary/notes/**"
+  - "**/*.ts"
+  - "**/*.mjs"
 ---
 
 # エージェント共通操作ルール

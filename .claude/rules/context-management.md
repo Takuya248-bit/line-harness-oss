@@ -1,6 +1,9 @@
 ---
 description: コンテキスト予算・効率ルール（ファイル読み込み・サブエージェント返答上限）
-alwaysApply: true
+alwaysApply: false
+globs:
+  - ".claude/**"
+  - ".company/**"
 ---
 
 # コンテキスト管理ルール

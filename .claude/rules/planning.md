@@ -1,6 +1,9 @@
 ---
 description: プラン・タスク分解のフォーマット、スコープ検出、並列検証
-alwaysApply: true
+alwaysApply: false
+globs:
+  - ".dev-loop/**"
+  - ".company/secretary/notes/**"
 ---
 
 # プランニングルール

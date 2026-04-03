@@ -1,6 +1,8 @@
 ---
 description: レビュー判断基準（合格/要修正/エスカレーション）
-alwaysApply: true
+alwaysApply: false
+globs:
+  - ".dev-loop/**"
 ---
 
 # レビュー判断基準

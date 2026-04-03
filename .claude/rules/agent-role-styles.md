@@ -1,6 +1,10 @@
 ---
 description: エージェント役割別マネジメントスタイル（リサーチ/コンテンツ/実装/GUI）
-alwaysApply: true
+alwaysApply: false
+globs:
+  - "**/*.ts"
+  - "**/*.mjs"
+  - ".company/**"
 ---
 
 # エージェント役割別マネジメントスタイル
