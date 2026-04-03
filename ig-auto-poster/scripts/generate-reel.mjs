@@ -19,7 +19,8 @@ const TMP_DIR = path.join("/tmp", "ig-reels");
 const DUR_HOOK = 2;
 const DUR_FACT = 1.5;
 const DUR_CTA = 3;
-const TEXT_FADE_SEC = 0.3;
+/** ASS \fad fade-in (ms) */
+const ASS_FADE_IN_MS = 300;
 
 function setupFonts() {
   const fontDir = path.join(__dirname, "fonts");
@@ -34,14 +35,6 @@ function fontFilePath() {
   if (fs.existsSync(boldPath)) return boldPath;
   const mediumPath = path.join(__dirname, "fonts", "ZenMaruGothic-Bold.ttf");
   return mediumPath;
-}
-
-function escapeDrawtext(str) {
-  return String(str)
-    .replace(/\\/g, "\\\\")
-    .replace(/:/g, "\\:")
-    .replace(/'/g, "\\\\'")
-    .replace(/"/g, '\\"');
 }
 
 function wrapText(text, maxChars = 14) {
@@ -96,7 +89,7 @@ async function prepareBackground(imageUrl, overlayOpacity = 0.5) {
     .toBuffer();
 }
 
-/** Fact slide: 背景のみ（本文はffmpeg drawtextで重畳） */
+/** Fact slide: 背景のみ（本文はASS字幕で重畳） */
 async function generateFactBackgroundJpeg(imageUrl) {
   const bg = await prepareBackground(imageUrl || null, 0.55);
   return bg;
@@ -144,26 +137,92 @@ function kenBurnsZoompan(durationSec, pattern) {
   return `zoompan=z='min(zoom+0.004,1.2)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${d}:s=${WIDTH}x${HEIGHT}:fps=${FPS}`;
 }
 
+function formatAssTime(sec) {
+  const c = Math.max(0, Math.round(sec * 100));
+  const cs = c % 100;
+  const sTotal = (c - cs) / 100;
+  const s = sTotal % 60;
+  const mTotal = (sTotal - s) / 60;
+  const m = mTotal % 60;
+  const h = (mTotal - m) / 60;
+  const pad2 = (n) => String(n).padStart(2, "0");
+  return `${h}:${pad2(m)}:${pad2(s)}.${pad2(cs)}`;
+}
+
+/** Escape user text for ASS Dialogue body (literal braces and backslashes). */
+function escapeAssText(str) {
+  return String(str)
+    .replace(/\\/g, "\\\\")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\n/g, "\\N")
+    .replace(/\{/g, "\\{")
+    .replace(/\}/g, "\\}");
+}
+
+function escapePathForVideoFilter(p) {
+  return path.resolve(p).replace(/\\/g, "/").replace(/:/g, "\\:").replace(/,/g, "\\,");
+}
+
 /**
- * drawtext chain: one filter per line, vertical center stack, alpha fade-in
+ * Write one ASS file for a single segment (hook or one fact) and return its path.
+ * @param {string} hookText
+ * @param {string[]} facts
+ * @param {number} durations — duration in seconds for this segment only
+ * @param {string} workBase
+ * @param {{ type: 'hook' } | { type: 'fact', index: number }} segment
  */
-function drawtextChainForLines(lines, fontfile, fontSize) {
-  const ff = fontfile.replace(/\\/g, "/").replace(/:/g, "\\:");
-  const fade = TEXT_FADE_SEC;
-  const n = lines.length;
-  const lineH = Math.round(fontSize * 1.25);
-  const totalH = (n - 1) * lineH;
-  const y0Expr = `(h-${totalH})/2`;
-  const parts = [];
-  for (let i = 0; i < n; i++) {
-    const txt = escapeDrawtext(lines[i]);
-    const yi = `${y0Expr}+${i * lineH}`;
-    parts.push(
-      `drawtext=fontfile='${ff}':fontsize=${fontSize}:fontcolor=white:x=(w-text_w)/2:y=${yi}:text='${txt}':` +
-        `alpha='if(lt(t\\,${fade})\\,t/${fade}\\,1)'`,
-    );
+function generateAssFile(hookText, facts, durations, workBase, segment) {
+  const durationSec = durations;
+  const endStr = formatAssTime(durationSec);
+  const fad = `\\fad(${ASS_FADE_IN_MS},0)`;
+
+  const lines =
+    segment.type === "hook"
+      ? wrapText(hookText, 12)
+      : wrapText(facts[segment.index] ?? "", 14);
+  const body = lines.map(escapeAssText).join("\\N");
+  const hookBlock = `Dialogue: 0,0:00:00.00,${endStr},Hook,,0,0,0,,{${fad}}${body}`;
+
+  let numberBlock = "";
+  if (segment.type === "fact") {
+    const n = segment.index + 1;
+    const badge = String(n).padStart(2, "0");
+    numberBlock = `Dialogue: 1,0:00:00.00,${endStr},Number,,0,0,0,,{${fad}}${escapeAssText(badge)}\n`;
   }
-  return parts.join(",");
+
+  const ass = `[Script Info]
+Title: IG Reel
+ScriptType: v4.00+
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Hook,Zen Maru Gothic,56,&H00FFFFFF,&H000000FF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,3,3,2,2,60,60,80,1
+Style: Fact,Zen Maru Gothic,42,&H00FFFFFF,&H000000FF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,3,2,2,2,60,60,120,1
+Style: Number,Zen Maru Gothic,72,&H0000BCD4,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,7,30,0,30,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`;
+
+  const events =
+    segment.type === "hook"
+      ? `${hookBlock}\n`
+      : `${numberBlock}Dialogue: 0,0:00:00.00,${endStr},Fact,,0,0,0,,{${fad}}${body}\n`;
+
+  const outName = segment.type === "hook" ? "sub-hook.ass" : `sub-fact-${segment.index}.ass`;
+  const outPath = path.join(workBase, outName);
+  fs.writeFileSync(outPath, ass + events, "utf8");
+  if (DRY_RUN) {
+    console.log("[generate-reel] dry-run wrote ASS:", outPath);
+  }
+  return outPath;
+}
+
+function vfAssChain(assPath) {
+  const assEsc = escapePathForVideoFilter(assPath);
+  const fontsEsc = escapePathForVideoFilter(path.dirname(fontFilePath()));
+  return `ass=${assEsc}:fontsdir=${fontsEsc}`;
 }
 
 function runFfmpeg(args) {
@@ -175,14 +234,12 @@ function runFfmpeg(args) {
 }
 
 /**
- * Video-only (no audio) from image + Ken Burns + drawtext
+ * Video-only (no audio) from image + Ken Burns + ASS subtitles
  */
-function renderStillKenBurnsToVideo(imagePath, durationSec, lines, opts) {
-  const { outPath, fontSize, kbPattern } = opts;
-  const fontfile = fontFilePath();
+function renderStillKenBurnsToVideo(imagePath, durationSec, assPath, opts) {
+  const { outPath, kbPattern } = opts;
   const z = kenBurnsZoompan(durationSec, kbPattern);
-  const dt = drawtextChainForLines(lines, fontfile, fontSize);
-  const vf = `${z},format=yuv420p,${dt}`;
+  const vf = `${z},format=yuv420p,${vfAssChain(assPath)}`;
   runFfmpeg([
     "-y",
     "-loop",
@@ -205,12 +262,10 @@ function renderStillKenBurnsToVideo(imagePath, durationSec, lines, opts) {
 }
 
 /**
- * Video-only from downloaded clip: trim, scale+crop, drawtext
+ * Video-only from downloaded clip: trim, scale+crop, ASS subtitles
  */
-function renderClipToVideo(clipPath, durationSec, lines, outPath, fontSize) {
-  const fontfile = fontFilePath();
-  const dt = drawtextChainForLines(lines, fontfile, fontSize);
-  const vf = `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT},format=yuv420p,${dt}`;
+function renderClipToVideo(clipPath, durationSec, assPath, outPath) {
+  const vf = `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT},format=yuv420p,${vfAssChain(assPath)}`;
   runFfmpeg([
     "-y",
     "-stream_loop",
@@ -232,7 +287,7 @@ function renderClipToVideo(clipPath, durationSec, lines, outPath, fontSize) {
   ]);
 }
 
-/** Still image with center crop scale + drawtext (no Ken Burns) — for CTA embedded SVG already has text */
+/** Still image with center crop scale (no Ken Burns) — for CTA embedded SVG already has text */
 function renderStillStaticToVideo(imagePath, durationSec, outPath) {
   runFfmpeg([
     "-y",
@@ -422,11 +477,12 @@ async function main() {
       /** Hook */
       const hookUrl = videoUrls[0] ?? null;
       const hookSilent = path.join(workBase, "hook-silent.mp4");
+      const hookAss = generateAssFile(hookText, facts, DUR_HOOK, workBase, { type: "hook" });
       if (hookUrl) {
         const hookClip = path.join(workBase, "hook-src.mp4");
         const ok = await downloadVideoFile(hookUrl, hookClip);
         if (ok) {
-          renderClipToVideo(hookClip, DUR_HOOK, wrapText(hookText, 12), hookSilent, 64);
+          renderClipToVideo(hookClip, DUR_HOOK, hookAss, hookSilent);
         } else {
           const hookStillPath = path.join(workBase, "hook-fallback.jpg");
           const bgSvg = Buffer.from(`<svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
@@ -438,9 +494,8 @@ async function main() {
   </svg>`);
           const hookFbBuf = await sharp(bgSvg).jpeg({ quality: 92 }).toBuffer();
           fs.writeFileSync(hookStillPath, hookFbBuf);
-          renderStillKenBurnsToVideo(hookStillPath, DUR_HOOK, wrapText(hookText, 12), {
+          renderStillKenBurnsToVideo(hookStillPath, DUR_HOOK, hookAss, {
             outPath: hookSilent,
-            fontSize: 64,
             kbPattern: kbPatternHook,
           });
         }
@@ -455,9 +510,8 @@ async function main() {
   </svg>`);
         const plainHook = await sharp(bgSvg).jpeg({ quality: 92 }).toBuffer();
         fs.writeFileSync(hookStillPath, plainHook);
-        renderStillKenBurnsToVideo(hookStillPath, DUR_HOOK, wrapText(hookText, 12), {
+        renderStillKenBurnsToVideo(hookStillPath, DUR_HOOK, hookAss, {
           outPath: hookSilent,
-          fontSize: 64,
           kbPattern: kbPatternHook,
         });
       }
@@ -471,18 +525,18 @@ async function main() {
         const vUrl = videoUrls[i + 1] ?? null;
         const imgUrl = content.factImageUrls?.[i] ?? content.imageUrls?.[i] ?? null;
         const silentV = path.join(workBase, `fact-${i}-silent.mp4`);
+        const factAss = generateAssFile(hookText, facts, DUR_FACT, workBase, { type: "fact", index: i });
         if (vUrl) {
           const fp = path.join(workBase, `fact-${i}-src.mp4`);
           const ok = await downloadVideoFile(vUrl, fp);
           if (ok) {
-            renderClipToVideo(fp, DUR_FACT, wrapText(facts[i], 14), silentV, 48);
+            renderClipToVideo(fp, DUR_FACT, factAss, silentV);
           } else {
             const still = path.join(workBase, `fact-${i}.jpg`);
             const factBuf = await generateFactBackgroundJpeg(imgUrl);
             fs.writeFileSync(still, factBuf);
-            renderStillKenBurnsToVideo(still, DUR_FACT, wrapText(facts[i], 14), {
+            renderStillKenBurnsToVideo(still, DUR_FACT, factAss, {
               outPath: silentV,
-              fontSize: 48,
               kbPattern: kbPatternsFacts[i] ?? 0,
             });
           }
@@ -490,9 +544,8 @@ async function main() {
           const still = path.join(workBase, `fact-${i}.jpg`);
           const factBuf = await generateFactBackgroundJpeg(imgUrl);
           fs.writeFileSync(still, factBuf);
-          renderStillKenBurnsToVideo(still, DUR_FACT, wrapText(facts[i], 14), {
+          renderStillKenBurnsToVideo(still, DUR_FACT, factAss, {
             outPath: silentV,
-            fontSize: 48,
             kbPattern: kbPatternsFacts[i] ?? 0,
           });
         }
