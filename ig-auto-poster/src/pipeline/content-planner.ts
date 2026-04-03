@@ -127,6 +127,8 @@ export function buildPromptForV2PlanWithRealSpots(
   infoStyle: "simple" | "rich" | "practical",
   neta: NetaEntry[],
 ): string {
+  void infoStyle; // 現在はrich固定
+
   const netaList = neta
     .map((n) => `- ${n.title}: ${n.content.slice(0, 200)}`)
     .join("\n");
@@ -135,70 +137,43 @@ export function buildPromptForV2PlanWithRealSpots(
     .map((s, i) => `${i + 1}. ${s.name}（${s.area}）${s.website ? ` / ${s.website}` : ""}`)
     .join("\n");
 
-  const styleFields = (() => {
-    if (infoStyle === "simple") {
-      return `      "description": "80文字以内の説明（魅力・特徴・雰囲気を具体的に）",
-      "area": "エリア名",
-      "priceLevel": "$ / $$ / $$$",
-      "highlight": "おすすめポイント（30文字以内）"`;
-    }
-    if (infoStyle === "rich") {
-      return `      "description": "80文字以内の説明（魅力・特徴・雰囲気を具体的に）",
-      "area": "エリア名",
-      "priceLevel": "$ / $$ / $$$",
-      "highlight": "おすすめポイント（30文字以内）"`;
-    }
-    // practical
-    return `      "description": "80文字以内の説明（魅力・特徴・雰囲気を具体的に）",
-      "area": "エリア名",
-      "priceLevel": "$ / $$ / $$$",
-      "hours": "営業時間（例: 8:00-22:00）",
-      "recommendedMenu": "おすすめメニュー（20文字以内）"`;
-  })();
+  return `あなたはバリ島在住のインスタグラマーです。実際に訪れた場所の情報を発信しています。
 
-  return `あなたはInstagramカルーセル投稿の構成作家です。
-
-エリア: ${area}
 カテゴリ: ${category}
-使えるネタ:
+参考ネタ:
 ${netaList}
 
 以下は実在するスポットです。名前はそのまま使ってください:
 ${spotsList}
 
-以下のJSONスキーマに従い、${area}の${category}を紹介するカルーセル投稿の構成をJSON形式で作成してください。
+重要ルール:
+- 上記スポットの名前を変えない。そのまま使う
+- descriptionは具体的な体験談風に書く（メニュー名、価格、雰囲気、おすすめの時間帯など）
+- テンプレ的な表現（「〜が魅力」「〜で有名」）は避け、実際に行った人が書くようなリアルな文章にする
 
-条件:
-- spotsDataは上記スポットリストの件数（spotNumber 1〜${spots.length}）
-- description は50文字以内
-- summaryData.spots[].oneLiner は15文字以内
-- imageUrlフィールドは含めない
-- 必ずJSONのみを返す（説明文・マークダウン不要）
+JSONのみを返してください。
 
-JSONスキーマ:
 {
-  "title": "エリア名+カテゴリを表す日本語タイトル",
+  "title": "${category}に合った魅力的な日本語タイトル",
   "coverData": {
-    "catchCopy": "読者を引きつけるキャッチコピー（例: チャングーで行きたい！）",
-    "mainTitle": "カテゴリ名（例: おしゃれカフェ）",
+    "catchCopy": "思わずスワイプしたくなるキャッチコピー",
+    "mainTitle": "${category}に合ったメインタイトル",
     "countLabel": "${spots.length}選"
   },
   "spotsData": [
     {
       "spotNumber": 1,
       "spotName": "実在店名（リストの名前をそのまま使用）",
-      "area": "エリア名",
-${styleFields}
+      "description": "150文字以内。具体的な体験（看板メニューの名前と価格、店内の雰囲気、Wi-Fi速度、おすすめ席、混雑する時間帯、周辺のおすすめなど）を盛り込む",
+      "area": "正確なエリア名",
+      "priceLevel": "$ / $$ / $$$",
+      "highlight": "一番の魅力を30文字以内で"
     }
   ],
   "summaryData": {
-    "title": "まとめタイトル",
+    "title": "まとめ",
     "spots": [
-      {
-        "number": 1,
-        "name": "スポット名",
-        "oneLiner": "15文字以内のひとこと"
-      }
+      { "number": 1, "name": "スポット名", "oneLiner": "20文字以内の特徴" }
     ]
   }
 }`;
