@@ -3,28 +3,39 @@ import { searchPexelsVideos } from "../pexels-video";
 import type { ABTestMeta, GeneratedPost, HookStyle, NetaEntry, ReelFormat } from "./types";
 
 const ALL_FORMATS: readonly ReelFormat[] = [
-  "ranking",
-  "cost_appeal",
-  "before_after",
-  "routine",
+  "bali_tips",
+  "english_phrase",
+  "bali_english",
+  "bali_life",
   "relatable",
 ] as const;
 
 const DEFAULT_COUNTS: Record<ReelFormat, number> = {
-  ranking: 2,
-  cost_appeal: 2,
-  before_after: 1,
-  routine: 1,
+  bali_tips: 2,
+  english_phrase: 2,
+  bali_english: 1,
+  bali_life: 1,
   relatable: 1,
 };
 
+/** 総尺（秒）。 Assembly（ffmpeg 等）で参照する想定 */
+const FORMAT_DURATION: Record<ReelFormat, number> = {
+  bali_tips: 25,
+  english_phrase: 15,
+  bali_english: 20,
+  bali_life: 30,
+  relatable: 20,
+};
+
 const FORMAT_LABEL_JA: Record<ReelFormat, string> = {
-  ranking: "ランキング",
-  cost_appeal: "コスパ訴求",
-  before_after: "ビフォーアフター",
-  routine: "ルーティン",
+  bali_tips: "バリ島Tips",
+  english_phrase: "英語フレーズ",
+  bali_english: "バリ英語",
+  bali_life: "バリライフ",
   relatable: "共感あるある",
 };
+
+export { FORMAT_DURATION };
 
 const SUCCESS_THRESHOLD = 0.05;
 
@@ -96,10 +107,10 @@ function computeWeeklyFormatCounts(saveRates: Map<ReelFormat, number>): Record<R
   const weightOf = (f: ReelFormat): number => saveRates.get(f) ?? floorW;
 
   const counts: Record<ReelFormat, number> = {
-    ranking: 1,
-    cost_appeal: 1,
-    before_after: 1,
-    routine: 1,
+    bali_tips: 1,
+    english_phrase: 1,
+    bali_english: 1,
+    bali_life: 1,
     relatable: 1,
   };
   let remaining = 7 - ALL_FORMATS.length;
