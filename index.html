@@ -3,1158 +3,1380 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LINE Harness — L社やU社の上位互換を、なぜ0円で公開するのか</title>
-<meta name="description" content="LINE公式アカウント運用の全機能を完全無料で。ステップ配信・セグメント・リッチメニュー・決済・自動化をオープンソースで提供。">
-
-<!-- OGP / Open Graph -->
-<meta property="og:title" content="LINE Harness — L社やU社の上位互換を、なぜ無料で公開するのか">
-<meta property="og:description" content="LINE公式アカウントの運用に必要な全機能を、オープンソースで完全無料提供。何十万円もかける時代は、終わりました。">
-<meta property="og:image" content="https://shudesu.github.io/line-harness-oss/ogp.png">
-<meta property="og:url" content="https://shudesu.github.io/line-harness-oss/">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="LINE Harness">
-<meta property="og:locale" content="ja_JP">
-
-<!-- Twitter Card -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="LINE Harness — L社やU社の上位互換を、なぜ無料で公開するのか">
-<meta name="twitter:description" content="LINE公式アカウントの運用に必要な全機能を、オープンソースで完全無料提供。何十万円もかける時代は、終わりました。">
-<meta name="twitter:image" content="https://shudesu.github.io/line-harness-oss/ogp.png">
-<meta name="twitter:creator" content="@ai_shunoda">
-
+<title>GYURUTT X投稿サンプル集</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700;800;900&family=Inter:wght@400;600;700;800;900&display=swap');
-
   :root {
-    --green: #06C755;
-    --green-dark: #05a847;
-    --green-glow: rgba(6, 199, 85, 0.25);
-    --green-dim: rgba(6, 199, 85, 0.08);
-    --cyan: #00e5ff;
-    --cyan-dim: rgba(0, 229, 255, 0.06);
-    --dark: #050a08;
-    --dark-card: #0c1410;
-    --dark-border: #1a2f22;
-    --text: #e4efe8;
-    --text-muted: #8fa898;
-    --text-dim: #4a6b55;
+    --pink:        #C0527A;
+    --pink-light:  #FBEAF0;
+    --pink-mid:    #EAA0BC;
+    --teal:        #1A8A6A;
+    --teal-light:  #E4F5EE;
+    --purple:      #6356C4;
+    --purple-light:#EEEDFE;
+    --amber:       #B87320;
+    --amber-light: #FDF3E3;
+    --blue:        #2A72B8;
+    --blue-light:  #E8F2FC;
+    --gray:        #5F5E5A;
+    --gray-light:  #F5F3EE;
+    --gray-mid:    #DDD9D0;
+    --ink:         #2C2820;
+    --cream:       #FDFAF5;
+    --white:       #FFFFFF;
+    --font-display: 'Zen Maru Gothic', sans-serif;
+    --font-body:    'Noto Sans JP', sans-serif;
+    --radius:       12px;
+    --radius-lg:    20px;
   }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; overflow-x: hidden; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
 
   body {
-    font-family: "Noto Sans JP", "Inter", -apple-system, sans-serif;
-    background: var(--dark);
-    color: var(--text);
+    font-family: var(--font-body);
+    background: var(--cream);
+    color: var(--ink);
+    font-size: 15px;
     line-height: 1.8;
-    overflow-x: hidden;
-    max-width: 100vw;
   }
 
-  /* ===== UTILITY ===== */
-  .container { max-width: 820px; margin: 0 auto; padding: 0 24px; }
-  .section { padding: 80px 0; }
-  .text-center { text-align: center; }
-  .text-green { color: var(--green); }
-  .mt-16 { margin-top: 16px; }
-  .mt-24 { margin-top: 24px; }
-  .mt-32 { margin-top: 32px; }
-  .mt-40 { margin-top: 40px; }
-  .mt-48 { margin-top: 48px; }
-  .mt-64 { margin-top: 64px; }
-
-  /* ===== GRID LINES BG ===== */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background:
-      linear-gradient(90deg, rgba(6,199,85,0.02) 1px, transparent 1px),
-      linear-gradient(rgba(6,199,85,0.02) 1px, transparent 1px);
-    background-size: 60px 60px;
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* ===== FLOATING CTA ===== */
-  .float-cta {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    background: rgba(5, 10, 8, 0.92);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-top: 1px solid rgba(6, 199, 85, 0.2);
-    padding: 12px 20px;
+  /* ── HEADER ── */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(253, 250, 245, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--gray-mid);
+    padding: 0 24px;
+    height: 56px;
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 16px;
-    transform: translateY(100%);
-    transition: transform 0.4s ease;
   }
-  .float-cta.show { transform: translateY(0); }
-  .float-cta-text {
-    font-size: 13px;
-    color: var(--text-muted);
-    display: none;
-  }
-  .float-cta .cta-btn {
-    font-size: 15px;
-    padding: 12px 32px;
-  }
-  @media (min-width: 641px) {
-    .float-cta-text { display: block; }
-  }
-
-  /* ===== CTA BUTTON ===== */
-  .cta-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    background: linear-gradient(135deg, #06C755 0%, #00e676 50%, #06C755 100%);
-    background-size: 200% 200%;
-    animation: gradientShift 3s ease infinite;
-    color: #fff;
+  .site-header .logo {
+    font-family: var(--font-display);
+    font-weight: 700;
     font-size: 18px;
-    font-weight: 700;
-    padding: 18px 48px;
-    border-radius: 60px;
-    text-decoration: none;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 30px rgba(6, 199, 85, 0.3), 0 0 60px rgba(6, 199, 85, 0.1);
-    position: relative;
-    overflow: hidden;
-    letter-spacing: 0.02em;
-    border: none;
-    cursor: pointer;
+    color: var(--pink);
+    letter-spacing: .04em;
   }
-  .cta-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 40px rgba(6, 199, 85, 0.5), 0 0 80px rgba(6, 199, 85, 0.2);
-  }
-  @keyframes gradientShift {
-    0%, 100% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-  }
-  .cta-btn::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.15) 50%, transparent 70%);
-    animation: shimmer 2.5s infinite;
-  }
-  @keyframes shimmer {
-    0% { transform: translateX(-100%) rotate(25deg); }
-    100% { transform: translateX(100%) rotate(25deg); }
-  }
-  .cta-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
-  .cta-sub { display: block; font-size: 13px; color: var(--text-dim); margin-top: 10px; }
-
-  /* LINE icon SVG path (reused) */
-  .line-icon { width: 22px; height: 22px; flex-shrink: 0; }
-
-  /* ===== SECTION HEADING ===== */
-  .sec-label {
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--green);
-    border: 1px solid rgba(6, 199, 85, 0.25);
-    padding: 4px 16px;
-    border-radius: 20px;
-    margin-bottom: 16px;
-    background: var(--green-dim);
-  }
-  .sec-title {
-    font-size: clamp(24px, 5vw, 36px);
-    font-weight: 900;
-    line-height: 1.4;
-    letter-spacing: -0.02em;
-  }
-  .sec-subtitle {
-    font-size: 15px;
-    color: var(--text-muted);
-    margin-top: 12px;
-    line-height: 1.7;
-  }
-
-  /* ===== HERO ===== */
-  .hero {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    overflow: hidden;
-    padding: 80px 24px;
-    position: relative;
-    background:
-      radial-gradient(ellipse at 50% 20%, rgba(6, 199, 85, 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at 30% 80%, rgba(0, 229, 255, 0.03) 0%, transparent 40%),
-      var(--dark);
-  }
-  .hero::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 50%;
-    transform: translateX(-50%);
-    width: 1px; height: 140px;
-    background: linear-gradient(180deg, var(--green), transparent);
-    opacity: 0.5;
-  }
-  .hero-prehead {
-    font-family: "Inter", monospace;
+  .site-header .subtitle {
     font-size: 12px;
-    font-weight: 600;
-    color: var(--green);
-    letter-spacing: 0.2em;
-    margin-bottom: 24px;
-    opacity: 0.8;
+    color: var(--gray);
+    border-left: 1px solid var(--gray-mid);
+    padding-left: 16px;
   }
-  .hero-headline {
-    font-size: clamp(26px, 6vw, 48px);
-    font-weight: 900;
-    line-height: 1.3;
-    letter-spacing: -0.03em;
-  }
-
-  /* 0円 BIG */
-  .zero-yen {
-    display: inline-block;
-    font-size: clamp(64px, 16vw, 140px);
-    font-weight: 900;
-    font-family: "Inter", sans-serif;
-    background: linear-gradient(135deg, #06C755, #00e676, #00e5ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    line-height: 1.1;
-    filter: drop-shadow(0 0 40px rgba(6, 199, 85, 0.3));
-    position: relative;
-  }
-  .zero-yen-unit {
-    font-size: clamp(28px, 7vw, 56px);
-    font-weight: 900;
-    background: linear-gradient(135deg, #06C755, #00e5ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .hero-sub {
-    font-size: clamp(14px, 3vw, 17px);
-    color: var(--text-muted);
-    margin-top: 20px;
-    line-height: 1.9;
-    max-width: 580px;
+  .header-nav {
     margin-left: auto;
-    margin-right: auto;
-  }
-  .hero-vision {
-    font-size: 14px;
-    color: var(--text-muted);
-    margin-top: 36px;
-    padding: 24px 28px;
-    border-left: 2px solid var(--green);
-    text-align: left;
-    max-width: 560px;
-    margin-left: auto;
-    margin-right: auto;
-    line-height: 2;
-    background: linear-gradient(135deg, rgba(6,199,85,0.04), rgba(0,229,255,0.02));
-    border-radius: 0 12px 12px 0;
-    backdrop-filter: blur(4px);
-  }
-
-  /* ===== GLOW DIVIDER ===== */
-  .glow-divider {
-    width: 60px;
-    height: 2px;
-    margin: 0 auto;
-    background: linear-gradient(90deg, transparent, var(--green), transparent);
-    opacity: 0.5;
-  }
-
-  /* ===== PROBLEM LIST ===== */
-  .problem-list { list-style: none; margin-top: 32px; }
-  .problem-list li {
     display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    padding: 16px 0;
-    border-bottom: 1px solid var(--dark-border);
-    font-size: 15px;
-    line-height: 1.7;
+    gap: 4px;
   }
-  .problem-list li:last-child { border-bottom: none; }
-  .problem-icon {
-    flex-shrink: 0;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background: rgba(239, 68, 68, 0.1);
+  .header-nav a {
+    font-size: 12px;
+    color: var(--gray);
+    text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 20px;
+    transition: background .15s, color .15s;
+  }
+  .header-nav a:hover { background: var(--pink-light); color: var(--pink); }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 72px 24px 56px;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+  .hero-eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--pink);
+    margin-bottom: 16px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    margin-top: 2px;
+    gap: 8px;
   }
-
-  /* ===== FEAR ===== */
-  .fear-section {
-    background: linear-gradient(180deg, var(--dark) 0%, #0a0204 50%, var(--dark) 100%);
-    overflow: hidden;
+  .hero-eyebrow::before {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 1px;
+    background: var(--pink);
   }
-  .fear-card {
-    background: rgba(239, 68, 68, 0.03);
-    border: 1px solid rgba(239, 68, 68, 0.1);
-    border-radius: 12px;
-    padding: 24px;
-    margin-top: 16px;
-  }
-  .fear-card h4 {
-    color: #ef4444;
-    font-size: 13px;
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 5vw, 42px);
     font-weight: 700;
-    letter-spacing: 0.08em;
+    line-height: 1.3;
+    color: var(--ink);
+    margin-bottom: 16px;
   }
-  .fear-card p {
-    font-size: 14px;
-    color: var(--text-muted);
-    line-height: 1.8;
-    margin-top: 6px;
+  .hero h1 span { color: var(--pink); }
+  .hero-desc {
+    font-size: 15px;
+    color: var(--gray);
+    line-height: 1.9;
+    max-width: 560px;
+    margin-bottom: 32px;
   }
-
-  /* ===== SOLUTION ===== */
-  .solution-section {
-    background:
-      radial-gradient(ellipse at 50% 50%, rgba(6, 199, 85, 0.06) 0%, transparent 60%),
-      var(--dark);
-  }
-  .product-name {
-    font-size: clamp(36px, 8vw, 56px);
-    font-weight: 900;
-    font-family: "Inter", sans-serif;
-    letter-spacing: -0.03em;
-    background: linear-gradient(135deg, #06C755, #00e676, #00e5ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    filter: drop-shadow(0 0 30px rgba(6, 199, 85, 0.2));
-  }
-
-  /* ===== FEATURES GRID ===== */
-  .features-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 14px;
-    margin-top: 32px;
-  }
-  .feature-card {
-    background: var(--dark-card);
-    border: 1px solid var(--dark-border);
-    border-radius: 12px;
-    padding: 22px;
-    transition: all 0.3s;
-    position: relative;
-    overflow: hidden;
-  }
-  .feature-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--green), transparent);
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  .feature-card:hover::before { opacity: 1; }
-  .feature-card:hover { border-color: rgba(6, 199, 85, 0.3); }
-  .feature-card-icon { font-size: 22px; margin-bottom: 10px; }
-  .feature-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-  .feature-card p { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
-
-  /* ===== FULL FEATURE MAP (図解) ===== */
-  .feature-map {
-    margin-top: 48px;
-    background: var(--dark-card);
-    border: 1px solid var(--dark-border);
-    border-radius: 16px;
-    padding: 32px;
-    position: relative;
-    overflow: hidden;
-  }
-  .feature-map::before {
-    content: '';
-    position: absolute;
-    top: -1px; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--green), var(--cyan), var(--green));
-  }
-  .feature-map h3 {
-    font-size: 18px;
-    font-weight: 800;
-    text-align: center;
-    margin-bottom: 28px;
-  }
-  .fmap-row {
+  .hero-meta {
     display: flex;
     gap: 12px;
-    margin-bottom: 12px;
-    align-items: stretch;
     flex-wrap: wrap;
   }
-  .fmap-category {
-    flex: 0 0 120px;
-    background: rgba(6, 199, 85, 0.08);
-    border: 1px solid rgba(6, 199, 85, 0.15);
-    border-radius: 8px;
-    padding: 10px 14px;
+  .meta-pill {
     font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--gray-mid);
+    color: var(--gray);
+  }
+
+  /* ── LAYOUT ── */
+  .page-body {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* ── SECTION ── */
+  .section {
+    margin-bottom: 64px;
+    scroll-margin-top: 72px;
+  }
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--gray-mid);
+  }
+  .section-num {
+    font-family: var(--font-display);
+    font-size: 13px;
+    color: var(--pink-mid);
     font-weight: 700;
-    color: var(--green);
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .section-desc {
+    font-size: 13px;
+    color: var(--gray);
+    margin-bottom: 20px;
+    line-height: 1.8;
+  }
+
+  /* ── POST CARD ── */
+  .post-card {
+    background: var(--white);
+    border: 1px solid var(--gray-mid);
+    border-radius: var(--radius-lg);
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: box-shadow .2s;
+  }
+  .post-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.06); }
+
+  .post-card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--gray-mid);
     display: flex;
     align-items: center;
-    gap: 6px;
-  }
-  .fmap-items {
-    flex: 1;
-    display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
   }
-  .fmap-item {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--dark-border);
-    border-radius: 6px;
-    padding: 8px 14px;
+  .post-num-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--gray);
+  }
+  .cat-badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 10px;
+    border-radius: 20px;
+  }
+  .cat-kyokan  { background: var(--pink-light);   color: var(--pink);   }
+  .cat-toikake { background: var(--blue-light);   color: var(--blue);   }
+  .cat-edu     { background: var(--teal-light);   color: var(--teal);   }
+  .cat-ura     { background: var(--purple-light); color: var(--purple); }
+
+  .time-badge {
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    background: var(--amber-light);
+    color: var(--amber);
+    font-weight: 500;
+    margin-left: auto;
+  }
+
+  .post-body {
+    padding: 20px 24px;
+  }
+  .post-theme-label {
     font-size: 12px;
-    color: var(--text-muted);
-    white-space: nowrap;
+    font-weight: 500;
+    color: var(--gray);
+    margin-bottom: 12px;
   }
-  @media (max-width: 640px) {
-    .fmap-row { flex-direction: column; }
-    .fmap-category { flex: auto; }
-    .fmap-items { flex-wrap: wrap; }
-    .fmap-item { white-space: normal; }
+  .post-text {
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 2.1;
+    color: var(--ink);
+    background: var(--gray-light);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    white-space: pre-wrap;
+    border-left: 3px solid var(--gray-mid);
   }
 
-  /* ===== BENEFIT ===== */
-  .benefit-item {
+  /* ツリー */
+  .thread-wrapper { display: flex; flex-direction: column; gap: 0; }
+  .thread-item { display: flex; gap: 12px; }
+  .thread-line-col {
     display: flex;
-    gap: 20px;
-    padding: 24px 0;
-    border-bottom: 1px solid var(--dark-border);
-    align-items: flex-start;
-  }
-  .benefit-item:last-child { border-bottom: none; }
-  .benefit-num {
-    flex-shrink: 0;
-    width: 40px; height: 40px;
-    border-radius: 50%;
-    border: 2px solid var(--green);
-    display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--green);
-    font-family: "Inter", sans-serif;
+    width: 28px;
+    flex-shrink: 0;
+    padding-top: 2px;
   }
-  .benefit-text h4 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-  .benefit-text p { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
+  .thread-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--pink-light);
+    border: 1.5px solid var(--pink-mid);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--pink);
+    flex-shrink: 0;
+  }
+  .thread-vline {
+    width: 1.5px;
+    background: var(--gray-mid);
+    flex: 1;
+    min-height: 12px;
+    margin-top: 4px;
+  }
+  .thread-item.last .thread-vline { display: none; }
+  .thread-body { flex: 1; padding-bottom: 16px; }
+  .thread-tweet-num { font-size: 11px; color: var(--gray); margin-bottom: 6px; }
+  .thread-text {
+    font-size: 14px;
+    line-height: 2.1;
+    color: var(--ink);
+    background: var(--gray-light);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    white-space: pre-wrap;
+    border-left: 3px solid var(--gray-mid);
+  }
+  .thread-tip {
+    font-size: 11px;
+    color: var(--teal);
+    background: var(--teal-light);
+    border-radius: 6px;
+    padding: 4px 10px;
+    margin-top: 6px;
+    display: inline-block;
+  }
 
-  /* ===== COMPARISON TABLE (GitHub式) ===== */
-  .comp-section { background: var(--dark-card); }
-  .comp-table {
+  /* ── NOTE BOX ── */
+  .note-box {
+    margin-top: 14px;
+    padding: 12px 16px;
+    background: var(--teal-light);
+    border-left: 3px solid var(--teal);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: 12.5px;
+    line-height: 1.8;
+    color: var(--gray);
+  }
+  .note-box .nk { font-weight: 500; color: var(--teal); }
+
+  /* ── VOTE BOX ── */
+  .vote-box {
+    margin-top: 12px;
+    background: var(--gray-light);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+  }
+  .vote-item {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--ink);
+    padding: 5px 0;
+    border-bottom: 1px dashed var(--gray-mid);
+  }
+  .vote-item:last-child { border-bottom: none; }
+  .vote-dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 1.5px solid var(--gray-mid);
+    flex-shrink: 0;
+  }
+
+  /* ── INFO CARD ── */
+  .info-card {
+    background: var(--white);
+    border: 1px solid var(--gray-mid);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .info-card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray);
+    padding: 12px 20px;
+    background: var(--gray-light);
+    border-bottom: 1px solid var(--gray-mid);
+  }
+  .info-card-body { padding: 16px 20px; }
+
+  /* ── TABLE ── */
+  .styled-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 32px;
     font-size: 13px;
+    margin-bottom: 16px;
   }
-  .comp-table th, .comp-table td {
-    padding: 12px 10px;
-    text-align: center;
-    border-bottom: 1px solid var(--dark-border);
-  }
-  .comp-table th {
-    font-size: 11px;
-    color: var(--text-dim);
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-  .comp-table td:first-child {
+  .styled-table th {
+    background: var(--pink-light);
+    color: var(--pink);
+    font-weight: 500;
+    padding: 10px 14px;
     text-align: left;
-    color: var(--text-muted);
-    font-weight: 600;
+    border: 1px solid var(--gray-mid);
+    font-size: 12px;
   }
-  .comp-table .col-h {
-    color: var(--green);
-    font-weight: 700;
+  .styled-table td {
+    padding: 10px 14px;
+    border: 1px solid var(--gray-mid);
+    vertical-align: top;
+    line-height: 1.7;
+    color: var(--ink);
   }
-  .comp-table .col-h.big {
-    font-size: 18px;
-    font-weight: 900;
-  }
-  .comp-table .col-other { color: var(--text-dim); }
-  .comp-table .row-highlight {
-    background: rgba(6, 199, 85, 0.06);
-  }
-  .comp-table .check { color: var(--green); }
-  .comp-table .cross { color: #ef4444; opacity: 0.6; }
-  .comp-table .partial { color: #f59e0b; }
+  .styled-table tr:nth-child(even) td { background: var(--gray-light); }
 
-  /* ===== TWEETS ===== */
-  .tweets-section {
-    background: linear-gradient(180deg, var(--dark-card), var(--dark));
-  }
-  .tweet-embed-list {
-    margin-top: 32px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    align-items: center;
-  }
-  .tweet-embed-list > div { max-width: 550px; width: 100%; }
+  .sched-table th { background: var(--purple-light); color: var(--purple); }
 
-  /* ===== PROFILE ===== */
-  .profile-card {
+  .emoji-table th { background: var(--blue-light); color: var(--blue); }
+
+  /* ── DIVIDER ── */
+  .post-divider {
+    border: none;
+    border-top: 1px dashed var(--gray-mid);
+    margin: 4px 0 20px;
+  }
+
+  /* ── CHECKLIST ── */
+  .checklist { list-style: none; }
+  .checklist li {
     display: flex;
-    gap: 24px;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--gray-mid);
+    font-size: 14px;
+    line-height: 1.7;
     align-items: flex-start;
-    background: var(--dark-card);
-    border: 1px solid var(--dark-border);
-    border-radius: 16px;
-    padding: 28px;
-    margin-top: 32px;
   }
-  .profile-img {
-    width: 90px; height: 90px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-    border: 2px solid var(--green);
-    box-shadow: 0 0 20px rgba(6, 199, 85, 0.15);
+  .checklist li:last-child { border-bottom: none; }
+  .check-box {
+    width: 20px; height: 20px; border-radius: 5px;
+    border: 1.5px solid var(--gray-mid);
+    flex-shrink: 0; margin-top: 2px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s, border-color .15s;
   }
-  .profile-name { font-size: 20px; font-weight: 800; }
-  .profile-title { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-  .profile-bio { font-size: 13px; color: var(--text-muted); line-height: 1.8; margin-top: 10px; }
-  .profile-x {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--green);
-    font-size: 13px;
-    text-decoration: none;
-    margin-top: 10px;
-    font-weight: 600;
-  }
-  .profile-x:hover { text-decoration: underline; }
+  .check-box.checked { background: var(--teal); border-color: var(--teal); }
+  .check-box.checked::after { content: '✓'; color: white; font-size: 12px; font-weight: 700; }
+  .checklist li.checked-item > span { color: var(--gray); text-decoration: line-through; }
 
-  /* ===== FAQ ===== */
-  .faq-section { background: var(--dark-card); }
-  .faq-item {
-    border-bottom: 1px solid var(--dark-border);
-    padding: 18px 0;
+  /* ── WEEK GRID ── */
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
   }
-  .faq-item:last-child { border-bottom: none; }
-  .faq-q {
+  .week-day {
+    border: 1px solid var(--gray-mid);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--white);
+  }
+  .week-day-name {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 4px;
+    font-family: var(--font-display);
+  }
+  .wd-mon .week-day-name { background: var(--pink-light);   color: var(--pink);   }
+  .wd-tue .week-day-name { background: var(--teal-light);   color: var(--teal);   }
+  .wd-wed .week-day-name { background: var(--pink-light);   color: var(--pink);   }
+  .wd-thu .week-day-name { background: var(--blue-light);   color: var(--blue);   }
+  .wd-fri .week-day-name { background: var(--teal-light);   color: var(--teal);   }
+  .wd-sat .week-day-name { background: var(--purple-light); color: var(--purple); }
+  .wd-sun .week-day-name { background: var(--pink-light);   color: var(--pink);   }
+  .week-day-body { padding: 8px 6px; }
+  .week-time { font-size: 11px; color: var(--gray); margin-bottom: 4px; text-align: center; }
+  .week-cat  { font-size: 11px; font-weight: 500; text-align: center; margin-bottom: 4px; padding: 2px 4px; border-radius: 4px; }
+  .week-action { font-size: 10px; color: var(--gray); text-align: center; line-height: 1.5; }
+
+  /* ── PERSONA CARD ── */
+  .persona-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .persona-card {
+    background: var(--white);
+    border: 1px solid var(--gray-mid);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+  }
+  .persona-card h4 {
+    font-family: var(--font-display);
     font-size: 14px;
     font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    user-select: none;
+    color: var(--pink);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--pink-light);
   }
-  .faq-q::before {
-    content: 'Q.';
-    color: var(--green);
-    font-weight: 800;
-    flex-shrink: 0;
-  }
-  .faq-q::after {
-    content: '+';
-    font-size: 18px;
-    color: var(--text-dim);
-    flex-shrink: 0;
-    transition: transform 0.3s;
-  }
-  .faq-item.open .faq-q::after { transform: rotate(45deg); }
-  .faq-a {
+  .persona-row {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 6px 10px;
     font-size: 13px;
-    color: var(--text-muted);
-    line-height: 1.8;
-    padding: 10px 0 0 28px;
-    display: none;
+    margin-bottom: 4px;
   }
-  .faq-item.open .faq-a { display: block; }
+  .persona-key { color: var(--gray); font-weight: 500; }
 
-  /* ===== FINAL CTA ===== */
-  .final-cta {
-    background:
-      radial-gradient(ellipse at 50% 50%, rgba(6, 199, 85, 0.1) 0%, transparent 50%),
-      linear-gradient(180deg, var(--dark) 0%, #001a08 50%, var(--dark) 100%);
-    text-align: center;
-    padding: 100px 24px 140px;
-  }
-  .final-headline {
-    font-size: clamp(24px, 5vw, 38px);
-    font-weight: 900;
-    line-height: 1.4;
-  }
-  .ps-section {
-    max-width: 560px;
-    margin: 48px auto 0;
-    text-align: left;
+  .quote-block {
+    background: var(--pink-light);
+    border-left: 3px solid var(--pink);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 12px 16px;
     font-size: 13px;
-    color: var(--text-muted);
     line-height: 1.9;
-    border-top: 1px solid var(--dark-border);
-    padding-top: 28px;
+    color: var(--ink);
+    margin-top: 12px;
+    font-style: italic;
   }
-  .ps-section strong { color: var(--text); }
 
-  /* ===== FOOTER ===== */
+  /* ── EMOJI RULE ── */
+  .emoji-rule-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .emoji-rule-card {
+    background: var(--white);
+    border: 1px solid var(--gray-mid);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .emoji-rule-card h5 {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--blue);
+    margin-bottom: 6px;
+  }
+  .emoji-rule-card p { font-size: 13px; color: var(--ink); line-height: 1.7; }
+  .emoji-rule-card .note { font-size: 11px; color: var(--gray); margin-top: 4px; }
+
+  /* ── STICKY NOTE ── */
+  .sticky-note {
+    background: var(--amber-light);
+    border: 1px solid #E8C88A;
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.8;
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .sticky-note::before {
+    content: '📌';
+    font-size: 14px;
+    margin-right: 6px;
+  }
+  .sticky-label { font-weight: 500; color: var(--amber); margin-right: 6px; }
+
+  /* ── NAV PILLS ── */
+  .nav-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+  .nav-pill {
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--gray-mid);
+    color: var(--gray);
+    text-decoration: none;
+    transition: all .15s;
+    background: var(--white);
+  }
+  .nav-pill:hover { border-color: var(--pink); color: var(--pink); background: var(--pink-light); }
+
+  /* ── FOOTER ── */
   footer {
     text-align: center;
-    padding: 32px 24px calc(100px + env(safe-area-inset-bottom, 0px));
-    font-size: 11px;
-    color: var(--text-dim);
-    border-top: 1px solid var(--dark-border);
-  }
-  footer a { color: var(--text-dim); text-decoration: none; }
-  footer a:hover { color: var(--text-muted); }
-
-  /* ===== RESPONSIVE ===== */
-  @media (max-width: 640px) {
-    .section { padding: 60px 0; }
-    .hero { min-height: auto; padding: 60px 20px 80px; }
-    .profile-card { flex-direction: column; align-items: center; text-align: center; }
-    .profile-bio { text-align: left; }
-    .cta-btn { font-size: 16px; padding: 16px 32px; width: 100%; max-width: 340px; }
-    .features-grid { grid-template-columns: 1fr; }
-    .comp-table { font-size: 12px; }
-    .comp-table th, .comp-table td { padding: 8px 6px; }
-    .benefit-item { flex-direction: column; gap: 10px; }
-    .feature-map { padding: 20px; }
-    /* In-app browser (X/LINE) bottom bar avoidance — mobile only */
-    .float-cta {
-      bottom: 56px;
-      left: 12px;
-      right: 12px;
-      border-top: none;
-      border: 1px solid rgba(6, 199, 85, 0.2);
-      border-radius: 16px;
-      background: rgba(5, 10, 8, 0.95);
-    }
+    padding: 32px 24px;
+    font-size: 12px;
+    color: var(--gray);
+    border-top: 1px solid var(--gray-mid);
+    margin-top: 32px;
   }
 
-
-  /* ===== SCROLL ANIM ===== */
-  .fade-up {
-    opacity: 0;
-    transform: translateY(20px);
-    transition: opacity 0.5s ease, transform 0.5s ease;
-  }
-  .fade-up.visible { opacity: 1; transform: translateY(0); }
-
-  /* ===== HERO PROFILE + SPEECH BUBBLE ===== */
-  .hero-profile {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    margin-top: 36px;
-  }
-  .hero-profile-img {
-    width: 72px;
-    height: 72px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--green);
-    box-shadow: 0 0 20px rgba(6, 199, 85, 0.2);
-  }
-  .hero-profile-name {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text);
-  }
-  .hero-profile-title {
-    font-size: 11px;
-    color: var(--text-muted);
-    letter-spacing: 0.03em;
-  }
-  .speech-bubble {
-    position: relative;
-    background: linear-gradient(135deg, rgba(6,199,85,0.06), rgba(0,229,255,0.03));
-    border: 1px solid rgba(6, 199, 85, 0.15);
-    border-radius: 16px;
-    padding: 24px 28px;
-    max-width: 560px;
-    margin: 16px auto 0;
-    text-align: left;
-    font-size: 14px;
-    color: var(--text-muted);
-    line-height: 2;
-  }
-  .speech-bubble::before {
-    content: '';
-    position: absolute;
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-bottom: 10px solid rgba(6, 199, 85, 0.15);
-  }
-  .speech-bubble::after {
-    content: '';
-    position: absolute;
-    top: -8px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    border-left: 9px solid transparent;
-    border-right: 9px solid transparent;
-    border-bottom: 9px solid rgba(6,199,85,0.06);
-  }
-
-  /* ===== GLOW PARTICLES ===== */
-  .glow-orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(60px);
-    pointer-events: none;
-    opacity: 0.15;
+  @media (max-width: 600px) {
+    .persona-grid { grid-template-columns: 1fr; }
+    .emoji-rule-grid { grid-template-columns: 1fr; }
+    .week-grid { grid-template-columns: repeat(4, 1fr); }
+    .header-nav { display: none; }
   }
 </style>
 </head>
 <body>
 
-<!-- ===== FLOATING CTA (吸着) ===== -->
-<div class="float-cta" id="floatCta">
-  <a href="https://line-crm-worker.line-crm-api.workers.dev/auth/line?ref=lp" class="cta-btn">
-    <svg viewBox="0 0 24 24" fill="currentColor" class="line-icon"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
-    LINEで無料体験
-  </a>
+<!-- HEADER -->
+<header class="site-header">
+  <div class="logo">GYURUTT</div>
+  <div class="subtitle">X投稿サンプル集 — Phase 1</div>
+  <nav class="header-nav">
+    <a href="#persona">ペルソナ</a>
+    <a href="#kyokan">共感系</a>
+    <a href="#toikake">問いかけ系</a>
+    <a href="#edu">教育ツリー</a>
+    <a href="#ura">開発裏話</a>
+    <a href="#schedule">スケジュール</a>
+    <a href="#check">チェック</a>
+  </nav>
+</header>
+
+<main>
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">X運用サンプル集</div>
+  <h1>腸活、何度も挫折してきた<br><span>「ちょっと先にいる友達」</span>として。</h1>
+  <p class="hero-desc">GYURUTTのX公式アカウント運用に向けた投稿サンプル集です。ターゲット・ペルソナ・絵文字ルール・カテゴリ別サンプル・週間スケジュール・投稿前チェックリストをまとめています。</p>
+  <div class="hero-meta">
+    <span class="meta-pill">Phase 1（〜フォロワー100人）</span>
+    <span class="meta-pill">ターゲット：30代女性</span>
+    <span class="meta-pill">2026年4月</span>
+  </div>
 </div>
 
+<div class="page-body">
 
-<!-- ===== SECTION 1: HERO ===== -->
-<section class="hero" id="top">
-  <div class="glow-orb" style="width:400px;height:400px;top:-100px;left:30%;background:var(--green);"></div>
-  <div class="glow-orb" style="width:300px;height:300px;bottom:10%;right:20%;background:var(--cyan);opacity:0.08;"></div>
+  <!-- NAV -->
+  <nav class="nav-pills">
+    <a class="nav-pill" href="#persona">0. 基本方針</a>
+    <a class="nav-pill" href="#kyokan">1. 共感系</a>
+    <a class="nav-pill" href="#toikake">2. 問いかけ系</a>
+    <a class="nav-pill" href="#edu">3. 教育ツリー</a>
+    <a class="nav-pill" href="#ura">4. 開発裏話</a>
+    <a class="nav-pill" href="#schedule">5. 週間スケジュール</a>
+    <a class="nav-pill" href="#check">6. 投稿前チェック</a>
+  </nav>
 
-  <div class="container" style="position:relative;z-index:1;">
-    <div class="product-name" style="font-size:clamp(28px,6vw,44px);">LINE Harness</div>
-
-    <h1 class="hero-headline">
-      L社やU社の上位互換を、<br>なぜ無料で公開するのか。
-    </h1>
-
-    <div class="mt-32">
-      <span class="zero-yen">0</span><span class="zero-yen-unit">円</span>
+  <!-- ══════════════════════════════════ -->
+  <!-- 0. PERSONA -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="persona">
+    <div class="section-header">
+      <span class="section-num">00</span>
+      <h2 class="section-title">基本方針</h2>
     </div>
 
-    <p class="hero-sub">
-      LINE公式アカウントの運用に必要な<strong style="color:var(--text)">全機能</strong>を、<br>
-      オープンソースで完全無料提供。<br>
-      何十万円もかける時代は、終わりました。
-    </p>
-
-    <div class="hero-profile">
-      <img src="profile.jpg" alt="野田 修一" class="hero-profile-img">
-      <div class="hero-profile-name">野田 修一</div>
-      <div class="hero-profile-title">LINE Harness 開発者 / AI Engineer</div>
-    </div>
-    <div class="speech-bubble">
-      高額なツール代が、挑戦の障壁になるべきではない。<br><br>
-      AIの時代になり、すべての常識が変わろうとしています。<br>
-      AIを活用して働く時間を減らし、自由な時間とお金を増やす。<br>
-      一人ひとりが本当にやりたいことに生きられる世界を、<br>
-      私はつくりたい。<br><br>
-      <strong style="color:var(--text)">その第一歩が、LINE Harnessです。</strong><br>
-      <span style="font-size:12px;opacity:0.7;">そしてこれは、始まりに過ぎません。<br>LINEだけでなく、あらゆるチャネルを一つに繋ぐ——<br>そんな未来を、オープンソースで実現していきます。</span>
-    </div>
-
-    <div class="mt-40 text-center">
-      <a href="https://line-crm-worker.line-crm-api.workers.dev/auth/line?ref=lp" class="cta-btn">
-        <svg viewBox="0 0 24 24" fill="currentColor" class="line-icon"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
-        LINEで無料体験する
-      </a>
-      <span class="cta-sub">30秒で完了 · LINE登録するだけで機能を体験できます</span>
-    </div>
-  </div>
-</section>
-
-
-<!-- ===== 比較表（GitHub準拠）===== -->
-<section class="section comp-section" id="comparison">
-  <div class="container fade-up">
-    <div class="text-center">
-      <span class="sec-label">Comparison</span>
-      <h2 class="sec-title">なぜ LINE Harness なのか</h2>
-      <p class="sec-subtitle">同じ機能、圧倒的なコスト差。</p>
-    </div>
-    <table class="comp-table">
-      <thead>
-        <tr>
-          <th style="text-align:left">機能</th>
-          <th>L社</th>
-          <th>U社</th>
-          <th style="color:var(--green)">LINE Harness</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr class="row-highlight"><td>月額</td><td class="col-other">2万円〜</td><td class="col-other">1万円〜</td><td class="col-h big">0円</td></tr>
-        <tr><td>ステップ配信</td><td class="check">✅</td><td class="check">✅</td><td class="col-h">✅</td></tr>
-        <tr><td>セグメント配信</td><td class="check">✅</td><td class="check">✅</td><td class="col-h">✅</td></tr>
-        <tr><td>リッチメニュー切替</td><td class="check">✅</td><td class="check">✅</td><td class="col-h">✅</td></tr>
-        <tr><td>フォーム</td><td class="check">✅</td><td class="check">✅</td><td class="col-h">✅</td></tr>
-        <tr><td>スコアリング</td><td class="check">✅</td><td class="cross">❌</td><td class="col-h">✅</td></tr>
-        <tr><td>IF-THEN 自動化</td><td class="partial">一部</td><td class="partial">一部</td><td class="col-h">✅</td></tr>
-        <tr class="row-highlight"><td>API 公開</td><td class="cross">❌</td><td class="cross">❌</td><td class="col-h" style="font-weight:900;">全機能</td></tr>
-        <tr class="row-highlight"><td>AI（Claude Code）対応</td><td class="cross">❌</td><td class="cross">❌</td><td class="col-h" style="font-weight:900;">✅</td></tr>
-        <tr class="row-highlight"><td>BAN 検知＆自動移行</td><td class="cross">❌</td><td class="cross">❌</td><td class="col-h" style="font-weight:900;">✅</td></tr>
-        <tr><td>マルチアカウント</td><td class="col-other">別契約</td><td class="col-other">別契約</td><td class="col-h" style="font-weight:900;">標準搭載</td></tr>
-        <tr class="row-highlight"><td>ソースコード</td><td class="col-other">非公開</td><td class="col-other">非公開</td><td class="col-h" style="font-weight:900;">MIT</td></tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-
-
-<!-- ===== SECTION 2: 問題認識 ===== -->
-<section class="section" id="problems">
-  <div class="container fade-up">
-    <div class="text-center">
-      <span class="sec-label">Problem</span>
-      <h2 class="sec-title">LINE運用、こんな悩みを<br>抱えていませんか？</h2>
-    </div>
-    <ul class="problem-list">
-      <li><span class="problem-icon">💸</span><span>LINE配信ツールに<strong>毎月数万円〜数十万円</strong>を払い続けている</span></li>
-      <li><span class="problem-icon">🏗️</span><span>LINE構築を外注すると<strong>数十万〜数百万円</strong>。修正のたびに追加費用が発生する</span></li>
-      <li><span class="problem-icon">🔒</span><span>ツールに<strong>縛られて</strong>、自分のデータなのに自由に使えない</span></li>
-      <li><span class="problem-icon">🤖</span><span>AIで配信を自動化したいのに、既存ツールでは<strong>連携する方法がない</strong></span></li>
-      <li><span class="problem-icon">📉</span><span>ツールの値上げが止まらず、<strong>利益率がどんどん圧迫</strong>されている</span></li>
-    </ul>
-    <p class="text-center mt-32" style="font-size:14px;color:var(--text-muted);">一つでも当てはまるなら、<strong style="color:var(--text)">この先を読む価値があります。</strong></p>
-  </div>
-</section>
-
-
-<!-- ===== SECTION 3: 恐怖 ===== -->
-<section class="section fear-section">
-  <div class="container fade-up">
-    <div class="text-center">
-      <span class="sec-label" style="border-color:rgba(239,68,68,0.2);color:#ef4444;background:rgba(239,68,68,0.05);">Warning</span>
-      <h2 class="sec-title">このまま何もしなければ、<br>どうなるか。</h2>
-    </div>
-    <div class="fear-card"><h4>1年後</h4><p>あなたが月額費用を払い続ける間に、競合はコスト0円で同等以上の環境を手に入れています。年間数十万〜百万円以上の差は、そのまま利益の差です。</p></div>
-    <div class="fear-card"><h4>2年後</h4><p>AI自動運用が当たり前の時代。API非公開のクローズドなツールに縛られたまま、手動で配信設定を続けることに。周囲がAIで100アカウントを回す中、あなたは1アカウントに何時間も費やし続けます。</p></div>
-    <div class="fear-card"><h4>3年後</h4><p>LINE構築代行・運用代行という仕事自体が消滅している可能性があります。その変化の波に乗るか、飲まれるかは——今この瞬間の選択次第です。</p></div>
-    <p class="text-center mt-48" style="font-size:20px;font-weight:700;"><span style="color:var(--text-dim);">——でも、</span><span class="text-green">まだ間に合います。</span></p>
-  </div>
-</section>
-
-
-<!-- ===== SECTION 4: 解決策 ===== -->
-<section class="section solution-section" id="solution">
-  <div class="container fade-up">
-    <div class="text-center">
-      <span class="sec-label">Solution</span>
-      <div class="product-name mt-16">LINE Harness</div>
-      <p style="font-size:15px;color:var(--text-muted);margin-top:8px;">有料ツールと同じ機能を、完全無料・オープンソースで。</p>
-    </div>
-    <p class="text-center mt-32" style="font-size:14px;color:var(--text-muted);max-width:580px;margin-left:auto;margin-right:auto;line-height:1.9;">
-      LINE Harnessは、LINE公式アカウント運用の<strong style="color:var(--text)">すべての機能</strong>を備えた無料のCRMプラットフォーム。友だち5,000人までサーバー代も0円。ソースコードが公開されているので、誰でも自由に使え、あなたのビジネスに合わせてカスタマイズも可能です。
-    </p>
-
-    <!-- 主要機能カード -->
-    <div class="features-grid mt-48">
-      <div class="feature-card"><div class="feature-card-icon">📨</div><h4>ステップ配信</h4><p>時間差自動メッセージ。教育シナリオを一度組めば24時間稼働。</p></div>
-      <div class="feature-card"><div class="feature-card-icon">🎯</div><h4>セグメント配信</h4><p>タグ・スコア・行動で絞り込み。最適な人に最適なメッセージを。</p></div>
-      <div class="feature-card"><div class="feature-card-icon">🎨</div><h4>リッチメニュー切替</h4><p>ユーザー属性に応じてメニューを動的に切り替え。</p></div>
-      <div class="feature-card"><div class="feature-card-icon">📝</div><h4>フォーム（LIFF）</h4><p>LINE内完結フォーム。回答は自動タグ付け。</p></div>
-      <div class="feature-card"><div class="feature-card-icon">💳</div><h4>決済（Stripe）</h4><p>LINE内から直接決済。購入をトリガーに自動配信も。</p></div>
-      <div class="feature-card"><div class="feature-card-icon">⚡</div><h4>IF-THEN自動化</h4><p>7トリガー × 6アクション。条件分岐を自由に構築。</p></div>
-      <div class="feature-card"><div class="feature-card-icon">🤖</div><h4>AI / API連携</h4><p>REST API全機能公開。Claude Codeからフル制御可能。</p></div>
-      <div class="feature-card"><div class="feature-card-icon">🛡️</div><h4>BAN検知＆自動移行</h4><p>アカウント健全性を監視し、異常時は自動フェイルオーバー。</p></div>
-      <div class="feature-card"><div class="feature-card-icon">👥</div><h4>マルチアカウント</h4><p>複数LINE公式を一元管理。クロスアカウントUUID搭載。</p></div>
-    </div>
-
-    <!-- 全機能図解マップ -->
-    <div class="feature-map">
-      <h3>全機能マップ</h3>
-      <div class="fmap-row">
-        <div class="fmap-category">📨 配信</div>
-        <div class="fmap-items">
-          <span class="fmap-item">ステップ配信</span>
-          <span class="fmap-item">セグメント配信</span>
-          <span class="fmap-item">ブロードキャスト</span>
-          <span class="fmap-item">予約配信</span>
-          <span class="fmap-item">リマインダー</span>
-          <span class="fmap-item">テンプレート</span>
-        </div>
+    <div class="persona-grid">
+      <div class="persona-card">
+        <h4>ターゲット像 — さとこさん（仮）32歳</h4>
+        <div class="persona-row"><span class="persona-key">生活</span><span>フルタイム勤務。朝は時間がなく、夜は疲れてすぐ寝たい。</span></div>
+        <div class="persona-row"><span class="persona-key">お腹の悩み</span><span>毎朝スッキリしない「なんとなく重い」が慢性化。</span></div>
+        <div class="persona-row"><span class="persona-key">腸活歴</span><span>ヨーグルト・サプリを何度か試したが1〜2週間で挫折。</span></div>
+        <div class="persona-row"><span class="persona-key">SNS行動</span><span>共感した投稿をいいね・保存。気に入ったアカウントをこっそりフォロー。</span></div>
+        <div class="quote-block">「腸活、また三日坊主だった。もう自分には無理なのかな」</div>
       </div>
-      <div class="fmap-row">
-        <div class="fmap-category">👤 顧客管理</div>
-        <div class="fmap-items">
-          <span class="fmap-item">友だち管理</span>
-          <span class="fmap-item">タグ付け</span>
-          <span class="fmap-item">セグメント</span>
-          <span class="fmap-item">スコアリング</span>
-          <span class="fmap-item">オペレーターチャット</span>
-        </div>
+      <div class="persona-card">
+        <h4>発信者ペルソナ — GYURUTTの「中の人」</h4>
+        <div class="persona-row"><span class="persona-key">立場</span><span>腸活ブランドを作っている途中の人。専門家ではない。</span></div>
+        <div class="persona-row"><span class="persona-key">距離感</span><span>同じ挫折をしてきた「ちょっと先にいる友達」</span></div>
+        <div class="persona-row"><span class="persona-key">語り方</span><span>「わたしの場合は〜」「らしい。調べ中」「まぁ、ぼちぼち」</span></div>
+        <div class="persona-row"><span class="persona-key">やらないこと</span><span>断言・指導・専門用語の素出し・商品の直接宣伝</span></div>
+        <div class="quote-block">「専門家の話はわかるけど、正直しんどい。もっとゆるくていいよって言ってほしい。」</div>
       </div>
-      <div class="fmap-row">
-        <div class="fmap-category">🎨 UI/UX</div>
-        <div class="fmap-items">
-          <span class="fmap-item">リッチメニュー切替</span>
-          <span class="fmap-item">LIFF フォーム</span>
-          <span class="fmap-item">パーソナライズ変数</span>
-        </div>
-      </div>
-      <div class="fmap-row">
-        <div class="fmap-category">⚡ 自動化</div>
-        <div class="fmap-items">
-          <span class="fmap-item">IF-THEN ルール</span>
-          <span class="fmap-item">7種トリガー</span>
-          <span class="fmap-item">6種アクション</span>
-          <span class="fmap-item">クリック追跡</span>
-          <span class="fmap-item">自動タグ付け</span>
-        </div>
-      </div>
-      <div class="fmap-row">
-        <div class="fmap-category">💰 収益化</div>
-        <div class="fmap-items">
-          <span class="fmap-item">Stripe決済</span>
-          <span class="fmap-item">アフィリエイト追跡</span>
-          <span class="fmap-item">Google Calendar予約</span>
-        </div>
-      </div>
-      <div class="fmap-row">
-        <div class="fmap-category">🔧 開発者</div>
-        <div class="fmap-items">
-          <span class="fmap-item">REST API（全機能）</span>
-          <span class="fmap-item">TypeScript SDK</span>
-          <span class="fmap-item">OpenAPI docs</span>
-          <span class="fmap-item">Claude Code対応</span>
-          <span class="fmap-item">Webhook</span>
-        </div>
-      </div>
-      <div class="fmap-row">
-        <div class="fmap-category">🛡️ 安全性</div>
-        <div class="fmap-items">
-          <span class="fmap-item">BAN自動検知</span>
-          <span class="fmap-item">自動フェイルオーバー</span>
-          <span class="fmap-item">マルチアカウント</span>
-          <span class="fmap-item">クロスUUID</span>
-          <span class="fmap-item">ステルス配信</span>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-title">絵文字・感嘆符ルール</div>
+      <div class="info-card-body">
+        <div class="emoji-rule-grid">
+          <div class="emoji-rule-card">
+            <h5>感嘆符「！」</h5>
+            <p>1投稿につき1回まで。0でも可。</p>
+            <p class="note">押しつけ感・スパム感を排除。ペルソナの静かな文体を守る。</p>
+          </div>
+          <div class="emoji-rule-card">
+            <h5>絵文字</h5>
+            <p>0〜1個。Phase 1は<strong>基本0で統一</strong>。</p>
+            <p class="note">健康系アカウントとの差別化。疲れた30代女性に「落ち着く場所」を提供。</p>
+          </div>
+          <div class="emoji-rule-card">
+            <h5>「！！！」</h5>
+            <p>絶対NG。</p>
+            <p class="note">「やりすぎ」トーンになりペルソナが崩れる。</p>
+          </div>
+          <div class="emoji-rule-card">
+            <h5>絵文字を使う場面</h5>
+            <p>問いかけ系・開発裏話系に1個だけ。例：😊</p>
+            <p class="note">フォロワー50人以降から試す。温度感の微調整として使う。</p>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
 
-
-<!-- ===== SECTION 6: ベネフィット ===== -->
-<section class="section" id="benefits">
-  <div class="container fade-up">
-    <div class="text-center">
-      <span class="sec-label">Benefits</span>
-      <h2 class="sec-title">あなたの現実は、こう変わる。</h2>
+  <!-- ══════════════════════════════════ -->
+  <!-- 1. 共感系 -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="kyokan">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2 class="section-title">共感系サンプル</h2>
     </div>
-    <div class="mt-24">
-      <div class="benefit-item"><div class="benefit-num">1</div><div class="benefit-text"><h4>月額費用がゼロになる</h4><p>5,000人まで完全無料。1万人でも月$10。有料ツールに払っていた月額費用が、まるごと利益に。</p></div></div>
-      <div class="benefit-item"><div class="benefit-num">2</div><div class="benefit-text"><h4>構築費が不要になる</h4><p>数十万〜数百万の外注費が消える。Claude Codeと対話するだけで配信設定が完了。</p></div></div>
-      <div class="benefit-item"><div class="benefit-num">3</div><div class="benefit-text"><h4>AIで100アカウントを1人で回せる</h4><p>REST API全公開だから、AIエージェントが設定・配信・分析をすべて自動実行。収益構造が根本から変わる。</p></div></div>
-      <div class="benefit-item"><div class="benefit-num">4</div><div class="benefit-text"><h4>ベンダーロックインから解放</h4><p>MITライセンス。データもコードもすべて自分のもの。サービス終了の不安はゼロ。</p></div></div>
-      <div class="benefit-item"><div class="benefit-num">5</div><div class="benefit-text"><h4>有料ツール以上の機能</h4><p>42テーブルのエンタープライズ級。決済・予約・アフィリエイト・BAN検知まで標準搭載。</p></div></div>
-    </div>
-  </div>
-</section>
+    <p class="section-desc">「わかる」を引き出し、リポスト・いいねによる拡散を狙う。新規層へのリーチの主軸。構成比率の約40%。</p>
 
-
-<!-- ===== 2つの始め方 ===== -->
-<section class="section" id="start" style="background:linear-gradient(180deg, var(--dark), var(--dark-card));">
-  <div class="container fade-up">
-    <div class="text-center">
-      <span class="sec-label">Get Started</span>
-      <h2 class="sec-title">あなたに合った始め方を選べます</h2>
-      <p class="sec-subtitle">技術レベルに関係なく、誰でもLINE Harnessを活用できます。</p>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:40px;">
-      <div style="background:var(--dark-card);border:1px solid var(--dark-border);border-radius:16px;padding:32px 24px;text-align:center;">
-        <div style="font-size:36px;margin-bottom:12px;">🛠️</div>
-        <h4 style="font-size:16px;font-weight:800;margin-bottom:8px;">自分でセットアップする</h4>
-        <p style="font-size:13px;color:var(--text-muted);line-height:1.8;margin-bottom:20px;">GitHubからクローンして、自分のCloudflareアカウントにデプロイ。Claude Codeを使えば対話形式でセットアップも可能です。</p>
-        <a href="https://github.com/Shudesu/line-harness-oss" target="_blank" style="display:inline-block;padding:12px 28px;border:2px solid var(--green);border-radius:12px;color:var(--green);font-weight:700;font-size:14px;text-decoration:none;transition:all 0.2s;">GitHubで始める →</a>
+    <!-- 共感-1 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">共感-1</span>
+        <span class="cat-badge cat-kyokan">共感系</span>
+        <span class="time-badge">月 or 金 7:00</span>
       </div>
-      <div style="background:var(--dark-card);border:2px solid var(--green);border-radius:16px;padding:32px 24px;text-align:center;box-shadow:0 0 30px rgba(6,199,85,0.1);">
-        <div style="font-size:36px;margin-bottom:12px;">🤝</div>
-        <h4 style="font-size:16px;font-weight:800;margin-bottom:8px;">まずは体験してみる</h4>
-        <p style="font-size:13px;color:var(--text-muted);line-height:1.8;margin-bottom:20px;">LINE登録するだけで、ステップ配信やリッチメニュー切替を実際に体験できます。技術知識は一切不要です。</p>
-        <a href="https://line-crm-worker.line-crm-api.workers.dev/auth/line?ref=lp" class="cta-btn" style="font-size:14px;padding:12px 28px;">
-          <svg viewBox="0 0 24 24" fill="currentColor" class="line-icon"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
-          LINEで無料体験
-        </a>
+      <div class="post-body">
+        <div class="post-theme-label">挫折あるある</div>
+        <div class="post-text">腸活、明日からって何回言っただろう。
+
+ヨーグルト買っては忘れ、
+サプリは引き出しの奥で賞味期限切れ。
+
+「続かない自分がダメなんだ」
+ってずっと思ってたけど、
+
+たぶん違う。
+続けにくい方法を選んでただけだった。
+
+同じ人、いませんか。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「自分だけじゃない」という安心感。「同じ人いませんか」でリプライ・いいねを自然に誘う。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・1行12文字以内・断言なし ✓
+        </div>
       </div>
     </div>
-  </div>
-</section>
 
+    <!-- 共感-2 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">共感-2</span>
+        <span class="cat-badge cat-kyokan">共感系</span>
+        <span class="time-badge">月 7:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">月曜の朝</div>
+        <div class="post-text">月曜の朝、
+起きた瞬間からお腹が重い日。
 
-<!-- ===== SECTION 8: SNS社会的証明 ===== -->
-<section class="section tweets-section" id="voices">
-  <div class="container fade-up">
-    <div class="text-center">
-      <span class="sec-label">Voices</span>
-      <h2 class="sec-title">話題になっています。</h2>
-      <p class="sec-subtitle">公開直後から、業界のトップランナーたちが反応。</p>
-    </div>
-    <div class="tweet-embed-list">
-      <div><blockquote class="twitter-tweet"><p lang="ja" dir="ltr">使ってみたけど、とんでもないよこれ。<br>Lステップ構築者も要らなくなってしまう世界線。 <a href="https://t.co/6hgfTN7EQd">https://t.co/6hgfTN7EQd</a></p>&mdash; さこ社長@Brain代表（ユーザ数33万人突破！） (@sako_brain) <a href="https://twitter.com/sako_brain/status/2036600724310860119?ref_src=twsrc%5Etfw">March 25, 2026</a></blockquote></div>
-      <div><blockquote class="twitter-tweet"><p lang="ja" dir="ltr">これってもしかして、LINE運用代行という仕事を駆逐できる可能性ある？<br><br>LINE運用の相場感<br>・構築：数十万〜数百万円<br>・運用：月数十万円<br><br>この面倒な業務がClaude Code経由でほぼ完結できそう。<br><br>ただ現実的には<br><br>・LINE運用コンサルがこれを使いこなして1人で100アカウント回す→爆益… <a href="https://t.co/XAuthaOB57">https://t.co/XAuthaOB57</a> <a href="https://t.co/oDC9jPqxJq">pic.twitter.com/oDC9jPqxJq</a></p>&mdash; チャエン | デジライズ CEO《重要AIニュースを毎日最速で発信⚡️》 (@masahirochaen) <a href="https://twitter.com/masahirochaen/status/2036457858628559064?ref_src=twsrc%5Etfw">March 24, 2026</a></blockquote></div>
-      <div><blockquote class="twitter-tweet"><p lang="ja" dir="ltr">オープンソース化したのすご。マーケツールがこれでじゅうぶんとなるなら<br><br>LINE harness × オンクラス<br><br>がコンテンツビジネスの最善構成なのではないか🤔 <a href="https://t.co/YQF0PGOUfV">https://t.co/YQF0PGOUfV</a></p>&mdash; やまもとりゅうけん (@ryukke) <a href="https://twitter.com/ryukke/status/2036643264422633893?ref_src=twsrc%5Etfw">March 25, 2026</a></blockquote></div>
-    </div>
-  </div>
-</section>
+仕事のストレスかな、
+食べすぎかな、
+運動不足かな。
 
+原因はよくわからないけど、
+とにかくスッキリしない。
 
-<!-- ===== MID CTA ===== -->
-<section class="section text-center" style="padding:60px 0;">
-  <div class="container">
-    <p style="font-size:18px;font-weight:700;">これだけの機能が、<span class="text-green">すべて無料。</span></p>
-    <div class="mt-24">
-      <a href="https://line-crm-worker.line-crm-api.workers.dev/auth/line?ref=lp" class="cta-btn">
-        <svg viewBox="0 0 24 24" fill="currentColor" class="line-icon"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
-        LINEで無料体験する
-      </a>
-      <span class="cta-sub">30秒で完了</span>
-    </div>
-  </div>
-</section>
+病院に行くほどでもないけど、
+ずっとこのままは嫌だな、
+って思ってる人。
 
-
-<!-- ===== PROFILE ===== -->
-<section class="section" id="profile">
-  <div class="container fade-up">
-    <div class="text-center">
-      <span class="sec-label">Creator</span>
-      <h2 class="sec-title">開発者について</h2>
-    </div>
-    <div class="profile-card">
-      <img src="profile.jpg" alt="野田 修一" class="profile-img">
-      <div>
-        <div class="profile-name">野田 修一</div>
-        <div class="profile-title">LINE Harness 開発者 / AI Engineer</div>
-        <p class="profile-bio">AIの力で「働く」の常識を変え、一人ひとりが自分の人生を生きられる世界をつくる。高額なツール代が挑戦の障壁になるべきではない——LINE Harnessはその信念から生まれた第一歩です。LINEに留まらず、あらゆるチャネルを一つに繋ぐオープンなマーケティング基盤を、今後もどんどん公開していきます。</p>
-        <a href="https://x.com/ai_shunoda" target="_blank" rel="noopener noreferrer" class="profile-x">𝕏 @ai_shunoda をフォロー →</a>
+ここに来てほしい。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「なんとなく不調」を言語化。月曜7:00投稿推奨。週明け最初の共感でフォローを狙う。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・薬機法NGワードなし ✓
+        </div>
       </div>
     </div>
-  </div>
-</section>
 
+    <!-- 共感-3 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">共感-3</span>
+        <span class="cat-badge cat-kyokan">共感系</span>
+        <span class="time-badge">水 7:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">完璧にやらなくていい</div>
+        <div class="post-text">腸活って、
+100点を目指すほど続かない気がする。
 
-<!-- ===== FAQ ===== -->
-<section class="section faq-section" id="faq">
-  <div class="container fade-up">
-    <div class="text-center">
-      <span class="sec-label">FAQ</span>
-      <h2 class="sec-title">よくある質問</h2>
-    </div>
-    <div class="mt-32">
-      <div class="faq-item open"><div class="faq-q">本当に無料ですか？後から課金されませんか？</div><div class="faq-a">完全無料です。MITライセンスのオープンソースで、ソースコード自体が公開されています。Cloudflare無料枠で5,000人まで運用でき、サーバー代も0円。後から課金が発生する仕組みは一切ありません。</div></div>
-      <div class="faq-item"><div class="faq-q">エンジニアじゃなくても使えますか？</div><div class="faq-a">管理画面はブラウザで操作できる直感的なUIです。初期セットアップにはCloudflareアカウントの作成など技術的な手順がありますが、GitHubのWikiに詳細ガイドを用意しています。Claude Codeと連携すれば、対話形式で設定を進めることも可能です。</div></div>
-      <div class="faq-item"><div class="faq-q">他社ツールから乗り換えられますか？</div><div class="faq-a">はい。ステップ配信・セグメント・リッチメニュー切替など主要機能をすべてカバーし、さらに決済連携・予約・AI連携・BAN検知など、既存ツールにはない機能も搭載しています。</div></div>
-      <div class="faq-item"><div class="faq-q">セキュリティは大丈夫ですか？</div><div class="faq-a">データはあなた自身のCloudflare D1データベースに保存されます。第三者サーバーを経由しないため、むしろ既存SaaSよりもデータ管理権限は強固です。オープンソースなのでコードの透明性も保証されています。</div></div>
-      <div class="faq-item"><div class="faq-q">どれくらいの規模まで対応できますか？</div><div class="faq-a">Cloudflare Workersはグローバルエッジで動作し、スケーラビリティは極めて高いです。5,000人まで無料、10,000人で約$10/月、50,000人以上でも約$25/月。</div></div>
-      <div class="faq-item"><div class="faq-q">サポートはありますか？</div><div class="faq-a">GitHubのIssueやDiscussionでコミュニティサポートを受けられます。LINE登録いただければ、最新アップデートや活用ノウハウも定期的にお届けします。</div></div>
-      <div class="faq-item"><div class="faq-q">なぜ無料で公開するのですか？</div><div class="faq-a">AIですべての常識が変わる今、高額なツール代が挑戦の障壁になるべきではない。一人ひとりが自由に生きられる世界を実現するための活動の第一歩です。</div></div>
-    </div>
-  </div>
-</section>
+毎日ヨーグルト食べなきゃ、
+食物繊維も摂らなきゃ、
+水も2リットル飲まなきゃ。
 
+やること多すぎて、
+1個できなかっただけで
+「もういいや」ってなる。
 
-<!-- ===== FINAL CTA ===== -->
-<section class="final-cta" id="register">
-  <div class="container fade-up">
-    <h2 class="final-headline">月額<span class="text-green" style="font-size:1.3em;"> 0円</span>で、<br>LINE運用の<span class="text-green">すべて</span>を手に入れる。</h2>
-    <p class="mt-24" style="font-size:14px;color:var(--text-muted);max-width:480px;margin-left:auto;margin-right:auto;line-height:1.8;">
-      有料ツールの上位互換。オープンソース。サーバー代0円。<br>あなたが月額費用を払い続ける理由は、もうどこにもありません。
-    </p>
-    <div class="mt-40" style="display:flex;flex-direction:column;align-items:center;gap:16px;">
-      <a href="https://line-crm-worker.line-crm-api.workers.dev/auth/line?ref=lp" class="cta-btn" style="font-size:20px;padding:20px 56px;">
-        <svg viewBox="0 0 24 24" fill="currentColor" class="line-icon"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
-        LINEで無料体験する
-      </a>
-      <span class="cta-sub">30秒で完了 · LINE登録するだけで機能を体験できます</span>
-      <a href="https://github.com/Shudesu/line-harness-oss" target="_blank" style="display:inline-block;margin-top:8px;padding:12px 32px;border:1px solid var(--dark-border);border-radius:12px;color:var(--text-muted);font-size:14px;text-decoration:none;transition:all 0.2s;">エンジニアの方はGitHubから直接セットアップ →</a>
+30点を毎日の方が、
+腸はたぶんよろこぶ。
+
+わたしはそう思って、
+気が楽になったんだよね。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>完璧主義による自己嫌悪を解除。「わたしはそう思って」で体感として着地させ、押しつけを回避。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・断言を「気がする」「たぶん」でやわらかく処理 ✓
+        </div>
+      </div>
     </div>
 
-    <div class="ps-section">
-      <p><strong>P.S.</strong><br>LINE Harnessは、「高額なツール代が挑戦の障壁になるべきではない」という信念から生まれました。</p>
-      <p class="mt-16">公開直後から大きな反響をいただいています。Brain代表のさこ社長は「とんでもない」と評し、デジライズCEOのチャエンさんは「LINE運用代行を駆逐する可能性がある」と言い、やまもとりゅうけんさんは「コンテンツビジネスの最善構成」と評しています。</p>
-      <p class="mt-16">3ヶ月後、1年後。あの時すぐに始めておけばよかった——そう思う未来ではなく、<strong>あの時始めてよかった</strong>と思える未来を、今日選んでください。</p>
-      <p class="mt-16" style="text-align:right;">—— 野田 修一</p>
-    </div>
-  </div>
-</section>
+    <!-- 共感-4 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">共感-4</span>
+        <span class="cat-badge cat-kyokan">共感系</span>
+        <span class="time-badge">金 7:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">仕事帰りの疲れ（30代女性追加）</div>
+        <div class="post-text">仕事終わって帰ったら、
+もうごはん作る気力ない。
 
+コンビニでいいか、
+って思いながらも
+
+「これじゃ腸活できないな」
+って罪悪感だけ残る。
+
+でも疲れてる日に頑張れないのは
+ふつうのことだと思う。
+
+疲れてる日は休む。
+それも腸活だったりする。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>30代女性の「忙しさと健康への罪悪感」に直撃。「それも腸活だったりする」でブランドの哲学を自然に表現。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・「だったりする」でやわらかい断定 ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 共感-5 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">共感-5</span>
+        <span class="cat-badge cat-kyokan">共感系</span>
+        <span class="time-badge">日 13:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">日曜夜のざわざわ ＋ 教育系への橋渡し</div>
+        <div class="post-text">日曜の夜、
+なんかお腹のあたりがざわざわする。
+
+明日からまた頑張らなきゃ、
+って思うと
+体が先に緊張してる気がする。
+
+腸って正直で、
+気持ちの変化をすぐ教えてくれる。
+
+明日、無理しなくていいよ。
+まず朝、水を1杯だけ飲んでみて。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>日曜13:00投稿推奨。翌日の教育ツリー（水1杯）への自然な橋渡し。月曜投稿への期待も形成する。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・「〜てみて」でやさしく着地 ✓
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 2. 問いかけ系 -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="toikake">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2 class="section-title">問いかけ系サンプル</h2>
+    </div>
+    <p class="section-desc">リプライ・投票を引き出し、アルゴリズム上の「重いアクション」を獲得する。木曜21:00投稿推奨。翌金曜朝にリプライへ返信が最優先タスク。</p>
+
+    <!-- 問いかけ-1 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">問いかけ-1</span>
+        <span class="cat-badge cat-toikake">問いかけ系</span>
+        <span class="time-badge">木 21:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">朝の1杯（投票形式）</div>
+        <div class="post-text">朝、最初に口にするものって何ですか。
+
+結果、ちょっと気になっています。</div>
+        <div class="vote-box">
+          <div class="vote-item"><span class="vote-dot"></span>コーヒーか紅茶</div>
+          <div class="vote-item"><span class="vote-dot"></span>水か白湯</div>
+          <div class="vote-item"><span class="vote-dot"></span>何も飲まない</div>
+          <div class="vote-item"><span class="vote-dot"></span>その日による</div>
+        </div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「その日による」を入れて正解のない日常を肯定。参加ハードルを下げる。<br>
+          <span class="nk">返信案　</span>「コーヒーが多いの、わかります。わたしもそうでした。空腹時のコーヒーはちょっとお腹に負担かかるらしいんですよね、調べ中ですが。」<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字は状況に応じて😊を1個可 ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 問いかけ-2 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">問いかけ-2</span>
+        <span class="cat-badge cat-toikake">問いかけ系</span>
+        <span class="time-badge">木 21:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">続かなかった理由（投票形式・リサーチ兼用）</div>
+        <div class="post-text">腸活、続かなかった理由って何でしたか。
+
+ほんとに参考にしたいので
+教えてもらえると嬉しいです。</div>
+        <div class="vote-box">
+          <div class="vote-item"><span class="vote-dot"></span>毎日続けるのがしんどい</div>
+          <div class="vote-item"><span class="vote-dot"></span>何が正しいかわからない</div>
+          <div class="vote-item"><span class="vote-dot"></span>お金がかかる</div>
+          <div class="vote-item"><span class="vote-dot"></span>変化を感じられなかった</div>
+        </div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>ターゲットの挫折理由を実際にリサーチできる。結果を次の共感系・教育系コンテンツに直接反映する。<br>
+          <span class="nk">返信案　</span>「『何が正しいかわからない』が多いの、すごくわかります。情報ありすぎて逆に動けなくなるんですよね。」<br>
+          <span class="nk">チェック　</span>感嘆符0・「ほんとに参考にしたいので」で下から目線を担保 ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 問いかけ-3 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">問いかけ-3</span>
+        <span class="cat-badge cat-toikake">問いかけ系</span>
+        <span class="time-badge">木 21:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">ハードルを聞く（リプライ誘導）</div>
+        <div class="post-text">「腸活してみたいけど
+ 何から始めればいいかわからない」
+って思ったこと、ありますか。
+
+あったらちょっと教えてください。
+何がハードルになってるか、
+聞かせてもらえると嬉しいです。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>投票ではなくリプライを直接誘う。「ちょっと」「嬉しいです」でプレッシャーを下げる。<br>
+          <span class="nk">返信案　</span>「教えてくれてありがとうございます。『何から』って本当に難しいですよね。わたしがまず試してよかったのは、水を1杯だけ、だったりします。」<br>
+          <span class="nk">チェック　</span>感嘆符0・命令形を避けて「教えてもらえると」で柔らかく ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 問いかけ-4 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">問いかけ-4</span>
+        <span class="cat-badge cat-toikake">問いかけ系</span>
+        <span class="time-badge">木 21:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">忙しい週のお腹（共感→問いかけ複合）</div>
+        <div class="post-text">仕事が忙しい週って、
+食事がどうしても雑になりませんか。
+
+コンビニ、外食、
+夜遅くにまとめ食い。
+
+わかってるけど、
+疲れてたら仕方ないよなとも思う。
+
+そういう週、
+お腹ってどうなりますか。
+
+リプライで教えてもらえると
+参考になります。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>共感で入りつつ問いかけに転換するハイブリッド投稿。いいね＋リプライの両取りを狙う。<br>
+          <span class="nk">チェック　</span>感嘆符0・「仕方ないよなとも思う」で日常を批判しない姿勢を明示 ✓
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 3. 教育ツリー -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="edu">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2 class="section-title">教育系ツリーサンプル</h2>
+    </div>
+    <p class="section-desc">週1本のみ。火曜か金曜の7:00投稿推奨。ツリー形式で滞在時間を稼ぎブックマークを獲得する。記事機能はPhase 2以降。</p>
+
+    <div class="sticky-note">
+      <span class="sticky-label">ツリー設計の鉄則</span>1ツイート目で「続きが読みたい」を作る。2〜4ツイートで完結。最後に「保存してね」を自然に入れる。
+    </div>
+
+    <!-- ツリーA -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">教育ツリー-A</span>
+        <span class="cat-badge cat-edu">教育ツリー</span>
+        <span class="time-badge">火 or 金 7:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">まず水（4ツイート）</div>
+        <div class="thread-wrapper">
+          <div class="thread-item">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">1 / 4</div>
+              <div class="thread-text">腸活で最初にやること、
+サプリでも発酵食品でもなくて
+「水を飲む」だったりします。
+
+え、それだけ？
+って思うかもしれないけど
+続きを読んでほしい。</div>
+              <span class="thread-tip">🔑 「え、それだけ？」で続きへの興味を作る</span>
+            </div>
+          </div>
+          <div class="thread-item">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">2 / 4</div>
+              <div class="thread-text">腸って、水分が足りないと
+動きが鈍くなるらしくて。
+
+ヨーグルトもサプリも
+腸が動いてないと
+あまり意味がないみたい。
+
+まず動かす、が先なんだよね。</div>
+            </div>
+          </div>
+          <div class="thread-item">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">3 / 4</div>
+              <div class="thread-text">朝起きてすぐ、
+コップ1杯の水。
+
+常温か白湯が
+お腹にやさしいみたいだけど、
+冷たい水でもゼロよりずっといい。
+
+完璧にやろうとしなくていい。
+まず1杯、それだけ。</div>
+            </div>
+          </div>
+          <div class="thread-item last">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">4 / 4</div>
+              <div class="thread-text">腸活で迷ったら、
+まず水。
+
+それだけ覚えておいてほしい。
+
+あとで見返せるように
+保存しておいてもらえると嬉しいです。</div>
+              <span class="thread-tip">🔖 最後に保存を自然に促す</span>
+            </div>
+          </div>
+        </div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「水を飲む」という誰でもできるアクションを4ツイートで丁寧に肯定する。難易度ゼロなのに「へぇ」がある。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・「らしい」「みたい」で断言回避・薬機法NGワードなし ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- ツリーB -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">教育ツリー-B</span>
+        <span class="cat-badge cat-edu">教育ツリー</span>
+        <span class="time-badge">火 or 金 7:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">引き算の腸活（3ツイート）</div>
+        <div class="thread-wrapper">
+          <div class="thread-item">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">1 / 3</div>
+              <div class="thread-text">腸活って、
+足すより引く方が
+大事だったりする。
+
+やめてよかったこと、
+3つだけ話します。</div>
+              <span class="thread-tip">🔑 「やめてよかったこと」という意外性のある切り口。「3つだけ」で読む量が予測でき離脱しにくい</span>
+            </div>
+          </div>
+          <div class="thread-item">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">2 / 3</div>
+              <div class="thread-text">① ヨーグルトを毎朝「義務」にすること
+→ 嫌いじゃないのに苦痛になった
+
+② 食物繊維の数字を追うこと
+→ 気にしすぎてご飯が楽しくなくなった
+
+③「菌を入れれば解決する」と思い込むこと
+→ 腸が動いてないと菌も活きないらしい
+
+全部やめたら、逆に楽になった。</div>
+            </div>
+          </div>
+          <div class="thread-item last">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">3 / 3</div>
+              <div class="thread-text">足すことより、
+しんどいことをやめる方が
+続くんだよね。
+
+腸活で頑張りすぎてた人、
+これだけ覚えておいてほしい。
+
+よかったら保存しておいてください。</div>
+              <span class="thread-tip">🔖 「頑張りすぎてた人」でターゲットを自己同定させる</span>
+            </div>
+          </div>
+        </div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「やめる」という逆張りの切り口で「へぇ」を作る。共感系の延長として読めるので教育系でも温度感が崩れない。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・「らしい」で断言回避・薬機法NGワードなし ✓
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 4. 開発裏話 -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="ura">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2 class="section-title">開発裏話系サンプル</h2>
+    </div>
+    <p class="section-desc">土曜10:00投稿。「誰が・なんのために作っているか」を少しずつ見せ、単なる情報アカウントから応援されるブランドへ転換する。</p>
+
+    <!-- 裏話-1 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">裏話-1</span>
+        <span class="cat-badge cat-ura">開発裏話系</span>
+        <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:#FFF3CD;color:#856404;font-weight:500;margin-left:auto;">📌 固定ポスト用</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">自己紹介 — アカウント開設直後に投稿してプロフィールに固定する</div>
+        <div class="post-text">はじめまして。
+
+腸活ブランドを作っています。
+まだ商品はできていません。
+
+でも先に、伝えたいことがあって
+アカウントを始めました。
+
+腸活、何度も挫折してきました。
+ヨーグルトも、サプリも、
+全部途中でやめた。
+
+「続かない自分がダメなんだ」
+ってずっと思ってたけど、
+
+たぶん、続けにくい方法を
+選んでただけだった。
+
+そう気づいてから、
+腸活がちょっとだけ楽になった。
+
+同じ人に届いたらいいなと思って、
+ここで話すことにしました。</div>
+        <div class="note-box">
+          <span class="nk">使い方　</span>初めて来た人が「フォローしていい人かどうか」を判断する導線。プロフィールに固定必須。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・断言なし・商品の直接宣伝なし ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 裏話-2 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">裏話-2</span>
+        <span class="cat-badge cat-ura">開発裏話系</span>
+        <span class="time-badge">土 10:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">開発進捗の定期報告 — 「土曜の報告」フォーマットを毎週固定</div>
+        <div class="post-text">土曜の報告。
+
+いま、腸活ブランドの商品を
+ゆっくり開発しています。
+
+コンセプトはひとつだけ決めていて、
+「頑張らなくても続く腸活」。
+
+まだ全然できていない段階だけど、
+作りながら考えていることを
+ここで少しずつ話していこうと思います。
+
+「こんな商品あったらいいな」
+があったら教えてほしいです。
+参考にします。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「土曜の報告」という定期フォーマットで「毎週土曜に見る理由」を作る。コメント誘導でリプライも狙える。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・「ゆっくり」「少しずつ」でGYURUTTのペースを体現 ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 裏話-3 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">裏話-3</span>
+        <span class="cat-badge cat-ura">開発裏話系</span>
+        <span class="time-badge">土 10:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">インタビュー素材の変換（とよまるさん）</div>
+        <div class="post-text">ずっと「お腹が弱い体質」
+だと思っていた人の話を聞いた。
+
+30年間、下痢が普通で、
+「消化が良すぎるだけ」
+と本気で信じていたらしい。
+
+ある時、別の理由で朝食をやめたら
+突然お腹が落ち着いた。
+
+犯人は、毎朝の牛乳と朝食だった。
+
+「体質」じゃなくて
+「合っていないものを食べ続けていた」
+だけだったって。
+
+自分の体のことって、
+意外とわかっていないものだな
+と思った話でした。</div>
+        <div class="note-box">
+          <span class="nk">変換のポイント　</span>「らしい」「だったって」で他者の体験として着地させる。「体質だと諦めていた人」に刺さる切り口。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・薬機法NGワードなし ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 裏話-4 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">裏話-4</span>
+        <span class="cat-badge cat-ura">開発裏話系</span>
+        <span class="time-badge">土 10:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">インタビュー素材の変換（かよちゃんさん）</div>
+        <div class="post-text">「一生続ける」は無理だけど、
+「100日だけ」ならできる気がする。
+
+そう考えた人がいた。
+
+習慣化がとにかく苦手で、
+サプリも水筒も気づけば忘れる。
+
+だからマラソンじゃなくて、
+ダッシュにした。
+
+期間を決めて、そこだけ頑張る。
+終わった後に「なんか調子よかったな」
+という記憶が残れば勝ち。
+
+また気が向いたときに走ればいい、
+という考え方が
+わたしはすごく好きだったりします。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「習慣化できない自分を責めなくていい」というGYURUTTの哲学を他者の体験で語る。最後の「わたしはすごく好きだったりします」でペルソナの感情を自然に乗せる。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・「だったりします」でやわらかい断定 ✓
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 5. スケジュール -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="schedule">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2 class="section-title">週間投稿スケジュール</h2>
+    </div>
+    <p class="section-desc">Phase 1（〜フォロワー100人）の推奨スケジュール。</p>
+
+    <div class="week-grid">
+      <div class="week-day wd-mon">
+        <div class="week-day-name">月</div>
+        <div class="week-day-body">
+          <div class="week-time">7:00</div>
+          <div class="week-cat cat-kyokan" style="background:var(--pink-light);color:var(--pink);">共感系</div>
+          <div class="week-action">共感-2<br>月曜の朝</div>
+        </div>
+      </div>
+      <div class="week-day wd-tue">
+        <div class="week-day-name">火</div>
+        <div class="week-day-body">
+          <div class="week-time">7:00</div>
+          <div class="week-cat" style="background:var(--teal-light);color:var(--teal);">教育ツリー</div>
+          <div class="week-action">ツリーA or B</div>
+        </div>
+      </div>
+      <div class="week-day wd-wed">
+        <div class="week-day-name">水</div>
+        <div class="week-day-body">
+          <div class="week-time">7:00</div>
+          <div class="week-cat" style="background:var(--pink-light);color:var(--pink);">共感系</div>
+          <div class="week-action">共感-3<br>完璧じゃなくていい</div>
+        </div>
+      </div>
+      <div class="week-day wd-thu">
+        <div class="week-day-name">木</div>
+        <div class="week-day-body">
+          <div class="week-time">21:00</div>
+          <div class="week-cat" style="background:var(--blue-light);color:var(--blue);">問いかけ系</div>
+          <div class="week-action">問いかけ-1 or 2</div>
+        </div>
+      </div>
+      <div class="week-day wd-fri">
+        <div class="week-day-name">金</div>
+        <div class="week-day-body">
+          <div class="week-time">7:00</div>
+          <div class="week-cat" style="background:var(--pink-light);color:var(--pink);">共感系</div>
+          <div class="week-action">共感-1 or 4<br>+ リプライ返信</div>
+        </div>
+      </div>
+      <div class="week-day wd-sat">
+        <div class="week-day-name">土</div>
+        <div class="week-day-body">
+          <div class="week-time">10:00</div>
+          <div class="week-cat" style="background:var(--purple-light);color:var(--purple);">開発裏話系</div>
+          <div class="week-action">裏話-2<br>土曜の報告</div>
+        </div>
+      </div>
+      <div class="week-day wd-sun">
+        <div class="week-day-name">日</div>
+        <div class="week-day-body">
+          <div class="week-time">13:00</div>
+          <div class="week-cat" style="background:var(--pink-light);color:var(--pink);">共感系</div>
+          <div class="week-action">共感-5<br>日曜の夜</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note-box" style="margin-top:0">
+      <span class="nk">木→金の連携　</span>木曜夜のリプライ返信は金曜朝が最優先。土日まで放置すると投稿の表示寿命が減衰する。<br>
+      <span class="nk">月→火の連携　</span>月曜の共感系でフォローした人が火曜に教育ツリーを見てブックマーク。週の信頼を積む流れ。<br>
+      <span class="nk">日→月の連携　</span>日曜の「水1杯」の橋渡しが月曜投稿への期待を形成し、週のループを回す起点になる。<br>
+      <span class="nk">2週間先行サイクル　</span>木村が2週間分を先行作成 → 金曜中にまさくんへ共有 → 月曜フィードバック → 翌週から順次投稿。
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 6. チェックリスト -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="check">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h2 class="section-title">投稿前チェックリスト</h2>
+    </div>
+    <p class="section-desc">投稿前に必ず確認。クリックでチェックできます。</p>
+
+    <div class="info-card">
+      <div class="info-card-body" style="padding:0">
+        <ul class="checklist" id="checklist">
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>ひらがな多め・短い文で改行。1行10〜15文字。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>句読点は1文に1〜2個まで。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>「！」は1投稿1回まで。絵文字は0〜1個。「！！！」は絶対NG。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>やわらかい断定。「〜だったりする」「〜かも」「〜なんだよね」。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>自分の経験・感覚として語っているか。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>上から教えていないか。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>薬機法NGワード（便秘が治る・腸が整う・デトックス・〇〇に効く）を使っていないか。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>外部リンクを投稿本文に貼っていないか（当面）。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>商品の直接宣伝になっていないか（当面）。</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+</main>
 
 <footer>
-  <p>&copy; 2026 LINE Harness — Open Source CRM for LINE Official Accounts</p>
-  <p style="margin-top:6px;"><a href="https://github.com/Shudesu/line-harness-oss" target="_blank">GitHub</a> &middot; <a href="https://x.com/ai_shunoda" target="_blank">𝕏</a></p>
+  GYURUTT X投稿サンプル集 — Phase 1（〜フォロワー100人）運用版　2026年4月
 </footer>
 
-
-<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 <script>
-(function(){
-  // Floating CTA: show after scrolling past hero
-  var fc = document.getElementById('floatCta');
-  var hero = document.getElementById('top');
-  function checkScroll() {
-    if (!hero || !fc) return;
-    var rect = hero.getBoundingClientRect();
-    if (rect.bottom < 0) {
-      fc.classList.add('show');
-    } else {
-      fc.classList.remove('show');
-    }
-  }
-  window.addEventListener('scroll', checkScroll, {passive:true});
-  checkScroll();
-
-  // Scroll animation
-  var obs = new IntersectionObserver(function(entries){
-    entries.forEach(function(e){ if(e.isIntersecting) e.target.classList.add('visible'); });
-  }, {threshold:0.08});
-  document.querySelectorAll('.fade-up').forEach(function(el){ obs.observe(el); });
-
-  // FAQ toggle
-  document.querySelectorAll('.faq-q').forEach(function(q){
-    q.addEventListener('click', function(){ this.parentElement.classList.toggle('open'); });
-  });
-})();
+function toggleCheck(li) {
+  const box = li.querySelector('.check-box');
+  const span = li.querySelector('span');
+  box.classList.toggle('checked');
+  li.classList.toggle('checked-item');
+}
 </script>
-
 </body>
 </html>
