@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** WindowsマシンのOllama+ComfyUIを使い、夜間にフィード画像とリール動画を大量生成してD1に保存し、朝にスマホブラウザで採用/非採用を選べる仕組みを構築する。
+**Goal:** WindowsマシンのOllama+ComfyUIを使い、夜間にフィード画像とリール動画を大量生成し、Gemma 4が自動評価して高スコアのものだけを投稿キューに自動採用。採用事例が30件溜まったらRAGモードに移行して自己改善する継続ループを構築する。
 
-**Architecture:** Windows Task Schedulerが毎夜23:00にNode.jsスクリプトを起動。Ollamaでテキスト生成→ComfyUI APIで画像・動画生成→R2アップロード→D1保存の順でパイプラインを実行。確認UIはCloudflare Pages + Cloudflare Access（Google認証）で提供。
+**Architecture:** Windows Task Schedulerが毎夜23:00にNode.jsスクリプトを起動。Ollamaでテキスト生成→Gemma 4で自動評価（閾値70以上のみ通過）→ComfyUI APIで画像・動画生成→R2アップロード→D1保存の順でパイプラインを実行。週次でweights.jsonとadopted_examples.jsonを自動更新し、30件以上で評価がRAGモードに移行。確認UIはCloudflare Pages + Cloudflare Access（Google認証）で提供（人間の介入は任意）。
 
 **Tech Stack:** Node.js + TypeScript（Windows側バッチ）、Ollama REST API、ComfyUI API、Cloudflare D1/R2/Pages、既存の `batch/d1-rest.ts` と `batch/r2-upload.ts` を再利用。
 
@@ -18,14 +18,17 @@ ig-auto-poster/
 │   ├─ d1-rest.ts          （既存・変更なし）
 │   ├─ r2-upload.ts        （既存・変更なし）
 │   ├─ nightbatch/
-│   │   ├─ types.ts        （新規：型定義）
-│   │   ├─ fetch-topics.ts （新規：D1+NotionからネタDB取得）
-│   │   ├─ pattern-selector.ts （新規：48パターン抽選）
-│   │   ├─ text-generator.ts   （新規：Ollama API呼び出し）
-│   │   ├─ comfyui-generator.ts（新規：ComfyUI API呼び出し）
-│   │   ├─ save-results.ts     （新規：D1+R2保存）
-│   │   ├─ weights.json        （新規：パターン重みファイル）
-│   │   └─ main.ts             （新規：パイプライン統括エントリ）
+│   │   ├─ types.ts              （新規：型定義）
+│   │   ├─ fetch-topics.ts       （新規：D1+NotionからネタDB取得）
+│   │   ├─ pattern-selector.ts   （新規：48パターン抽選）
+│   │   ├─ text-generator.ts     （新規：Ollama API呼び出し）
+│   │   ├─ auto-reviewer.ts      （新規：Gemma 4自動評価）
+│   │   ├─ comfyui-generator.ts  （新規：ComfyUI API呼び出し）
+│   │   ├─ save-results.ts       （新規：D1+R2保存）
+│   │   ├─ weights.json          （新規：パターン重みファイル）
+│   │   ├─ rubric.yaml           （新規：評価基準定義）
+│   │   ├─ adopted_examples.json （新規：採用事例蓄積・RAG用）
+│   │   └─ main.ts               （新規：パイプライン統括エントリ）
 ├─ migrations/
 │   └─ 0010_nightbatch.sql （新規：pattern_weightsテーブル追加）
 ├─ review-ui/              （新規：Cloudflare Pages確認UI）
@@ -1144,22 +1147,371 @@ git commit -m "feat(ig-nightbatch): add weekly learning loop"
 
 ---
 
+---
+
+## Task 12: 自動評価モジュール（auto-reviewer.ts + rubric.yaml）
+
+**Files:**
+- Create: `ig-auto-poster/batch/nightbatch/rubric.yaml`
+- Create: `ig-auto-poster/batch/nightbatch/auto-reviewer.ts`
+- Modify: `ig-auto-poster/batch/nightbatch/types.ts`（ReviewResult型を追加）
+
+- [ ] **Step 1: rubric.yamlを作成**
+
+```yaml
+# 評価基準（0-100点満点）
+criteria:
+  - name: hook_strength
+    weight: 30
+    description: 最初の1文でスクロールを止められるか
+    good_example: "バリに3ヶ月いて気づいた、英語学習の本当の壁"
+    bad_example: "英語の勉強をしている人へ"
+
+  - name: target_fit
+    weight: 25
+    description: ターゲットの悩みや欲求に具体的に刺さっているか
+
+  - name: authenticity
+    weight: 25
+    description: テンプレ感がなく、一次情報や具体的数字が含まれているか
+
+  - name: cta_clarity
+    weight: 20
+    description: 読んだ後に何をすべきか明確か（保存・コメント・プロフィール訪問等）
+
+threshold:
+  auto_approve: 70   # 70点以上で自動採用
+  rag_mode_after: 30 # 採用事例30件でRAGモードに移行
+```
+
+- [ ] **Step 2: types.tsにReviewResult型を追加**
+
+既存の `types.ts` の末尾に追加:
+
+```typescript
+export interface ReviewResult {
+  score: number;           // 0-100
+  breakdown: {
+    hook_strength: number;
+    target_fit: number;
+    authenticity: number;
+    cta_clarity: number;
+  };
+  reason: string;          // 採点理由（1行）
+  mode: "rubric" | "rag";  // 評価モード
+}
+```
+
+- [ ] **Step 3: auto-reviewer.tsを作成**
+
+```typescript
+import { createRequire } from "module";
+import { fileURLToPath } from "url";
+import path from "path";
+import fs from "fs";
+import type { GeneratedText, Pattern, ReviewResult, NightbatchConfig } from "./types.js";
+
+const require = createRequire(import.meta.url);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+interface AdoptedExample {
+  caption: string;
+  score: number;
+  patternId: string;
+}
+
+function loadAdoptedExamples(): AdoptedExample[] {
+  const p = path.join(__dirname, "adopted_examples.json");
+  if (!fs.existsSync(p)) return [];
+  return JSON.parse(fs.readFileSync(p, "utf-8")) as AdoptedExample[];
+}
+
+function buildRubricPrompt(text: GeneratedText, pattern: Pattern): string {
+  return `あなたはInstagramコンテンツの審査員です。以下のキャプションを厳しく採点してください。
+
+キャプション:
+${text.caption}
+
+パターン: ${pattern.format} × ${pattern.visualStyle} × ${pattern.target}
+
+採点基準（合計100点）:
+- hook_strength（30点）: 最初の1文でスクロールを止められるか
+  良い例: "バリに3ヶ月いて気づいた、英語学習の本当の壁"
+  悪い例: "英語の勉強をしている人へ"
+- target_fit（25点）: ターゲットの悩みや欲求に具体的に刺さっているか
+- authenticity（25点）: テンプレ感がなく、具体的数字や一次情報があるか
+- cta_clarity（20点）: 読んだ後の行動（保存・コメント等）が明確か
+
+以下のJSON形式のみで返してください:
+{
+  "hook_strength": <0-30の整数>,
+  "target_fit": <0-25の整数>,
+  "authenticity": <0-25の整数>,
+  "cta_clarity": <0-20の整数>,
+  "reason": "<採点理由を1行で>"
+}`;
+}
+
+function buildRagPrompt(text: GeneratedText, pattern: Pattern, examples: AdoptedExample[]): string {
+  const top5 = examples
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map((e, i) => `事例${i + 1}（スコア${e.score}）:\n${e.caption}`)
+    .join("\n\n");
+
+  return `あなたはInstagramコンテンツの審査員です。過去の成功事例を参考に、以下のキャプションを採点してください。
+
+過去の成功事例（採用済み）:
+${top5}
+
+審査対象キャプション:
+${text.caption}
+
+パターン: ${pattern.format} × ${pattern.visualStyle} × ${pattern.target}
+
+採点基準（合計100点）:
+- hook_strength（30点）: 成功事例と比べてフックの強さはどうか
+- target_fit（25点）: ターゲットの悩みや欲求に刺さっているか
+- authenticity（25点）: 具体性・一次情報があるか
+- cta_clarity（20点）: 行動喚起が明確か
+
+以下のJSON形式のみで返してください:
+{
+  "hook_strength": <0-30の整数>,
+  "target_fit": <0-25の整数>,
+  "authenticity": <0-25の整数>,
+  "cta_clarity": <0-20の整数>,
+  "reason": "<採点理由を1行で>"
+}`;
+}
+
+export async function autoReview(
+  text: GeneratedText,
+  pattern: Pattern,
+  config: NightbatchConfig,
+): Promise<ReviewResult> {
+  const examples = loadAdoptedExamples();
+  const useRag = examples.length >= 30;
+  const prompt = useRag
+    ? buildRagPrompt(text, pattern, examples)
+    : buildRubricPrompt(text, pattern);
+
+  const res = await fetch(`${config.ollamaBaseUrl}/api/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: config.ollamaModel,
+      prompt,
+      stream: false,
+      format: "json",
+    }),
+  });
+  if (!res.ok) throw new Error(`Ollama review error: ${res.status}`);
+  const data = await res.json() as { response: string };
+  const parsed = JSON.parse(data.response) as {
+    hook_strength: number;
+    target_fit: number;
+    authenticity: number;
+    cta_clarity: number;
+    reason: string;
+  };
+
+  const score = parsed.hook_strength + parsed.target_fit + parsed.authenticity + parsed.cta_clarity;
+
+  return {
+    score,
+    breakdown: {
+      hook_strength: parsed.hook_strength,
+      target_fit: parsed.target_fit,
+      authenticity: parsed.authenticity,
+      cta_clarity: parsed.cta_clarity,
+    },
+    reason: parsed.reason,
+    mode: useRag ? "rag" : "rubric",
+  };
+}
+
+// 採用事例をadopted_examples.jsonに追記
+export function saveAdoptedExample(
+  caption: string,
+  score: number,
+  patternId: string,
+): void {
+  const p = path.join(__dirname, "adopted_examples.json");
+  const examples: AdoptedExample[] = fs.existsSync(p)
+    ? JSON.parse(fs.readFileSync(p, "utf-8"))
+    : [];
+  examples.push({ caption, score, patternId });
+  // 最大200件まで保持（古いものを削除）
+  const trimmed = examples.slice(-200);
+  fs.writeFileSync(p, JSON.stringify(trimmed, null, 2));
+}
+```
+
+- [ ] **Step 4: adopted_examples.jsonの初期ファイルを作成**
+
+```bash
+echo "[]" > ig-auto-poster/batch/nightbatch/adopted_examples.json
+```
+
+- [ ] **Step 5: コミット**
+
+```bash
+git add batch/nightbatch/auto-reviewer.ts batch/nightbatch/rubric.yaml batch/nightbatch/adopted_examples.json batch/nightbatch/types.ts
+git commit -m "feat(ig-nightbatch): add auto-reviewer with rubric→RAG mode switching"
+```
+
+---
+
+## Task 13: main.tsに自動評価を組み込む
+
+**Files:**
+- Modify: `ig-auto-poster/batch/nightbatch/main.ts`
+
+- [ ] **Step 1: main.tsのテキスト生成後に自動評価を挿入**
+
+`run()` 関数内の `const resolvedTexts = ...` の後、ComfyUI生成フェーズの前を以下に置き換える:
+
+```typescript
+  // Step 3: 自動評価フェーズ（閾値70以上のみ通過）
+  const SCORE_THRESHOLD = 70;
+  const passed: typeof resolvedTexts = [];
+  const failedCount = { count: 0 };
+
+  for (const item of resolvedTexts) {
+    try {
+      const topic = topics.find(t => t.id === item.topicId)!;
+      // patternIdから Pattern オブジェクトを再構築
+      const [format, visualStyle, target] = item.text.caption ? item.patternId.split("_") as [Format, VisualStyle, Target] : [];
+      const pattern: Pattern = { patternId: item.patternId, format, visualStyle, target };
+
+      const review = await autoReview(item.text, pattern, config);
+      console.log(`[nightbatch] 評価 ${review.score}/100 (${review.mode}): ${review.reason}`);
+
+      if (review.score >= SCORE_THRESHOLD) {
+        passed.push({ ...item, reviewScore: review.score });
+        // 採用事例として記録
+        saveAdoptedExample(item.text.caption, review.score, item.patternId);
+      } else {
+        // 低スコアはD1にrejected_autoで保存（学習データ）
+        await d1Execute(
+          config.cfAccountId,
+          config.d1DatabaseId,
+          config.cfApiToken,
+          `INSERT INTO generated_content
+            (topic_id, pattern_id, content_type, caption, script, hashtags,
+             status, created_at, content_json)
+           VALUES (?, ?, ?, ?, ?, ?, 'rejected_auto', datetime('now'), '{}')`,
+          [item.topicId, item.patternId, item.contentType,
+           item.text.caption, item.text.script, item.text.hashtags],
+        );
+        failedCount.count++;
+      }
+    } catch (err) {
+      console.error(`[nightbatch] 評価エラー:`, err);
+    }
+  }
+  console.log(`[nightbatch] 評価通過: ${passed.length}件 / 却下: ${failedCount.count}件`);
+
+  // Step 4: ComfyUI生成フェーズ（高スコアのみ）
+```
+
+また、`main.ts` の先頭importに追加:
+
+```typescript
+import { autoReview, saveAdoptedExample } from "./auto-reviewer.js";
+import { d1Execute } from "../d1-rest.js";
+import type { Format, VisualStyle, Target, Pattern } from "./types.js";
+```
+
+saveResult呼び出し時のstatusも `approved_auto` に変更:
+
+```typescript
+// saveResult内のINSERT文のstatus値を 'pending_review' → 'approved_auto' に変更
+```
+
+- [ ] **Step 2: 型チェック**
+
+```bash
+cd ig-auto-poster/batch
+npx tsc --noEmit
+```
+
+期待結果: エラー0
+
+- [ ] **Step 3: コミット**
+
+```bash
+git add batch/nightbatch/main.ts
+git commit -m "feat(ig-nightbatch): integrate auto-review into pipeline (rubric threshold 70)"
+```
+
+---
+
+## Task 14: weekly-learn.tsに採用事例更新を追加
+
+**Files:**
+- Modify: `ig-auto-poster/batch/nightbatch/weekly-learn.ts`
+
+- [ ] **Step 1: runWeeklyLearn関数の末尾に採用事例同期を追加**
+
+既存の `fs.writeFileSync(weightsPath, ...)` の後に追加:
+
+```typescript
+  // D1のapproved_autoからadopted_examples.jsonを同期
+  const approvedRows = await d1Query<{ caption: string; pattern_id: string }>(
+    config.cfAccountId,
+    config.d1DatabaseId,
+    config.cfApiToken,
+    `SELECT caption, pattern_id FROM generated_content
+     WHERE status = 'approved_auto'
+       AND reviewed_at >= datetime('now', '-7 days')
+     LIMIT 50`,
+  );
+
+  if (approvedRows.length > 0) {
+    const examplesPath = path.join(__dirname, "adopted_examples.json");
+    const existing: { caption: string; score: number; patternId: string }[] =
+      fs.existsSync(examplesPath) ? JSON.parse(fs.readFileSync(examplesPath, "utf-8")) : [];
+    const newExamples = approvedRows.map(r => ({
+      caption: r.caption,
+      score: 80, // 自動採用されたものは80点相当とみなす
+      patternId: r.pattern_id,
+    }));
+    const merged = [...existing, ...newExamples].slice(-200);
+    fs.writeFileSync(examplesPath, JSON.stringify(merged, null, 2));
+    console.log(`[weekly-learn] 採用事例更新: ${merged.length}件（RAGモード: ${merged.length >= 30 ? "ON" : "OFF"}）`);
+  }
+```
+
+- [ ] **Step 2: コミット**
+
+```bash
+git add batch/nightbatch/weekly-learn.ts
+git commit -m "feat(ig-nightbatch): sync adopted_examples from D1 in weekly learn"
+```
+
+---
+
 ## Self-Review
 
 spec確認:
 - D1/Notion両方からネタ取得 → Task 4 で実装済み
 - 48パターン抽選 → Task 3 で実装済み
 - Ollama テキスト生成 → Task 5 で実装済み
-- ComfyUI フィード+リール生成 → Task 6 で実装済み（リールワークフローは要更新）
+- Gemma 4 自動評価（ルーブリック→RAG移行） → Task 12 で実装済み
+- 閾値70以下はrejected_autoで保存（学習データ） → Task 12/13 で実装済み
+- ComfyUI フィード+リール生成（高スコアのみ） → Task 6 で実装済み（リールワークフローは要更新）
 - R2保存 → Task 7 で実装済み
-- 確認UI → Task 10 で実装済み
-- 学習ループ → Task 11 で実装済み
+- 確認UI（人間の介入は任意） → Task 10 で実装済み
+- 週次学習ループ + adopted_examples.json同期 → Task 11/14 で実装済み
 - Mac不要・Windows24h → Task 9 で実装済み
 
 型整合性:
 - `NightbatchConfig` はTask 2で定義、全モジュールで一貫してimport
 - `GeneratedText` はTask 2で定義、Task 5の戻り値型と一致
-- `saveResult` のシグネチャはTask 7とTask 8の呼び出しが一致
+- `ReviewResult` はTask 12でtypes.tsに追加、auto-reviewer.tsの戻り値型と一致
+- `saveResult` のstatusは `approved_auto` に統一（Task 13で変更）
 
 プレースホルダー:
 - ComfyUIリールワークフロー: フォールバックを明記済み（モデル確認後に更新）
