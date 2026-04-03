@@ -71,19 +71,26 @@ async def register_dataannotation() -> dict[str, Any]:
         raise RuntimeError("Could not find signup form#new_user")
     action = str(form["action"])
     post_url = urljoin(url, action)
+    data: dict[str, str] = {}
+    for inp in form.find_all("input"):
+        name = inp.get("name")
+        if not name or name.startswith("user[") or name == "commit":
+            continue
+        data[str(name)] = str(inp.get("value") or "")
     token_input = form.find("input", {"name": "authenticity_token"})
     if not token_input or not token_input.get("value"):
         raise RuntimeError("authenticity_token missing")
-    data = {
-        "authenticity_token": str(token_input["value"]),
-        "referral_code": "",
-        "user[first_name]": env.name_first,
-        "user[last_name]": env.name_last,
-        "user[email]": env.email,
-        "user[password]": env.password,
-        "user[password_confirmation]": env.password,
-        "user[phone]": env.phone,
-    }
+    data["authenticity_token"] = str(token_input["value"])
+    data.update(
+        {
+            "user[first_name]": env.name_first,
+            "user[last_name]": env.name_last,
+            "user[email]": env.email,
+            "user[password]": env.password,
+            "user[password_confirmation]": env.password,
+            "user[phone]": env.phone,
+        }
+    )
     async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
         r = await client.post(
             post_url,
