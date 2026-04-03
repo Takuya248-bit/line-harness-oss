@@ -47,16 +47,17 @@ export async function fetchPexelsImage(
   }
 }
 
-// スポットごとにクエリを変えて写真の多様性を確保するジェネリッククエリ
+// 完全に異なる写真セットを取得するため、各クエリを意図的に差別化
+// "bali cafe"を含むと全て同じPexels上位結果になるため避ける
 const GENERIC_QUERIES = [
-  "bali cafe interior cozy",
-  "bali coffee shop aesthetic",
-  "tropical cafe wooden table",
-  "bali restaurant food",
-  "indonesia cafe latte art",
-  "bali smoothie bowl cafe",
-  "tropical coffee garden",
-  "bali brunch cafe",
+  "cozy coffee shop interior wooden",
+  "latte art barista hands",
+  "tropical smoothie bowl fruit",
+  "outdoor restaurant garden lights",
+  "espresso machine close up",
+  "breakfast table croissant coffee",
+  "tropical plant cafe aesthetic",
+  "matcha latte ceramic cup",
 ];
 
 export async function fetchSpotImages(
