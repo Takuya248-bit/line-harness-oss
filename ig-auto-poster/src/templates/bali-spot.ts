@@ -8,31 +8,68 @@ export interface BaliSpotData {
   spotName: string;
   description: string;
   hours?: string;
-  // A/Bテスト用フィールド
   area?: string;
   priceLevel?: string;
   highlight?: string;
   recommendedMenu?: string;
+  bestDish?: string;
+  atmosphere?: string;
+  reviewQuote?: string;
   infoStyle?: "simple" | "rich" | "practical";
 }
 
+function tableRow(label: string, value: string): SatoriNode {
+  return h("div", {
+    style: {
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 12,
+      paddingBottom: 10,
+      borderBottom: "1px solid rgba(255,255,255,0.12)",
+    },
+  },
+    h("span", {
+      style: {
+        fontSize: 14,
+        fontWeight: 900,
+        color: "rgba(255,255,255,0.6)",
+        fontFamily: FONT_FAMILY,
+        minWidth: 70,
+        flexShrink: 0,
+      },
+    }, label),
+    h("span", {
+      style: {
+        fontSize: 18,
+        fontWeight: 700,
+        color: "white",
+        fontFamily: FONT_FAMILY,
+        lineHeight: 1.5,
+      },
+    }, value),
+  );
+}
+
 export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
-  // 説明文は2行（60文字）に収める
-  const shortDesc = data.description.slice(0, 60) + (data.description.length > 60 ? "…" : "");
+  const rows: SatoriNode[] = [];
 
-  const descLines = wrapText(shortDesc, {
-    fontSize: 22,
-    fontWeight: 700,
-    color: "rgba(255,255,255,0.95)",
-    fontFamily: FONT_FAMILY,
-    lineHeight: 1.6,
-  }, 26);
-
-  // エリアとhighlight
-  const metaText = [data.area, data.highlight].filter(Boolean).join("  ·  ");
+  if (data.bestDish || data.recommendedMenu) {
+    rows.push(tableRow("おすすめ", data.bestDish || data.recommendedMenu || ""));
+  }
+  if (data.atmosphere) {
+    rows.push(tableRow("雰囲気", data.atmosphere));
+  }
+  if (data.reviewQuote) {
+    rows.push(tableRow("口コミ", `「${data.reviewQuote}」`));
+  }
+  if (data.area) {
+    rows.push(tableRow("エリア", data.area));
+  }
+  if (rows.length === 0 && data.description) {
+    rows.push(tableRow("紹介", data.description.slice(0, 60)));
+  }
 
   return photoBackground(data.imageUrl,
-    // ヘッダー: 番号バッジ + ロゴ
     h("div", {
       style: {
         display: "flex",
@@ -53,55 +90,41 @@ export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
       }, "Barilingual"),
     ),
 
-    // 写真エリア（上部80%）
     h("div", { style: { display: "flex", flex: 1 } }),
 
-    // 下部テキストエリア（グラデーション背景）
     h("div", {
       style: {
         display: "flex",
         flexDirection: "column",
-        padding: "48px 40px 40px 40px",
-        background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.75) 30%, rgba(0,0,0,0.85) 100%)",
-        gap: 12,
+        padding: "40px 36px 36px 36px",
+        background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 25%, rgba(0,0,0,0.9) 100%)",
+        gap: 8,
       },
     },
-      // 店名（大きく中央）
       h("span", {
         style: {
-          fontSize: 48,
+          fontSize: 44,
           fontWeight: 900,
           color: "white",
           fontFamily: FONT_FAMILY,
-          textAlign: "center",
           textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+          marginBottom: 12,
         },
       }, data.spotName),
 
-      // 説明文（2行以内）
-      h("div", {
-        style: {
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 2,
-          marginTop: 4,
-        },
-      }, ...descLines),
+      ...rows,
 
-      // エリア · highlight（小さく）
-      ...(metaText
+      ...(data.highlight
         ? [
             h("span", {
               style: {
-                fontSize: 18,
+                fontSize: 15,
                 fontWeight: 700,
-                color: "rgba(255,255,255,0.7)",
+                color: "rgba(255,255,255,0.5)",
                 fontFamily: FONT_FAMILY,
-                textAlign: "center",
-                marginTop: 8,
+                marginTop: 4,
               },
-            }, metaText),
+            }, data.highlight),
           ]
         : []),
     ),

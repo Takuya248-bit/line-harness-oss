@@ -281,7 +281,7 @@ async function main() {
       interface V2PlanRaw {
         title: string;
         coverData: { catchCopy: string; mainTitle: string; countLabel: string };
-        spotsData: { spotNumber: number; spotName: string; description: string; area?: string; priceLevel?: string; highlight?: string; hours?: string; recommendedMenu?: string }[];
+        spotsData: { spotNumber: number; spotName: string; description: string; area?: string; priceLevel?: string; highlight?: string; hours?: string; recommendedMenu?: string; bestDish?: string; atmosphere?: string; reviewQuote?: string }[];
         summaryData: { title: string; spots: { number: number; name: string; oneLiner: string }[] };
       }
       let v2Raw: V2PlanRaw;
@@ -363,6 +363,9 @@ async function main() {
           highlight: s.highlight,
           hours: s.hours,
           recommendedMenu: s.recommendedMenu,
+          bestDish: s.bestDish,
+          atmosphere: s.atmosphere,
+          reviewQuote: s.reviewQuote,
           infoStyle,
         })),
         summaryData: {

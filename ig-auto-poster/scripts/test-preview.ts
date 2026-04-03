@@ -52,7 +52,7 @@ async function main() {
   interface V2Plan {
     title: string;
     coverData: { catchCopy: string; mainTitle: string; countLabel: string };
-    spotsData: { spotNumber: number; spotName: string; description: string; area?: string; highlight?: string }[];
+    spotsData: { spotNumber: number; spotName: string; description: string; area?: string; highlight?: string; bestDish?: string; atmosphere?: string; reviewQuote?: string }[];
     summaryData: { title: string; spots: { number: number; name: string; oneLiner: string }[] };
   }
 
@@ -89,8 +89,10 @@ async function main() {
       spotName: s.spotName || "",
       description: s.description || "",
       area: s.area,
-      priceLevel: s.priceLevel,
       highlight: s.highlight,
+      bestDish: s.bestDish,
+      atmosphere: s.atmosphere,
+      reviewQuote: s.reviewQuote,
       infoStyle: "rich" as const,
     })),
     summaryData: v2Raw.summaryData || { title: "まとめ", spots: [] },
