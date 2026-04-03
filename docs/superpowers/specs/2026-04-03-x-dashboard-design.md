@@ -36,6 +36,8 @@ CREATE TABLE posts (
   content TEXT NOT NULL,
   media_urls TEXT,
   status TEXT DEFAULT 'draft',  -- draft / pending_approval / approved / rejected / posted
+  thread_id TEXT,               -- スレッド先頭のpost ID（NULLなら単体投稿）
+  thread_order INTEGER DEFAULT 0, -- スレッド内の順番（0が先頭）
   scheduled_at TEXT,
   posted_at TEXT,
   tweet_id TEXT,
@@ -100,8 +102,9 @@ GET    /api/calendar           -- 月/週の投稿カレンダーデータ
 ### 投稿一覧（/posts）
 - ステータスタブ: 全て / 下書き / 承認待ち / 承認済み / 投稿済み / 却下
 - 投稿カード: 本文プレビュー・予定日時・ステータスバッジ
-- 管理者: 新規作成・編集・submit
-- クライアント: approve/reject + 却下理由入力
+- スレッド投稿はカード内にツリー表示（1/3, 2/3...のインジケーター）
+- 管理者: 新規作成・編集・submit、「+ ツイートを追加」でスレッド化
+- クライアント: approve/reject + 却下理由入力（スレッドは一括承認）
 
 ### カレンダー（/calendar）
 - 月表示カレンダー、ステータス色分け
@@ -117,7 +120,8 @@ GET    /api/calendar           -- 月/週の投稿カレンダーデータ
 
 ### 投稿実行
 - GitHub Actions Cron(5分毎): approved + scheduled_at が過去の投稿を検出
-- bird CLIで投稿 → tweet_idをAPI経由でD1に保存 → status: posted
+- 単体投稿: bird CLIで投稿 → tweet_idを保存 → status: posted
+- スレッド投稿: thread_id でグループ化 → thread_order 昇順で連続投稿。各ツイートは前のtweet_idにリプライしてスレッド構成
 
 ### メトリクス収集
 - GitHub Actions Cron(6時間毎): 直近7日分のposted投稿のメトリクスをbird CLIで取得
