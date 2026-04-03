@@ -14,9 +14,9 @@ export function buildBaliSummaryNode(data: BaliSummaryData): SatoriNode {
       style: {
         display: "flex",
         alignItems: "center",
-        gap: 20,
-        padding: "14px 0",
-        borderBottom: "1px solid rgba(255,255,255,0.15)",
+        gap: 16,
+        padding: "12px 0",
+        borderBottom: "1px solid rgba(255,255,255,0.12)",
       },
     },
       h("div", {
@@ -24,64 +24,74 @@ export function buildBaliSummaryNode(data: BaliSummaryData): SatoriNode {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          width: 52,
-          height: 52,
-          borderRadius: 26,
+          width: 48,
+          height: 48,
+          borderRadius: 24,
           backgroundColor: "#E67E22",
           flexShrink: 0,
         },
       },
         h("span", {
-          style: { fontSize: 22, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY },
+          style: { fontSize: 20, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY },
         }, String(spot.number)),
       ),
       h("div", {
         style: { display: "flex", flexDirection: "column", gap: 2 },
       },
         h("span", {
-          style: { fontSize: 30, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY },
+          style: { fontSize: 28, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY },
         }, spot.name),
         h("span", {
-          style: { fontSize: 22, fontWeight: 700, color: "rgba(255,255,255,0.75)", fontFamily: FONT_FAMILY },
+          style: { fontSize: 20, fontWeight: 700, color: "rgba(255,255,255,0.7)", fontFamily: FONT_FAMILY },
         }, spot.oneLiner),
       ),
     ),
   );
 
-  // 中央寄せの半透明カード
-  const card = h("div", {
-    style: {
-      display: "flex",
-      flexDirection: "column",
-      margin: "0 36px",
-      backgroundColor: "rgba(0,0,0,0.6)",
-      borderRadius: 20,
-      padding: "32px 40px",
-      border: "1px solid rgba(255,255,255,0.12)",
+  const bgFn = data.imageUrl
+    ? (...c: SatoriNode[]) => photoBackground(data.imageUrl!, ...c)
+    : (...c: SatoriNode[]) => tropicalBackground(...c);
+
+  return bgFn(
+    // ヘッダー
+    h("div", {
+      style: { display: "flex", justifyContent: "center", paddingTop: 28 },
     },
-  },
-    h("span", {
+      h("span", {
+        style: { fontSize: 32, fontWeight: 700, color: "white", fontFamily: FONT_FAMILY, textShadow: "0 2px 8px rgba(0,0,0,0.7)" },
+      }, "Barilingual"),
+    ),
+
+    // 上部スペーサー
+    h("div", { style: { display: "flex", flexGrow: 1, flexShrink: 1, minHeight: 20 } }),
+
+    // 中央カード
+    h("div", {
       style: {
-        fontSize: 44,
-        fontWeight: 900,
-        color: "white",
-        fontFamily: FONT_FAMILY,
-        textAlign: "center",
-        marginBottom: 20,
+        display: "flex",
+        flexDirection: "column",
+        marginLeft: 32,
+        marginRight: 32,
+        backgroundColor: "rgba(0,0,0,0.65)",
+        borderRadius: 20,
+        padding: "28px 36px",
+        border: "1px solid rgba(255,255,255,0.1)",
       },
-    }, data.title || "まとめ"),
-    ...spotRows,
+    },
+      h("span", {
+        style: {
+          fontSize: 40,
+          fontWeight: 900,
+          color: "white",
+          fontFamily: FONT_FAMILY,
+          textAlign: "center",
+          marginBottom: 16,
+        },
+      }, data.title || "まとめ"),
+      ...spotRows,
+    ),
+
+    // 下部スペーサー
+    h("div", { style: { display: "flex", flexGrow: 1, flexShrink: 1, minHeight: 20 } }),
   );
-
-  const content = [
-    baliLogo(),
-    h("div", { style: { display: "flex", flex: 1 } }),
-    card,
-    h("div", { style: { display: "flex", flex: 1 } }),
-  ];
-
-  if (data.imageUrl) {
-    return photoBackground(data.imageUrl, ...content);
-  }
-  return tropicalBackground(...content);
 }

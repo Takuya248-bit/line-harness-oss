@@ -44,12 +44,12 @@ export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
   }, 14);
 
   const descLines = wrapText(data.description, {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 700,
     color: "rgba(255,255,255,0.9)",
     fontFamily: FONT_FAMILY,
-    lineHeight: 1.5,
-  }, 22);
+    lineHeight: 1.4,
+  }, 28);
 
   // 情報行を構築
   const infoRows: SatoriNode[] = [];
