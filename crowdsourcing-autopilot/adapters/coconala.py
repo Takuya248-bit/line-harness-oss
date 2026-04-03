@@ -58,6 +58,10 @@ def _parse_cards(cards, platform: str) -> List[Job]:
         if rid in seen:
             continue
         seen.add(rid)
+        # 募集終了フィルタ
+        card_text = card.get_text()
+        if "募集終了" in card_text or "受付終了" in card_text:
+            continue
         title_el = card.find("div", class_="c-itemInfo_title")
         title = title_el.get_text(strip=True) if title_el else f"Request {rid}"
         desc_el = card.find("div", class_="c-itemInfo_description")

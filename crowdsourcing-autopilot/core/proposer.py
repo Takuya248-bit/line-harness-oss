@@ -12,7 +12,7 @@ from db.migrate import default_db_path
 from db.models import Job
 from db.queries import fetch_proposal_templates
 
-MODEL = "llama-3.3-70b-versatile"
+MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
 
 
 def _client() -> Groq:
@@ -70,14 +70,20 @@ Use the few-shot examples only as style reference, do not copy verbatim."""
 
     def _run() -> str:
         client = _client()
-        chat = client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            temperature=0.5,
-        )
-        return (chat.choices[0].message.content or "").strip()
+        for model in MODELS:
+            try:
+                chat = client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
+                    ],
+                    temperature=0.5,
+                )
+                return (chat.choices[0].message.content or "").strip()
+            except Exception as exc:
+                if "rate_limit" in str(exc) and model != MODELS[-1]:
+                    continue
+                raise
 
     return await asyncio.to_thread(_run)

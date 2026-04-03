@@ -54,17 +54,12 @@ def _keyword_match(job: Job, keywords: List[str]) -> bool:
 def _budget_ok(job: Job, budget_cfg: dict) -> bool:
     hourly_floor = float(budget_cfg.get("hourly") or 0)
     fixed_floor = float(budget_cfg.get("fixed") or 0)
+    ref = job.budget_max or job.budget_min
+    if ref is None:
+        return True  # 予算不明は通す（スコアリングで判断）
     if job.budget_type == "hourly":
-        ref = job.budget_min or job.budget_max
-        if ref is None:
-            return True
         return ref >= hourly_floor
-    if job.budget_type == "fixed":
-        ref = job.budget_max or job.budget_min
-        if ref is None:
-            return True
-        return ref >= fixed_floor
-    return True
+    return ref >= fixed_floor
 
 
 async def run_scan() -> None:
@@ -74,6 +69,7 @@ async def run_scan() -> None:
     db_path = default_db_path()
 
     keywords: List[str] = list(scan.get("keywords") or [])
+    exclude: List[str] = list(scan.get("exclude_keywords") or [])
     budget_cfg = dict(scan.get("budget_min") or {})
     thresholds = dict(scan.get("thresholds") or {"high": 70, "maybe": 50})
     high = int(thresholds.get("high", 70))
@@ -102,6 +98,8 @@ async def run_scan() -> None:
     processed = 0
     for job in jobs:
         if keywords and not _keyword_match(job, keywords):
+            continue
+        if exclude and _keyword_match(job, exclude):
             continue
         if not _budget_ok(job, budget_cfg):
             continue

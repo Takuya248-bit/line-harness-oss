@@ -16,10 +16,21 @@ keywords:
   - SEO
   - ライティング
 budget_min:
-  hourly: 20
-  fixed: 50
+  hourly: 1000    # ¥1,000/h (JP) or $20/h (EN)
+  fixed: 5000     # ¥5,000 (JP) or $50 (EN)
 scan_interval: 300
 priority_window: 900
+exclude_keywords:
+  - 動画出演
+  - 声優
+  - ナレーション収録
+  - モデル募集
+  - 顔出し
+  - 撮影
+  - アンケート
+  - 感想を書いて
+  - 体験談
+  - 2分で終わる
 thresholds:
   high: 70
   maybe: 50
