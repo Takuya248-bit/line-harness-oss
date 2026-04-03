@@ -22,29 +22,26 @@ function tableRow(label: string, value: string): SatoriNode {
   return h("div", {
     style: {
       display: "flex",
-      alignItems: "flex-start",
+      alignItems: "center",
       gap: 12,
-      paddingBottom: 10,
-      borderBottom: "1px solid rgba(255,255,255,0.12)",
     },
   },
     h("span", {
       style: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: 900,
-        color: "rgba(255,255,255,0.6)",
+        color: "rgba(255,255,255,0.5)",
         fontFamily: FONT_FAMILY,
-        minWidth: 70,
+        minWidth: 56,
         flexShrink: 0,
       },
     }, label),
     h("span", {
       style: {
-        fontSize: 18,
+        fontSize: 17,
         fontWeight: 700,
         color: "white",
         fontFamily: FONT_FAMILY,
-        lineHeight: 1.5,
       },
     }, value),
   );
@@ -54,20 +51,25 @@ export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
   const rows: SatoriNode[] = [];
 
   if (data.bestDish || data.recommendedMenu) {
-    rows.push(tableRow("おすすめ", data.bestDish || data.recommendedMenu || ""));
+    rows.push(tableRow("料理", data.bestDish || data.recommendedMenu || ""));
   }
   if (data.atmosphere) {
-    rows.push(tableRow("雰囲気", data.atmosphere));
-  }
-  if (data.reviewQuote) {
-    rows.push(tableRow("口コミ", `「${data.reviewQuote}」`));
+    rows.push(tableRow("空間", data.atmosphere));
   }
   if (data.area) {
-    rows.push(tableRow("エリア", data.area));
+    rows.push(tableRow("場所", data.area));
   }
-  if (rows.length === 0 && data.description) {
-    rows.push(tableRow("紹介", data.description.slice(0, 60)));
+  if (data.hours) {
+    rows.push(tableRow("営業", data.hours));
   }
+
+  const descLines = wrapText(data.description.slice(0, 120), {
+    fontSize: 16,
+    fontWeight: 700,
+    color: "rgba(255,255,255,0.85)",
+    fontFamily: FONT_FAMILY,
+    lineHeight: 1.6,
+  }, 32);
 
   return photoBackground(data.imageUrl,
     h("div", {
@@ -96,35 +98,36 @@ export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
       style: {
         display: "flex",
         flexDirection: "column",
-        padding: "40px 36px 36px 36px",
-        background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.8) 25%, rgba(0,0,0,0.9) 100%)",
-        gap: 8,
+        padding: "36px 36px 32px 36px",
+        background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.75) 20%, rgba(0,0,0,0.92) 100%)",
+        gap: 6,
       },
     },
       h("span", {
         style: {
-          fontSize: 44,
+          fontSize: 40,
           fontWeight: 900,
           color: "white",
           fontFamily: FONT_FAMILY,
           textShadow: "0 2px 12px rgba(0,0,0,0.5)",
-          marginBottom: 12,
+          marginBottom: 8,
         },
       }, data.spotName),
 
       ...rows,
 
-      ...(data.highlight
+      ...(descLines.length > 0
         ? [
-            h("span", {
+            h("div", {
               style: {
-                fontSize: 15,
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.5)",
-                fontFamily: FONT_FAMILY,
-                marginTop: 4,
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+                marginTop: 10,
+                paddingTop: 10,
+                borderTop: "1px solid rgba(255,255,255,0.15)",
               },
-            }, data.highlight),
+            }, ...descLines),
           ]
         : []),
     ),
