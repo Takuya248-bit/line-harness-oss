@@ -97,7 +97,10 @@ JSONスキーマ:
     {
       "spotNumber": 1,
       "spotName": "スポット名",
-      "description": "50文字以内の説明"
+      "description": "50文字以内の説明",
+      "area": "エリア名（例: ウブド、スミニャック、チャングー）",
+      "priceLevel": "$ / $$ / $$$",
+      "highlight": "おすすめポイント（30文字以内）"
     }
   ],
   "summaryData": {
