@@ -8,6 +8,12 @@ export interface BaliSpotData {
   spotName: string;
   description: string;
   hours?: string;
+  // A/Bテスト用フィールド
+  area?: string;
+  priceLevel?: string;
+  highlight?: string;
+  recommendedMenu?: string;
+  infoStyle?: "simple" | "rich" | "practical";
 }
 
 export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
@@ -28,6 +34,97 @@ export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
     textShadow: "0 3px 10px rgba(0,0,0,0.8)",
     textAlign: "center",
   }, 14);
+
+  const style = data.infoStyle ?? "simple";
+
+  const extraNodes: SatoriNode[] = [];
+
+  if (style === "rich") {
+    if (data.priceLevel) {
+      extraNodes.push(
+        h("div", {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            marginTop: 10,
+            gap: 8,
+          },
+        },
+          h("span", {
+            style: {
+              fontSize: 24,
+              fontWeight: 700,
+              color: "white",
+              fontFamily: FONT_FAMILY,
+              backgroundColor: "rgba(255,255,255,0.2)",
+              borderRadius: 8,
+              padding: "2px 12px",
+            },
+          }, data.priceLevel),
+        ),
+      );
+    }
+    if (data.highlight) {
+      extraNodes.push(
+        h("span", {
+          style: {
+            fontSize: 24,
+            fontWeight: 700,
+            color: "rgba(255,255,255,0.85)",
+            fontFamily: FONT_FAMILY,
+            marginTop: 6,
+          },
+        }, data.highlight),
+      );
+    }
+  } else if (style === "practical") {
+    if (data.hours) {
+      extraNodes.push(
+        h("div", {
+          style: { display: "flex", alignItems: "center", marginTop: 12, gap: 8 },
+        },
+          h("span", {
+            style: { fontSize: 28, color: "white", fontFamily: FONT_FAMILY, fontWeight: 700 },
+          }, `⏰ ${data.hours}`),
+        ),
+      );
+    }
+    if (data.priceLevel) {
+      extraNodes.push(
+        h("div", {
+          style: { display: "flex", alignItems: "center", marginTop: 8, gap: 8 },
+        },
+          h("span", {
+            style: { fontSize: 28, color: "white", fontFamily: FONT_FAMILY, fontWeight: 700 },
+          }, `💰 ${data.priceLevel}`),
+        ),
+      );
+    }
+    if (data.recommendedMenu) {
+      extraNodes.push(
+        h("div", {
+          style: { display: "flex", alignItems: "center", marginTop: 8, gap: 8 },
+        },
+          h("span", {
+            style: { fontSize: 28, color: "white", fontFamily: FONT_FAMILY, fontWeight: 700 },
+          }, `🍽 ${data.recommendedMenu}`),
+        ),
+      );
+    }
+  } else {
+    // simple: hours only (existing behavior)
+    if (data.hours) {
+      extraNodes.push(
+        h("div", {
+          style: { display: "flex", alignItems: "center", marginTop: 12, gap: 8 },
+        },
+          h("span", {
+            style: { fontSize: 28, color: "white", fontFamily: FONT_FAMILY, fontWeight: 700 },
+          }, `⏰ ${data.hours}`),
+        ),
+      );
+    }
+  }
 
   return photoBackground(data.imageUrl,
     baliLogo(),
@@ -66,20 +163,7 @@ export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
       h("div", {
         style: { display: "flex", flexDirection: "column", gap: 2 },
       }, ...descLines),
-      ...(data.hours ? [
-        h("div", {
-          style: {
-            display: "flex",
-            alignItems: "center",
-            marginTop: 12,
-            gap: 8,
-          },
-        },
-          h("span", {
-            style: { fontSize: 28, color: "white", fontFamily: FONT_FAMILY, fontWeight: 700 },
-          }, `⏰ ${data.hours}`),
-        ),
-      ] : []),
+      ...extraNodes,
     ),
   );
 }

@@ -1,62 +1,65 @@
 import type { SatoriNode } from "../satori-types";
 import { FONT_FAMILY, WIDTH, HEIGHT } from "./styles";
-import { h, tropicalBackground, baliLogo, wrapText } from "./base";
+import { h, tropicalBackground, photoBackground, baliLogo, wrapText } from "./base";
 
-export function buildBaliCtaNode(): SatoriNode {
-  return tropicalBackground(
-    baliLogo(),
+export function buildBaliCtaNode(imageUrl?: string): SatoriNode {
+  const innerContent = h("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      flex: 1,
+      gap: 40,
+      padding: "0 60px",
+    },
+  },
     h("div", {
       style: {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        flex: 1,
-        gap: 40,
-        padding: "0 60px",
+        gap: 4,
       },
     },
-      h("div", {
-        style: {
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 4,
-        },
+      h("span", { style: { fontSize: 48, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY, textAlign: "center" } }, "無料で留学費用表を"),
+      h("span", { style: { fontSize: 48, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY, textAlign: "center" } }, "受け取れます"),
+    ),
+    h("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#06C755",
+        borderRadius: 50,
+        padding: "20px 60px",
       },
-        h("span", { style: { fontSize: 48, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY, textAlign: "center" } }, "無料で留学費用表を"),
-        h("span", { style: { fontSize: 48, fontWeight: 900, color: "white", fontFamily: FONT_FAMILY, textAlign: "center" } }, "受け取れます"),
-      ),
-      h("div", {
+    },
+      h("span", {
         style: {
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: "#06C755",
-          borderRadius: 50,
-          padding: "20px 60px",
+          fontSize: 36,
+          fontWeight: 900,
+          color: "white",
+          fontFamily: FONT_FAMILY,
         },
+      }, "LINEで受け取る"),
+    ),
+    h("div", {
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 4,
       },
-        h("span", {
-          style: {
-            fontSize: 36,
-            fontWeight: 900,
-            color: "white",
-            fontFamily: FONT_FAMILY,
-          },
-        }, "LINEで受け取る"),
-      ),
-      h("div", {
-        style: {
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 4,
-        },
-      },
-        h("span", { style: { fontSize: 30, fontWeight: 700, color: "rgba(255,255,255,0.8)", fontFamily: FONT_FAMILY, textAlign: "center" } }, "プロフィールのリンクから"),
-        h("span", { style: { fontSize: 30, fontWeight: 700, color: "rgba(255,255,255,0.8)", fontFamily: FONT_FAMILY, textAlign: "center" } }, "どうぞ！"),
-      ),
+    },
+      h("span", { style: { fontSize: 30, fontWeight: 700, color: "rgba(255,255,255,0.8)", fontFamily: FONT_FAMILY, textAlign: "center" } }, "プロフィールのリンクから"),
+      h("span", { style: { fontSize: 30, fontWeight: 700, color: "rgba(255,255,255,0.8)", fontFamily: FONT_FAMILY, textAlign: "center" } }, "どうぞ！"),
     ),
   );
+
+  if (imageUrl) {
+    return photoBackground(imageUrl, baliLogo(), innerContent);
+  }
+
+  return tropicalBackground(baliLogo(), innerContent);
 }

@@ -1,17 +1,18 @@
 import { groqChat, groqJson } from "../src/groq";
 import { collectAndStoreNeta } from "../src/pipeline/neta-collector";
-import { selectBuzzFormat, buildPromptForPlan, buildPromptForV2Plan, parseContentPlan } from "../src/pipeline/content-planner";
+import { selectBuzzFormat, buildPromptForPlan, buildPromptForV2Plan, buildPromptForV2PlanWithRealSpots, parseContentPlan } from "../src/pipeline/content-planner";
 import { generateCarouselImages, selectDesign, DEFAULT_DESIGNS } from "../src/pipeline/media-generator";
 import { buildCaptionPrompt, formatCaption } from "../src/pipeline/caption-writer";
 import { buildScheduleDates } from "../src/pipeline/scheduler";
 import { formatWeeklyReport } from "../src/ab-test/reporter";
 import { detectBottleneck, determineTestAxis, assignTestGroups } from "../src/ab-test/manager";
 import { d1Query, d1Execute } from "./d1-rest";
-import { uploadToR2 } from "./r2-upload";
+import { uploadToR2, deleteR2Prefix } from "./r2-upload";
 import type { NetaEntry, ABTestMeta, WeeklyReport, ContentPlan } from "../src/pipeline/types";
 import { buildV2Slides, type BaliContentV2 } from "../src/templates/index";
 import { renderV2Slides } from "../src/pipeline/satori-renderer";
 import { fetchSpotImages, fetchPexelsImage } from "../src/pipeline/image-fetcher";
+import { collectSpots } from "../src/pipeline/spot-collector";
 
 const env = (key: string): string => {
   const v = process.env[key];
@@ -58,6 +59,7 @@ async function main() {
   const igToken = env("IG_ACCESS_TOKEN");
   const igAccountId = env("IG_BUSINESS_ACCOUNT_ID");
   const pexelsKey = optEnv("PEXELS_API_KEY");
+  const foursquareKey = optEnv("FOURSQUARE_API_KEY");
   const useSatoriV2 = !!pexelsKey;
 
   const week = await getWeekString();
@@ -73,6 +75,35 @@ async function main() {
     console.log(`Collected ${newNeta.length} new neta entries`);
   } catch (e) {
     console.error("Neta collection failed (continuing):", e);
+  }
+
+  // Step 1.5: スポット収集 (Foursquare)
+  if (foursquareKey) {
+    console.log("--- Step 1.5: スポット収集 ---");
+    try {
+      // real_spotsテーブルがなければ作成
+      await d1Execute(cfAccountId, d1DbId, cfApiToken,
+        `CREATE TABLE IF NOT EXISTS real_spots (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          area TEXT NOT NULL,
+          category TEXT NOT NULL DEFAULT 'cafe',
+          latitude REAL,
+          longitude REAL,
+          website TEXT,
+          foursquare_id TEXT UNIQUE,
+          price_level TEXT,
+          description TEXT,
+          used_count INTEGER DEFAULT 0,
+          fetched_at TEXT DEFAULT (datetime('now')),
+          created_at TEXT DEFAULT (datetime('now'))
+        )`,
+      );
+      const newSpots = await collectSpots(foursquareKey, cfAccountId, d1DbId, cfApiToken, "cafe", 50);
+      console.log(`Collected ${newSpots} new spots from Foursquare`);
+    } catch (e) {
+      console.error("Spot collection failed (continuing):", e);
+    }
   }
 
   // Step 2: 週次レポート
@@ -194,17 +225,43 @@ async function main() {
     let imageBuffers: Buffer[];
 
     if (useSatoriV2) {
-      // V2: Satori + 写真背景
+      // V2: Satori + 写真背景 + 実在スポット
       const area = "バリ島";
-      const v2Prompt = buildPromptForV2Plan(category, area, neta);
+
+      // A/Bテスト: 情報密度バリアント
+      const infoStyles = ["simple", "rich", "practical"] as const;
+      const infoStyle = infoStyles[i % infoStyles.length]!;
+
+      // real_spotsから実在スポットを取得
+      interface RealSpotRow { id: number; name: string; area: string; website: string | null }
+      let realSpots: RealSpotRow[] = [];
+      if (foursquareKey) {
+        realSpots = await d1Query<RealSpotRow>(
+          cfAccountId, d1DbId, cfApiToken,
+          "SELECT id, name, area, website FROM real_spots WHERE category = ? ORDER BY used_count ASC, RANDOM() LIMIT 5",
+          [category === "cafe" ? "cafe" : category],
+        );
+        // used_count更新
+        for (const spot of realSpots) {
+          await d1Execute(cfAccountId, d1DbId, cfApiToken,
+            "UPDATE real_spots SET used_count = used_count + 1 WHERE id = ?",
+            [spot.id],
+          );
+        }
+      }
+
+      // プロンプト生成: 実在スポットがあれば新プロンプト、なければ従来プロンプト
       interface V2PlanRaw {
         title: string;
         coverData: { catchCopy: string; mainTitle: string; countLabel: string };
-        spotsData: { spotNumber: number; spotName: string; description: string }[];
+        spotsData: { spotNumber: number; spotName: string; description: string; area?: string; priceLevel?: string; highlight?: string; hours?: string; recommendedMenu?: string }[];
         summaryData: { title: string; spots: { number: number; name: string; oneLiner: string }[] };
       }
       let v2Raw: V2PlanRaw;
       try {
+        const v2Prompt = realSpots.length >= 3
+          ? buildPromptForV2PlanWithRealSpots(category, area, realSpots, infoStyle, neta)
+          : buildPromptForV2Plan(category, area, neta);
         v2Raw = await groqJson<V2PlanRaw>(
           groqKey,
           [{ role: "user", content: v2Prompt }],
@@ -212,7 +269,6 @@ async function main() {
         );
       } catch (e) {
         console.error(`V2 plan generation failed for ${category}, falling back to V1:`, e);
-        // V1フォールバック（後段で再利用）
         const prompt = buildPromptForPlan(formatName, category, neta);
         let plan: ContentPlan;
         try {
@@ -232,7 +288,6 @@ async function main() {
           console.error(`Image generation failed for ${category}:`, e2);
           continue;
         }
-        // V2フォールバック時はキャプション生成へスキップ
         const captionPromptFb = buildCaptionPrompt(plan);
         let captionBodyFb: string;
         try {
@@ -250,10 +305,16 @@ async function main() {
         continue;
       }
 
-      // spotNamesを取得してPexels画像補完
+      // Pexels画像取得（実在店名 + エリア名でフォールバック検索）
       const spotNames = v2Raw.spotsData.map((s) => s.spotName);
-      const spotImageUrls = await fetchSpotImages(area, category, spotNames);
+      const spotAreas = v2Raw.spotsData.map((s) => s.area ?? "");
+      const spotImageUrls = await fetchSpotImages(area, category, spotNames, spotAreas);
       const coverImageUrl = await fetchPexelsImage(`${area} ${category} bali`);
+
+      // A/Bテスト: デザインバリアント（写真統一 vs グラデ混在）
+      const usePhotoForAll = !abMeta.isControl; // テスト群は写真統一
+      const summaryImageUrl = usePhotoForAll ? await fetchPexelsImage(`bali ${category} overview`) : undefined;
+      const ctaImageUrl = usePhotoForAll ? await fetchPexelsImage(`bali tropical beach`) : undefined;
 
       const v2Content: BaliContentV2 = {
         category,
@@ -270,10 +331,20 @@ async function main() {
           spotNumber: s.spotNumber,
           spotName: s.spotName,
           description: s.description,
+          area: s.area,
+          priceLevel: s.priceLevel,
+          highlight: s.highlight,
+          hours: s.hours,
+          recommendedMenu: s.recommendedMenu,
+          infoStyle,
         })),
-        summaryData: v2Raw.summaryData,
+        summaryData: {
+          ...v2Raw.summaryData,
+          imageUrl: summaryImageUrl,
+        },
         caption: "",
         attributions: [],
+        ctaImageUrl,
       };
 
       const v2Nodes = buildV2Slides(v2Content);
@@ -284,7 +355,8 @@ async function main() {
         continue;
       }
 
-      // R2アップロード
+      // R2残骸削除 + アップロード
+      await deleteR2Prefix(cfAccountId, r2Bucket, cfApiToken, `v4/${week}/${i}/`);
       const mediaUrlsV2: string[] = [];
       for (let j = 0; j < imageBuffers.length; j++) {
         const key = `v4/${week}/${i}/slide-${j + 1}.png`;

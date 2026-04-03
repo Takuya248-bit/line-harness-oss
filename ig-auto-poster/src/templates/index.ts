@@ -73,6 +73,7 @@ export interface BaliContentV2 {
   summaryData: BaliSummaryData;
   caption: string;
   attributions: string[];
+  ctaImageUrl?: string;  // 追加: CTA写真背景A/Bテスト用
 }
 
 export function buildV2Slides(content: BaliContentV2): SatoriNode[] {
@@ -82,6 +83,6 @@ export function buildV2Slides(content: BaliContentV2): SatoriNode[] {
     nodes.push(buildBaliSpotNode(spot));
   }
   nodes.push(buildBaliSummaryNode(content.summaryData));
-  nodes.push(buildBaliCtaNode());
+  nodes.push(buildBaliCtaNode(content.ctaImageUrl));
   return nodes;
 }

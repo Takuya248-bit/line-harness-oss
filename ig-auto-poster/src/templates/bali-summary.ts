@@ -1,10 +1,11 @@
 import type { SatoriNode } from "../satori-types";
 import { FONT_FAMILY, WIDTH, HEIGHT } from "./styles";
-import { h, tropicalBackground, baliLogo, wrapText } from "./base";
+import { h, tropicalBackground, photoBackground, baliLogo, wrapText } from "./base";
 
 export interface BaliSummaryData {
   title: string;
   spots: { number: number; name: string; oneLiner: string }[];
+  imageUrl?: string;  // 追加: 写真背景A/Bテスト用
 }
 
 export function buildBaliSummaryNode(data: BaliSummaryData): SatoriNode {
@@ -47,27 +48,30 @@ export function buildBaliSummaryNode(data: BaliSummaryData): SatoriNode {
     ),
   );
 
-  return tropicalBackground(
-    baliLogo(),
-    h("div", {
-      style: {
-        display: "flex",
-        flexDirection: "column",
-        padding: "20px 48px",
-        flex: 1,
-      },
+  const innerContent = h("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      padding: "20px 48px",
+      flex: 1,
     },
-      h("span", {
-        style: {
-          fontSize: 40,
-          fontWeight: 900,
-          color: "white",
-          fontFamily: FONT_FAMILY,
-          textAlign: "center",
-          marginBottom: 24,
-        },
-      }, "まとめ"),
-      ...spotRows,
-    ),
+  },
+    h("span", {
+      style: {
+        fontSize: 40,
+        fontWeight: 900,
+        color: "white",
+        fontFamily: FONT_FAMILY,
+        textAlign: "center",
+        marginBottom: 24,
+      },
+    }, "まとめ"),
+    ...spotRows,
   );
+
+  if (data.imageUrl) {
+    return photoBackground(data.imageUrl, baliLogo(), innerContent);
+  }
+
+  return tropicalBackground(baliLogo(), innerContent);
 }
