@@ -20,3 +20,14 @@
 - D1に残す: CRMデータ(友だち・タグ)、Webhook処理、リアルタイムシナリオ実行
 - 同期: Notion→Obsidian日次同期(QMD検索用)、Notion→CSV→D1(シナリオ設計)
 理由: Notion APIのレイテンシ(200-500ms)とレートリミット(3req/sec)はリアルタイム処理に不向き。管理・企画層はNotion、実行層はD1の使い分けが最適
+
+## 16:36 バリリンガル カード決済導入
+
+### Stripe Payment Links採用
+- 決定: 留学費用のカード決済にStripe Payment Linksを採用
+- 手数料3.6%は価格に上乗せ（振込価格 / 0.964、100円単位切り上げ）
+- 銀行振込は従来価格で併用
+- 分割払いはカード会社側の機能に任せる（Stripe側では提供しない）
+- 開発なし。Stripe管理画面で決済リンク作成→LINEで送信
+- 理由: 開発ゼロ、金額上限なし、将来LINE Harness連動も可能
+- 設計書: docs/superpowers/specs/2026-04-02-barilingual-card-payment-design.md
