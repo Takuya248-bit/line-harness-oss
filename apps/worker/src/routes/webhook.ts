@@ -35,6 +35,7 @@ import type { SurveyChoice } from '@line-crm/db';
 import { classify } from '../../../../os/core/classifier.js';
 import { handleInquiry, tryQuickAnswer } from '../../../../os/modules/inquiry/handler.js';
 import { notifyDiscord } from '../services/discord-notify.js';
+import { generateDraftWithGroq } from '../services/groq-draft.js';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import { buildSurveyQuestionFlex } from '../services/survey-flex.js';
@@ -140,13 +141,15 @@ webhook.post('/webhook', async (c) => {
               'INSERT INTO os_inquiry_log (line_user_id, message, module, confidence, status) VALUES (?, ?, ?, ?, ?)'
             ).bind(userId, text, classResult.module, classResult.confidence, 'received').run();
 
-            // ドラフト生成
+            // ドラフト生成（Groq優先→Haikuフォールバック）
             let draft: string | undefined;
+            let draftSource: string | undefined;
             if (classResult.module === 'inquiry') {
               const quickDraft = tryQuickAnswer(text);
               if (quickDraft) {
                 draft = quickDraft;
-              } else if (c.env.ANTHROPIC_API_KEY) {
+                draftSource = 'テンプレート';
+              } else {
                 try {
                   // D1から友だち情報+履歴取得
                   const friend = await db.prepare(
@@ -184,23 +187,32 @@ webhook.post('/webhook', async (c) => {
 
                   const userPrompt = `名前: ${friend?.display_name ?? '不明'} / タグ: ${tagNames || 'なし'}\n直近のやり取り:\n${historyText || 'なし'}\n\n今回のメッセージ: ${text}\n\n返信ドラフトを作成してください。`;
 
-                  const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'x-api-key': c.env.ANTHROPIC_API_KEY,
-                      'anthropic-version': '2023-06-01',
-                    },
-                    body: JSON.stringify({
-                      model: 'claude-haiku-4-5-20251001',
-                      max_tokens: 500,
-                      system: systemPrompt,
-                      messages: [{ role: 'user', content: userPrompt }],
-                    }),
-                  });
-                  if (apiRes.ok) {
-                    const data = await apiRes.json() as { content: { text: string }[] };
-                    draft = data.content?.[0]?.text;
+                  // Groq優先
+                  if (c.env.GROQ_API_KEY) {
+                    draft = await generateDraftWithGroq({ systemPrompt, userPrompt, groqApiKey: c.env.GROQ_API_KEY }) ?? undefined;
+                    if (draft) draftSource = 'Groq';
+                  }
+                  // Haikuフォールバック
+                  if (!draft && c.env.ANTHROPIC_API_KEY) {
+                    const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': c.env.ANTHROPIC_API_KEY,
+                        'anthropic-version': '2023-06-01',
+                      },
+                      body: JSON.stringify({
+                        model: 'claude-haiku-4-5-20251001',
+                        max_tokens: 500,
+                        system: systemPrompt,
+                        messages: [{ role: 'user', content: userPrompt }],
+                      }),
+                    });
+                    if (apiRes.ok) {
+                      const data = await apiRes.json() as { content: { text: string }[] };
+                      draft = data.content?.[0]?.text;
+                      if (draft) draftSource = 'Haiku';
+                    }
                   }
                 } catch (err) {
                   console.error('Draft generation error:', err);
@@ -219,6 +231,7 @@ webhook.post('/webhook', async (c) => {
                 module: classResult.module,
                 confidence: classResult.confidence,
                 draft,
+                draftSource,
               });
             }
           } catch (err) {
@@ -792,13 +805,15 @@ async function handleEvent(
         'received'
       ).run();
 
-      // ドラフト生成（inquiry のみ）
+      // ドラフト生成（inquiry のみ、Groq優先→Haikuフォールバック）
       let draft: string | undefined;
+      let draftSource: string | undefined;
       if (classResult.module === 'inquiry') {
         const quickDraft = tryQuickAnswer(incomingText);
         if (quickDraft) {
           draft = quickDraft;
-        } else if (env?.ANTHROPIC_API_KEY) {
+          draftSource = 'テンプレート';
+        } else {
           try {
             // D1から友だち情報+タグ+直近履歴を取得
             const friendTags = friend ? await getFriendTags(db, friend.id) : [];
@@ -846,23 +861,32 @@ ${incomingText}
 
 上記を踏まえて返信ドラフトを作成してください。`;
 
-            const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': env.ANTHROPIC_API_KEY,
-                'anthropic-version': '2023-06-01',
-              },
-              body: JSON.stringify({
-                model: 'claude-haiku-4-5-20251001',
-                max_tokens: 500,
-                system: systemPrompt,
-                messages: [{ role: 'user', content: userPrompt }],
-              }),
-            });
-            if (apiRes.ok) {
-              const data = await apiRes.json() as { content: { text: string }[] };
-              draft = data.content?.[0]?.text;
+            // Groq優先
+            if (env?.GROQ_API_KEY) {
+              draft = await generateDraftWithGroq({ systemPrompt, userPrompt, groqApiKey: env.GROQ_API_KEY }) ?? undefined;
+              if (draft) draftSource = 'Groq';
+            }
+            // Haikuフォールバック
+            if (!draft && env?.ANTHROPIC_API_KEY) {
+              const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-api-key': env.ANTHROPIC_API_KEY,
+                  'anthropic-version': '2023-06-01',
+                },
+                body: JSON.stringify({
+                  model: 'claude-haiku-4-5-20251001',
+                  max_tokens: 500,
+                  system: systemPrompt,
+                  messages: [{ role: 'user', content: userPrompt }],
+                }),
+              });
+              if (apiRes.ok) {
+                const data = await apiRes.json() as { content: { text: string }[] };
+                draft = data.content?.[0]?.text;
+                if (draft) draftSource = 'Haiku';
+              }
             }
           } catch (err) {
             console.error('Draft generation error:', err);
@@ -878,6 +902,7 @@ ${incomingText}
           module: classResult.module,
           confidence: classResult.confidence,
           draft,
+          draftSource,
         });
       }
     } catch (err) {
