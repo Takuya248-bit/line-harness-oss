@@ -1,0 +1,6 @@
+# Nightbatch auto-review rubric (max points per dimension, total 100)
+# Each score returned by the model must be an integer from 0 up to the max below.
+hook_strength: 30
+target_fit: 25
+authenticity: 25
+cta_clarity: 20
