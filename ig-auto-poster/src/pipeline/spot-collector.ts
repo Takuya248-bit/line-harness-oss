@@ -26,17 +26,33 @@ export async function collectSpots(
 ): Promise<number> {
   const amenity = AMENITY_MAP[category] ?? "cafe";
 
+  // 既にデータがあればスキップ（週1回の収集で十分）
+  const existingCount = await d1Query<{ cnt: number }>(
+    cfAccountId, d1DbId, cfApiToken,
+    "SELECT COUNT(*) as cnt FROM real_spots WHERE category = ?",
+    [category],
+  );
+  if ((existingCount[0]?.cnt ?? 0) >= 10) {
+    return 0; // 十分なデータあり
+  }
+
   // Overpass API: バリ島エリア内のカフェを検索（認証不要・完全無料）
   const query = `[out:json][timeout:25];area["name"="Bali"]["admin_level"="4"]->.bali;node["amenity"="${amenity}"](area.bali);out body ${limit};`;
 
-  const res = await fetch("https://overpass-api.de/api/interpreter", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `data=${encodeURIComponent(query)}`,
-  });
+  // リトライ（Overpass APIはサーバー混雑でタイムアウトすることがある）
+  let res: Response | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `data=${encodeURIComponent(query)}`,
+    });
+    if (res.ok) break;
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 5000 * (attempt + 1)));
+  }
 
-  if (!res.ok) {
-    throw new Error(`Overpass API error: ${res.status} ${await res.text()}`);
+  if (!res || !res.ok) {
+    throw new Error(`Overpass API error: ${res?.status ?? "no response"}`);
   }
 
   const data = (await res.json()) as OverpassResponse;
