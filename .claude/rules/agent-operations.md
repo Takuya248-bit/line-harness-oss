@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## 作業開始前の必須コンテキスト読み込み
 
-全てのエージェント（メイン・サブ問わず）は、コード変更や意思決定を行う前に以下を必ず読み込むこと。
+メインエージェント（Claude Code）のみ実施。cursor-agentなどのサブツールには課さない。
 
 1. `.company/secretary/notes/` 内の直近3日分の `*-decisions.md`（意思決定ログ）
 2. `.company/secretary/notes/` 内の直近の `*-progress.md`（進捗状況）
