@@ -36,29 +36,26 @@ function infoRow(icon: string, text: string): SatoriNode {
 
 export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
   const nameLines = wrapText(data.spotName, {
-    fontSize: 52,
+    fontSize: 42,
     fontWeight: 900,
     color: "white",
     fontFamily: FONT_FAMILY,
     textAlign: "center",
-  }, 14);
+  }, 18);
 
   const descLines = wrapText(data.description, {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 700,
     color: "rgba(255,255,255,0.9)",
     fontFamily: FONT_FAMILY,
-    lineHeight: 1.4,
-  }, 28);
+    lineHeight: 1.5,
+  }, 36);
 
   // 情報行を構築
   const infoRows: SatoriNode[] = [];
 
   if (data.area) {
     infoRows.push(infoRow("📍", data.area));
-  }
-  if (data.priceLevel) {
-    infoRows.push(infoRow("💰", data.priceLevel));
   }
   if (data.hours) {
     infoRows.push(infoRow("⏰", data.hours));
@@ -92,20 +89,18 @@ export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
       }, "Barilingual"),
     ),
 
-    // 上部スペーサー
-    h("div", { style: { display: "flex", flex: 1 } }),
-
-    // 中央: 情報カード
+    // 情報カード（上部に寄せて長文対応）
     h("div", {
       style: {
         display: "flex",
         flexDirection: "column",
-        margin: "0 32px",
+        margin: "16px 24px 0 24px",
         backgroundColor: "rgba(0,0,0,0.65)",
         borderRadius: 20,
-        padding: "32px 36px",
-        gap: 16,
+        padding: "24px 28px",
+        gap: 12,
         border: "1px solid rgba(255,255,255,0.15)",
+        flex: 1,
       },
     },
       // 店名
@@ -142,6 +137,6 @@ export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
     ),
 
     // 下部スペーサー
-    h("div", { style: { display: "flex", flex: 1 } }),
+    h("div", { style: { display: "flex", minHeight: 16 } }),
   );
 }
