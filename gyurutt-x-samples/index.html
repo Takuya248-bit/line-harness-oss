@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GYURUTT X投稿サンプル集</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --pink:        #C0527A;
+    --pink-light:  #FBEAF0;
+    --pink-mid:    #EAA0BC;
+    --teal:        #1A8A6A;
+    --teal-light:  #E4F5EE;
+    --purple:      #6356C4;
+    --purple-light:#EEEDFE;
+    --amber:       #B87320;
+    --amber-light: #FDF3E3;
+    --blue:        #2A72B8;
+    --blue-light:  #E8F2FC;
+    --gray:        #5F5E5A;
+    --gray-light:  #F5F3EE;
+    --gray-mid:    #DDD9D0;
+    --ink:         #2C2820;
+    --cream:       #FDFAF5;
+    --white:       #FFFFFF;
+    --font-display: 'Zen Maru Gothic', sans-serif;
+    --font-body:    'Noto Sans JP', sans-serif;
+    --radius:       12px;
+    --radius-lg:    20px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--cream);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  /* ── HEADER ── */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(253, 250, 245, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--gray-mid);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .site-header .logo {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--pink);
+    letter-spacing: .04em;
+  }
+  .site-header .subtitle {
+    font-size: 12px;
+    color: var(--gray);
+    border-left: 1px solid var(--gray-mid);
+    padding-left: 16px;
+  }
+  .header-nav {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+  }
+  .header-nav a {
+    font-size: 12px;
+    color: var(--gray);
+    text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 20px;
+    transition: background .15s, color .15s;
+  }
+  .header-nav a:hover { background: var(--pink-light); color: var(--pink); }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 72px 24px 56px;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+  .hero-eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--pink);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    display: block;
+    width: 24px;
+    height: 1px;
+    background: var(--pink);
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--ink);
+    margin-bottom: 16px;
+  }
+  .hero h1 span { color: var(--pink); }
+  .hero-desc {
+    font-size: 15px;
+    color: var(--gray);
+    line-height: 1.9;
+    max-width: 560px;
+    margin-bottom: 32px;
+  }
+  .hero-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .meta-pill {
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--gray-mid);
+    color: var(--gray);
+  }
+
+  /* ── LAYOUT ── */
+  .page-body {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+  }
+
+  /* ── SECTION ── */
+  .section {
+    margin-bottom: 64px;
+    scroll-margin-top: 72px;
+  }
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--gray-mid);
+  }
+  .section-num {
+    font-family: var(--font-display);
+    font-size: 13px;
+    color: var(--pink-mid);
+    font-weight: 700;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink);
+  }
+  .section-desc {
+    font-size: 13px;
+    color: var(--gray);
+    margin-bottom: 20px;
+    line-height: 1.8;
+  }
+
+  /* ── POST CARD ── */
+  .post-card {
+    background: var(--white);
+    border: 1px solid var(--gray-mid);
+    border-radius: var(--radius-lg);
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: box-shadow .2s;
+  }
+  .post-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.06); }
+
+  .post-card-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--gray-mid);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .post-num-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--gray);
+  }
+  .cat-badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 10px;
+    border-radius: 20px;
+  }
+  .cat-kyokan  { background: var(--pink-light);   color: var(--pink);   }
+  .cat-toikake { background: var(--blue-light);   color: var(--blue);   }
+  .cat-edu     { background: var(--teal-light);   color: var(--teal);   }
+  .cat-ura     { background: var(--purple-light); color: var(--purple); }
+
+  .time-badge {
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    background: var(--amber-light);
+    color: var(--amber);
+    font-weight: 500;
+    margin-left: auto;
+  }
+
+  .post-body {
+    padding: 20px 24px;
+  }
+  .post-theme-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gray);
+    margin-bottom: 12px;
+  }
+  .post-text {
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 2.1;
+    color: var(--ink);
+    background: var(--gray-light);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    white-space: pre-wrap;
+    border-left: 3px solid var(--gray-mid);
+  }
+
+  /* ツリー */
+  .thread-wrapper { display: flex; flex-direction: column; gap: 0; }
+  .thread-item { display: flex; gap: 12px; }
+  .thread-line-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 28px;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+  .thread-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--pink-light);
+    border: 1.5px solid var(--pink-mid);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--pink);
+    flex-shrink: 0;
+  }
+  .thread-vline {
+    width: 1.5px;
+    background: var(--gray-mid);
+    flex: 1;
+    min-height: 12px;
+    margin-top: 4px;
+  }
+  .thread-item.last .thread-vline { display: none; }
+  .thread-body { flex: 1; padding-bottom: 16px; }
+  .thread-tweet-num { font-size: 11px; color: var(--gray); margin-bottom: 6px; }
+  .thread-text {
+    font-size: 14px;
+    line-height: 2.1;
+    color: var(--ink);
+    background: var(--gray-light);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    white-space: pre-wrap;
+    border-left: 3px solid var(--gray-mid);
+  }
+  .thread-tip {
+    font-size: 11px;
+    color: var(--teal);
+    background: var(--teal-light);
+    border-radius: 6px;
+    padding: 4px 10px;
+    margin-top: 6px;
+    display: inline-block;
+  }
+
+  /* ── NOTE BOX ── */
+  .note-box {
+    margin-top: 14px;
+    padding: 12px 16px;
+    background: var(--teal-light);
+    border-left: 3px solid var(--teal);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: 12.5px;
+    line-height: 1.8;
+    color: var(--gray);
+  }
+  .note-box .nk { font-weight: 500; color: var(--teal); }
+
+  /* ── VOTE BOX ── */
+  .vote-box {
+    margin-top: 12px;
+    background: var(--gray-light);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+  }
+  .vote-item {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--ink);
+    padding: 5px 0;
+    border-bottom: 1px dashed var(--gray-mid);
+  }
+  .vote-item:last-child { border-bottom: none; }
+  .vote-dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 1.5px solid var(--gray-mid);
+    flex-shrink: 0;
+  }
+
+  /* ── INFO CARD ── */
+  .info-card {
+    background: var(--white);
+    border: 1px solid var(--gray-mid);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .info-card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray);
+    padding: 12px 20px;
+    background: var(--gray-light);
+    border-bottom: 1px solid var(--gray-mid);
+  }
+  .info-card-body { padding: 16px 20px; }
+
+  /* ── TABLE ── */
+  .styled-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .styled-table th {
+    background: var(--pink-light);
+    color: var(--pink);
+    font-weight: 500;
+    padding: 10px 14px;
+    text-align: left;
+    border: 1px solid var(--gray-mid);
+    font-size: 12px;
+  }
+  .styled-table td {
+    padding: 10px 14px;
+    border: 1px solid var(--gray-mid);
+    vertical-align: top;
+    line-height: 1.7;
+    color: var(--ink);
+  }
+  .styled-table tr:nth-child(even) td { background: var(--gray-light); }
+
+  .sched-table th { background: var(--purple-light); color: var(--purple); }
+
+  .emoji-table th { background: var(--blue-light); color: var(--blue); }
+
+  /* ── DIVIDER ── */
+  .post-divider {
+    border: none;
+    border-top: 1px dashed var(--gray-mid);
+    margin: 4px 0 20px;
+  }
+
+  /* ── CHECKLIST ── */
+  .checklist { list-style: none; }
+  .checklist li {
+    display: flex;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--gray-mid);
+    font-size: 14px;
+    line-height: 1.7;
+    align-items: flex-start;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .check-box {
+    width: 20px; height: 20px; border-radius: 5px;
+    border: 1.5px solid var(--gray-mid);
+    flex-shrink: 0; margin-top: 2px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s, border-color .15s;
+  }
+  .check-box.checked { background: var(--teal); border-color: var(--teal); }
+  .check-box.checked::after { content: '✓'; color: white; font-size: 12px; font-weight: 700; }
+  .checklist li.checked-item > span { color: var(--gray); text-decoration: line-through; }
+
+  /* ── WEEK GRID ── */
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .week-day {
+    border: 1px solid var(--gray-mid);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--white);
+  }
+  .week-day-name {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 4px;
+    font-family: var(--font-display);
+  }
+  .wd-mon .week-day-name { background: var(--pink-light);   color: var(--pink);   }
+  .wd-tue .week-day-name { background: var(--teal-light);   color: var(--teal);   }
+  .wd-wed .week-day-name { background: var(--pink-light);   color: var(--pink);   }
+  .wd-thu .week-day-name { background: var(--blue-light);   color: var(--blue);   }
+  .wd-fri .week-day-name { background: var(--teal-light);   color: var(--teal);   }
+  .wd-sat .week-day-name { background: var(--purple-light); color: var(--purple); }
+  .wd-sun .week-day-name { background: var(--pink-light);   color: var(--pink);   }
+  .week-day-body { padding: 8px 6px; }
+  .week-time { font-size: 11px; color: var(--gray); margin-bottom: 4px; text-align: center; }
+  .week-cat  { font-size: 11px; font-weight: 500; text-align: center; margin-bottom: 4px; padding: 2px 4px; border-radius: 4px; }
+  .week-action { font-size: 10px; color: var(--gray); text-align: center; line-height: 1.5; }
+
+  /* ── PERSONA CARD ── */
+  .persona-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .persona-card {
+    background: var(--white);
+    border: 1px solid var(--gray-mid);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+  }
+  .persona-card h4 {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--pink);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--pink-light);
+  }
+  .persona-row {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 6px 10px;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+  .persona-key { color: var(--gray); font-weight: 500; }
+
+  .quote-block {
+    background: var(--pink-light);
+    border-left: 3px solid var(--pink);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 12px 16px;
+    font-size: 13px;
+    line-height: 1.9;
+    color: var(--ink);
+    margin-top: 12px;
+    font-style: italic;
+  }
+
+  /* ── EMOJI RULE ── */
+  .emoji-rule-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .emoji-rule-card {
+    background: var(--white);
+    border: 1px solid var(--gray-mid);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .emoji-rule-card h5 {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--blue);
+    margin-bottom: 6px;
+  }
+  .emoji-rule-card p { font-size: 13px; color: var(--ink); line-height: 1.7; }
+  .emoji-rule-card .note { font-size: 11px; color: var(--gray); margin-top: 4px; }
+
+  /* ── STICKY NOTE ── */
+  .sticky-note {
+    background: var(--amber-light);
+    border: 1px solid #E8C88A;
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.8;
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .sticky-note::before {
+    content: '📌';
+    font-size: 14px;
+    margin-right: 6px;
+  }
+  .sticky-label { font-weight: 500; color: var(--amber); margin-right: 6px; }
+
+  /* ── NAV PILLS ── */
+  .nav-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+  .nav-pill {
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--gray-mid);
+    color: var(--gray);
+    text-decoration: none;
+    transition: all .15s;
+    background: var(--white);
+  }
+  .nav-pill:hover { border-color: var(--pink); color: var(--pink); background: var(--pink-light); }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 32px 24px;
+    font-size: 12px;
+    color: var(--gray);
+    border-top: 1px solid var(--gray-mid);
+    margin-top: 32px;
+  }
+
+  @media (max-width: 600px) {
+    .persona-grid { grid-template-columns: 1fr; }
+    .emoji-rule-grid { grid-template-columns: 1fr; }
+    .week-grid { grid-template-columns: repeat(4, 1fr); }
+    .header-nav { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="site-header">
+  <div class="logo">GYURUTT</div>
+  <div class="subtitle">X投稿サンプル集 — Phase 1</div>
+  <nav class="header-nav">
+    <a href="#persona">ペルソナ</a>
+    <a href="#kyokan">共感系</a>
+    <a href="#toikake">問いかけ系</a>
+    <a href="#edu">教育ツリー</a>
+    <a href="#ura">開発裏話</a>
+    <a href="#schedule">スケジュール</a>
+    <a href="#check">チェック</a>
+  </nav>
+</header>
+
+<main>
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">X運用サンプル集</div>
+  <h1>腸活、何度も挫折してきた<br><span>「ちょっと先にいる友達」</span>として。</h1>
+  <p class="hero-desc">GYURUTTのX公式アカウント運用に向けた投稿サンプル集です。ターゲット・ペルソナ・絵文字ルール・カテゴリ別サンプル・週間スケジュール・投稿前チェックリストをまとめています。</p>
+  <div class="hero-meta">
+    <span class="meta-pill">Phase 1（〜フォロワー100人）</span>
+    <span class="meta-pill">ターゲット：30代女性</span>
+    <span class="meta-pill">2026年4月</span>
+  </div>
+</div>
+
+<div class="page-body">
+
+  <!-- NAV -->
+  <nav class="nav-pills">
+    <a class="nav-pill" href="#persona">0. 基本方針</a>
+    <a class="nav-pill" href="#kyokan">1. 共感系</a>
+    <a class="nav-pill" href="#toikake">2. 問いかけ系</a>
+    <a class="nav-pill" href="#edu">3. 教育ツリー</a>
+    <a class="nav-pill" href="#ura">4. 開発裏話</a>
+    <a class="nav-pill" href="#schedule">5. 週間スケジュール</a>
+    <a class="nav-pill" href="#check">6. 投稿前チェック</a>
+  </nav>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 0. PERSONA -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="persona">
+    <div class="section-header">
+      <span class="section-num">00</span>
+      <h2 class="section-title">基本方針</h2>
+    </div>
+
+    <div class="persona-grid">
+      <div class="persona-card">
+        <h4>ターゲット像 — さとこさん（仮）32歳</h4>
+        <div class="persona-row"><span class="persona-key">生活</span><span>フルタイム勤務。朝は時間がなく、夜は疲れてすぐ寝たい。</span></div>
+        <div class="persona-row"><span class="persona-key">お腹の悩み</span><span>毎朝スッキリしない「なんとなく重い」が慢性化。</span></div>
+        <div class="persona-row"><span class="persona-key">腸活歴</span><span>ヨーグルト・サプリを何度か試したが1〜2週間で挫折。</span></div>
+        <div class="persona-row"><span class="persona-key">SNS行動</span><span>共感した投稿をいいね・保存。気に入ったアカウントをこっそりフォロー。</span></div>
+        <div class="quote-block">「腸活、また三日坊主だった。もう自分には無理なのかな」</div>
+      </div>
+      <div class="persona-card">
+        <h4>発信者ペルソナ — GYURUTTの「中の人」</h4>
+        <div class="persona-row"><span class="persona-key">立場</span><span>腸活ブランドを作っている途中の人。専門家ではない。</span></div>
+        <div class="persona-row"><span class="persona-key">距離感</span><span>同じ挫折をしてきた「ちょっと先にいる友達」</span></div>
+        <div class="persona-row"><span class="persona-key">語り方</span><span>「わたしの場合は〜」「らしい。調べ中」「まぁ、ぼちぼち」</span></div>
+        <div class="persona-row"><span class="persona-key">やらないこと</span><span>断言・指導・専門用語の素出し・商品の直接宣伝</span></div>
+        <div class="quote-block">「専門家の話はわかるけど、正直しんどい。もっとゆるくていいよって言ってほしい。」</div>
+      </div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-title">絵文字・感嘆符ルール</div>
+      <div class="info-card-body">
+        <div class="emoji-rule-grid">
+          <div class="emoji-rule-card">
+            <h5>感嘆符「！」</h5>
+            <p>1投稿につき1回まで。0でも可。</p>
+            <p class="note">押しつけ感・スパム感を排除。ペルソナの静かな文体を守る。</p>
+          </div>
+          <div class="emoji-rule-card">
+            <h5>絵文字</h5>
+            <p>0〜1個。Phase 1は<strong>基本0で統一</strong>。</p>
+            <p class="note">健康系アカウントとの差別化。疲れた30代女性に「落ち着く場所」を提供。</p>
+          </div>
+          <div class="emoji-rule-card">
+            <h5>「！！！」</h5>
+            <p>絶対NG。</p>
+            <p class="note">「やりすぎ」トーンになりペルソナが崩れる。</p>
+          </div>
+          <div class="emoji-rule-card">
+            <h5>絵文字を使う場面</h5>
+            <p>問いかけ系・開発裏話系に1個だけ。例：😊</p>
+            <p class="note">フォロワー50人以降から試す。温度感の微調整として使う。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 1. 共感系 -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="kyokan">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2 class="section-title">共感系サンプル</h2>
+    </div>
+    <p class="section-desc">「わかる」を引き出し、リポスト・いいねによる拡散を狙う。新規層へのリーチの主軸。構成比率の約40%。</p>
+
+    <!-- 共感-1 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">共感-1</span>
+        <span class="cat-badge cat-kyokan">共感系</span>
+        <span class="time-badge">月 or 金 7:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">挫折あるある</div>
+        <div class="post-text">腸活、明日からって何回言っただろう。
+
+ヨーグルト買っては忘れ、
+サプリは引き出しの奥で賞味期限切れ。
+
+「続かない自分がダメなんだ」
+ってずっと思ってたけど、
+
+たぶん違う。
+続けにくい方法を選んでただけだった。
+
+同じ人、いませんか。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「自分だけじゃない」という安心感。「同じ人いませんか」でリプライ・いいねを自然に誘う。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・1行12文字以内・断言なし ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 共感-2 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">共感-2</span>
+        <span class="cat-badge cat-kyokan">共感系</span>
+        <span class="time-badge">月 7:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">月曜の朝</div>
+        <div class="post-text">月曜の朝、
+起きた瞬間からお腹が重い日。
+
+仕事のストレスかな、
+食べすぎかな、
+運動不足かな。
+
+原因はよくわからないけど、
+とにかくスッキリしない。
+
+病院に行くほどでもないけど、
+ずっとこのままは嫌だな、
+って思ってる人。
+
+ここに来てほしい。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「なんとなく不調」を言語化。月曜7:00投稿推奨。週明け最初の共感でフォローを狙う。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・薬機法NGワードなし ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 共感-3 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">共感-3</span>
+        <span class="cat-badge cat-kyokan">共感系</span>
+        <span class="time-badge">水 7:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">完璧にやらなくていい</div>
+        <div class="post-text">腸活って、
+100点を目指すほど続かない気がする。
+
+毎日ヨーグルト食べなきゃ、
+食物繊維も摂らなきゃ、
+水も2リットル飲まなきゃ。
+
+やること多すぎて、
+1個できなかっただけで
+「もういいや」ってなる。
+
+30点を毎日の方が、
+腸はたぶんよろこぶ。
+
+わたしはそう思って、
+気が楽になったんだよね。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>完璧主義による自己嫌悪を解除。「わたしはそう思って」で体感として着地させ、押しつけを回避。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・断言を「気がする」「たぶん」でやわらかく処理 ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 共感-4 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">共感-4</span>
+        <span class="cat-badge cat-kyokan">共感系</span>
+        <span class="time-badge">金 7:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">仕事帰りの疲れ（30代女性追加）</div>
+        <div class="post-text">仕事終わって帰ったら、
+もうごはん作る気力ない。
+
+コンビニでいいか、
+って思いながらも
+
+「これじゃ腸活できないな」
+って罪悪感だけ残る。
+
+でも疲れてる日に頑張れないのは
+ふつうのことだと思う。
+
+疲れてる日は休む。
+それも腸活だったりする。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>30代女性の「忙しさと健康への罪悪感」に直撃。「それも腸活だったりする」でブランドの哲学を自然に表現。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・「だったりする」でやわらかい断定 ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 共感-5 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">共感-5</span>
+        <span class="cat-badge cat-kyokan">共感系</span>
+        <span class="time-badge">日 13:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">日曜夜のざわざわ ＋ 教育系への橋渡し</div>
+        <div class="post-text">日曜の夜、
+なんかお腹のあたりがざわざわする。
+
+明日からまた頑張らなきゃ、
+って思うと
+体が先に緊張してる気がする。
+
+腸って正直で、
+気持ちの変化をすぐ教えてくれる。
+
+明日、無理しなくていいよ。
+まず朝、水を1杯だけ飲んでみて。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>日曜13:00投稿推奨。翌日の教育ツリー（水1杯）への自然な橋渡し。月曜投稿への期待も形成する。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・「〜てみて」でやさしく着地 ✓
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 2. 問いかけ系 -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="toikake">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2 class="section-title">問いかけ系サンプル</h2>
+    </div>
+    <p class="section-desc">リプライ・投票を引き出し、アルゴリズム上の「重いアクション」を獲得する。木曜21:00投稿推奨。翌金曜朝にリプライへ返信が最優先タスク。</p>
+
+    <!-- 問いかけ-1 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">問いかけ-1</span>
+        <span class="cat-badge cat-toikake">問いかけ系</span>
+        <span class="time-badge">木 21:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">朝の1杯（投票形式）</div>
+        <div class="post-text">朝、最初に口にするものって何ですか。
+
+結果、ちょっと気になっています。</div>
+        <div class="vote-box">
+          <div class="vote-item"><span class="vote-dot"></span>コーヒーか紅茶</div>
+          <div class="vote-item"><span class="vote-dot"></span>水か白湯</div>
+          <div class="vote-item"><span class="vote-dot"></span>何も飲まない</div>
+          <div class="vote-item"><span class="vote-dot"></span>その日による</div>
+        </div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「その日による」を入れて正解のない日常を肯定。参加ハードルを下げる。<br>
+          <span class="nk">返信案　</span>「コーヒーが多いの、わかります。わたしもそうでした。空腹時のコーヒーはちょっとお腹に負担かかるらしいんですよね、調べ中ですが。」<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字は状況に応じて😊を1個可 ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 問いかけ-2 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">問いかけ-2</span>
+        <span class="cat-badge cat-toikake">問いかけ系</span>
+        <span class="time-badge">木 21:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">続かなかった理由（投票形式・リサーチ兼用）</div>
+        <div class="post-text">腸活、続かなかった理由って何でしたか。
+
+ほんとに参考にしたいので
+教えてもらえると嬉しいです。</div>
+        <div class="vote-box">
+          <div class="vote-item"><span class="vote-dot"></span>毎日続けるのがしんどい</div>
+          <div class="vote-item"><span class="vote-dot"></span>何が正しいかわからない</div>
+          <div class="vote-item"><span class="vote-dot"></span>お金がかかる</div>
+          <div class="vote-item"><span class="vote-dot"></span>変化を感じられなかった</div>
+        </div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>ターゲットの挫折理由を実際にリサーチできる。結果を次の共感系・教育系コンテンツに直接反映する。<br>
+          <span class="nk">返信案　</span>「『何が正しいかわからない』が多いの、すごくわかります。情報ありすぎて逆に動けなくなるんですよね。」<br>
+          <span class="nk">チェック　</span>感嘆符0・「ほんとに参考にしたいので」で下から目線を担保 ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 問いかけ-3 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">問いかけ-3</span>
+        <span class="cat-badge cat-toikake">問いかけ系</span>
+        <span class="time-badge">木 21:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">ハードルを聞く（リプライ誘導）</div>
+        <div class="post-text">「腸活してみたいけど
+ 何から始めればいいかわからない」
+って思ったこと、ありますか。
+
+あったらちょっと教えてください。
+何がハードルになってるか、
+聞かせてもらえると嬉しいです。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>投票ではなくリプライを直接誘う。「ちょっと」「嬉しいです」でプレッシャーを下げる。<br>
+          <span class="nk">返信案　</span>「教えてくれてありがとうございます。『何から』って本当に難しいですよね。わたしがまず試してよかったのは、水を1杯だけ、だったりします。」<br>
+          <span class="nk">チェック　</span>感嘆符0・命令形を避けて「教えてもらえると」で柔らかく ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 問いかけ-4 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">問いかけ-4</span>
+        <span class="cat-badge cat-toikake">問いかけ系</span>
+        <span class="time-badge">木 21:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">忙しい週のお腹（共感→問いかけ複合）</div>
+        <div class="post-text">仕事が忙しい週って、
+食事がどうしても雑になりませんか。
+
+コンビニ、外食、
+夜遅くにまとめ食い。
+
+わかってるけど、
+疲れてたら仕方ないよなとも思う。
+
+そういう週、
+お腹ってどうなりますか。
+
+リプライで教えてもらえると
+参考になります。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>共感で入りつつ問いかけに転換するハイブリッド投稿。いいね＋リプライの両取りを狙う。<br>
+          <span class="nk">チェック　</span>感嘆符0・「仕方ないよなとも思う」で日常を批判しない姿勢を明示 ✓
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 3. 教育ツリー -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="edu">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2 class="section-title">教育系ツリーサンプル</h2>
+    </div>
+    <p class="section-desc">週1本のみ。火曜か金曜の7:00投稿推奨。ツリー形式で滞在時間を稼ぎブックマークを獲得する。記事機能はPhase 2以降。</p>
+
+    <div class="sticky-note">
+      <span class="sticky-label">ツリー設計の鉄則</span>1ツイート目で「続きが読みたい」を作る。2〜4ツイートで完結。最後に「保存してね」を自然に入れる。
+    </div>
+
+    <!-- ツリーA -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">教育ツリー-A</span>
+        <span class="cat-badge cat-edu">教育ツリー</span>
+        <span class="time-badge">火 or 金 7:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">まず水（4ツイート）</div>
+        <div class="thread-wrapper">
+          <div class="thread-item">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">1 / 4</div>
+              <div class="thread-text">腸活で最初にやること、
+サプリでも発酵食品でもなくて
+「水を飲む」だったりします。
+
+え、それだけ？
+って思うかもしれないけど
+続きを読んでほしい。</div>
+              <span class="thread-tip">🔑 「え、それだけ？」で続きへの興味を作る</span>
+            </div>
+          </div>
+          <div class="thread-item">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">2 / 4</div>
+              <div class="thread-text">腸って、水分が足りないと
+動きが鈍くなるらしくて。
+
+ヨーグルトもサプリも
+腸が動いてないと
+あまり意味がないみたい。
+
+まず動かす、が先なんだよね。</div>
+            </div>
+          </div>
+          <div class="thread-item">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">3 / 4</div>
+              <div class="thread-text">朝起きてすぐ、
+コップ1杯の水。
+
+常温か白湯が
+お腹にやさしいみたいだけど、
+冷たい水でもゼロよりずっといい。
+
+完璧にやろうとしなくていい。
+まず1杯、それだけ。</div>
+            </div>
+          </div>
+          <div class="thread-item last">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">4 / 4</div>
+              <div class="thread-text">腸活で迷ったら、
+まず水。
+
+それだけ覚えておいてほしい。
+
+あとで見返せるように
+保存しておいてもらえると嬉しいです。</div>
+              <span class="thread-tip">🔖 最後に保存を自然に促す</span>
+            </div>
+          </div>
+        </div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「水を飲む」という誰でもできるアクションを4ツイートで丁寧に肯定する。難易度ゼロなのに「へぇ」がある。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・「らしい」「みたい」で断言回避・薬機法NGワードなし ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- ツリーB -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">教育ツリー-B</span>
+        <span class="cat-badge cat-edu">教育ツリー</span>
+        <span class="time-badge">火 or 金 7:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">引き算の腸活（3ツイート）</div>
+        <div class="thread-wrapper">
+          <div class="thread-item">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">1 / 3</div>
+              <div class="thread-text">腸活って、
+足すより引く方が
+大事だったりする。
+
+やめてよかったこと、
+3つだけ話します。</div>
+              <span class="thread-tip">🔑 「やめてよかったこと」という意外性のある切り口。「3つだけ」で読む量が予測でき離脱しにくい</span>
+            </div>
+          </div>
+          <div class="thread-item">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">2 / 3</div>
+              <div class="thread-text">① ヨーグルトを毎朝「義務」にすること
+→ 嫌いじゃないのに苦痛になった
+
+② 食物繊維の数字を追うこと
+→ 気にしすぎてご飯が楽しくなくなった
+
+③「菌を入れれば解決する」と思い込むこと
+→ 腸が動いてないと菌も活きないらしい
+
+全部やめたら、逆に楽になった。</div>
+            </div>
+          </div>
+          <div class="thread-item last">
+            <div class="thread-line-col">
+              <div class="thread-avatar">G</div>
+              <div class="thread-vline"></div>
+            </div>
+            <div class="thread-body">
+              <div class="thread-tweet-num">3 / 3</div>
+              <div class="thread-text">足すことより、
+しんどいことをやめる方が
+続くんだよね。
+
+腸活で頑張りすぎてた人、
+これだけ覚えておいてほしい。
+
+よかったら保存しておいてください。</div>
+              <span class="thread-tip">🔖 「頑張りすぎてた人」でターゲットを自己同定させる</span>
+            </div>
+          </div>
+        </div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「やめる」という逆張りの切り口で「へぇ」を作る。共感系の延長として読めるので教育系でも温度感が崩れない。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・「らしい」で断言回避・薬機法NGワードなし ✓
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 4. 開発裏話 -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="ura">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2 class="section-title">開発裏話系サンプル</h2>
+    </div>
+    <p class="section-desc">土曜10:00投稿。「誰が・なんのために作っているか」を少しずつ見せ、単なる情報アカウントから応援されるブランドへ転換する。</p>
+
+    <!-- 裏話-1 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">裏話-1</span>
+        <span class="cat-badge cat-ura">開発裏話系</span>
+        <span style="font-size:11px;padding:2px 10px;border-radius:20px;background:#FFF3CD;color:#856404;font-weight:500;margin-left:auto;">📌 固定ポスト用</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">自己紹介 — アカウント開設直後に投稿してプロフィールに固定する</div>
+        <div class="post-text">はじめまして。
+
+腸活ブランドを作っています。
+まだ商品はできていません。
+
+でも先に、伝えたいことがあって
+アカウントを始めました。
+
+腸活、何度も挫折してきました。
+ヨーグルトも、サプリも、
+全部途中でやめた。
+
+「続かない自分がダメなんだ」
+ってずっと思ってたけど、
+
+たぶん、続けにくい方法を
+選んでただけだった。
+
+そう気づいてから、
+腸活がちょっとだけ楽になった。
+
+同じ人に届いたらいいなと思って、
+ここで話すことにしました。</div>
+        <div class="note-box">
+          <span class="nk">使い方　</span>初めて来た人が「フォローしていい人かどうか」を判断する導線。プロフィールに固定必須。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・断言なし・商品の直接宣伝なし ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 裏話-2 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">裏話-2</span>
+        <span class="cat-badge cat-ura">開発裏話系</span>
+        <span class="time-badge">土 10:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">開発進捗の定期報告 — 「土曜の報告」フォーマットを毎週固定</div>
+        <div class="post-text">土曜の報告。
+
+いま、腸活ブランドの商品を
+ゆっくり開発しています。
+
+コンセプトはひとつだけ決めていて、
+「頑張らなくても続く腸活」。
+
+まだ全然できていない段階だけど、
+作りながら考えていることを
+ここで少しずつ話していこうと思います。
+
+「こんな商品あったらいいな」
+があったら教えてほしいです。
+参考にします。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「土曜の報告」という定期フォーマットで「毎週土曜に見る理由」を作る。コメント誘導でリプライも狙える。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・「ゆっくり」「少しずつ」でGYURUTTのペースを体現 ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 裏話-3 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">裏話-3</span>
+        <span class="cat-badge cat-ura">開発裏話系</span>
+        <span class="time-badge">土 10:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">インタビュー素材の変換（とよまるさん）</div>
+        <div class="post-text">ずっと「お腹が弱い体質」
+だと思っていた人の話を聞いた。
+
+30年間、下痢が普通で、
+「消化が良すぎるだけ」
+と本気で信じていたらしい。
+
+ある時、別の理由で朝食をやめたら
+突然お腹が落ち着いた。
+
+犯人は、毎朝の牛乳と朝食だった。
+
+「体質」じゃなくて
+「合っていないものを食べ続けていた」
+だけだったって。
+
+自分の体のことって、
+意外とわかっていないものだな
+と思った話でした。</div>
+        <div class="note-box">
+          <span class="nk">変換のポイント　</span>「らしい」「だったって」で他者の体験として着地させる。「体質だと諦めていた人」に刺さる切り口。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・薬機法NGワードなし ✓
+        </div>
+      </div>
+    </div>
+
+    <!-- 裏話-4 -->
+    <div class="post-card">
+      <div class="post-card-header">
+        <span class="post-num-label">裏話-4</span>
+        <span class="cat-badge cat-ura">開発裏話系</span>
+        <span class="time-badge">土 10:00</span>
+      </div>
+      <div class="post-body">
+        <div class="post-theme-label">インタビュー素材の変換（かよちゃんさん）</div>
+        <div class="post-text">「一生続ける」は無理だけど、
+「100日だけ」ならできる気がする。
+
+そう考えた人がいた。
+
+習慣化がとにかく苦手で、
+サプリも水筒も気づけば忘れる。
+
+だからマラソンじゃなくて、
+ダッシュにした。
+
+期間を決めて、そこだけ頑張る。
+終わった後に「なんか調子よかったな」
+という記憶が残れば勝ち。
+
+また気が向いたときに走ればいい、
+という考え方が
+わたしはすごく好きだったりします。</div>
+        <div class="note-box">
+          <span class="nk">狙い　</span>「習慣化できない自分を責めなくていい」というGYURUTTの哲学を他者の体験で語る。最後の「わたしはすごく好きだったりします」でペルソナの感情を自然に乗せる。<br>
+          <span class="nk">チェック　</span>感嘆符0・絵文字0・「だったりします」でやわらかい断定 ✓
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 5. スケジュール -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="schedule">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2 class="section-title">週間投稿スケジュール</h2>
+    </div>
+    <p class="section-desc">Phase 1（〜フォロワー100人）の推奨スケジュール。</p>
+
+    <div class="week-grid">
+      <div class="week-day wd-mon">
+        <div class="week-day-name">月</div>
+        <div class="week-day-body">
+          <div class="week-time">7:00</div>
+          <div class="week-cat cat-kyokan" style="background:var(--pink-light);color:var(--pink);">共感系</div>
+          <div class="week-action">共感-2<br>月曜の朝</div>
+        </div>
+      </div>
+      <div class="week-day wd-tue">
+        <div class="week-day-name">火</div>
+        <div class="week-day-body">
+          <div class="week-time">7:00</div>
+          <div class="week-cat" style="background:var(--teal-light);color:var(--teal);">教育ツリー</div>
+          <div class="week-action">ツリーA or B</div>
+        </div>
+      </div>
+      <div class="week-day wd-wed">
+        <div class="week-day-name">水</div>
+        <div class="week-day-body">
+          <div class="week-time">7:00</div>
+          <div class="week-cat" style="background:var(--pink-light);color:var(--pink);">共感系</div>
+          <div class="week-action">共感-3<br>完璧じゃなくていい</div>
+        </div>
+      </div>
+      <div class="week-day wd-thu">
+        <div class="week-day-name">木</div>
+        <div class="week-day-body">
+          <div class="week-time">21:00</div>
+          <div class="week-cat" style="background:var(--blue-light);color:var(--blue);">問いかけ系</div>
+          <div class="week-action">問いかけ-1 or 2</div>
+        </div>
+      </div>
+      <div class="week-day wd-fri">
+        <div class="week-day-name">金</div>
+        <div class="week-day-body">
+          <div class="week-time">7:00</div>
+          <div class="week-cat" style="background:var(--pink-light);color:var(--pink);">共感系</div>
+          <div class="week-action">共感-1 or 4<br>+ リプライ返信</div>
+        </div>
+      </div>
+      <div class="week-day wd-sat">
+        <div class="week-day-name">土</div>
+        <div class="week-day-body">
+          <div class="week-time">10:00</div>
+          <div class="week-cat" style="background:var(--purple-light);color:var(--purple);">開発裏話系</div>
+          <div class="week-action">裏話-2<br>土曜の報告</div>
+        </div>
+      </div>
+      <div class="week-day wd-sun">
+        <div class="week-day-name">日</div>
+        <div class="week-day-body">
+          <div class="week-time">13:00</div>
+          <div class="week-cat" style="background:var(--pink-light);color:var(--pink);">共感系</div>
+          <div class="week-action">共感-5<br>日曜の夜</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note-box" style="margin-top:0">
+      <span class="nk">木→金の連携　</span>木曜夜のリプライ返信は金曜朝が最優先。土日まで放置すると投稿の表示寿命が減衰する。<br>
+      <span class="nk">月→火の連携　</span>月曜の共感系でフォローした人が火曜に教育ツリーを見てブックマーク。週の信頼を積む流れ。<br>
+      <span class="nk">日→月の連携　</span>日曜の「水1杯」の橋渡しが月曜投稿への期待を形成し、週のループを回す起点になる。<br>
+      <span class="nk">2週間先行サイクル　</span>木村が2週間分を先行作成 → 金曜中にまさくんへ共有 → 月曜フィードバック → 翌週から順次投稿。
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════ -->
+  <!-- 6. チェックリスト -->
+  <!-- ══════════════════════════════════ -->
+  <section class="section" id="check">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h2 class="section-title">投稿前チェックリスト</h2>
+    </div>
+    <p class="section-desc">投稿前に必ず確認。クリックでチェックできます。</p>
+
+    <div class="info-card">
+      <div class="info-card-body" style="padding:0">
+        <ul class="checklist" id="checklist">
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>ひらがな多め・短い文で改行。1行10〜15文字。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>句読点は1文に1〜2個まで。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>「！」は1投稿1回まで。絵文字は0〜1個。「！！！」は絶対NG。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>やわらかい断定。「〜だったりする」「〜かも」「〜なんだよね」。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>自分の経験・感覚として語っているか。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>上から教えていないか。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>薬機法NGワード（便秘が治る・腸が整う・デトックス・〇〇に効く）を使っていないか。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>外部リンクを投稿本文に貼っていないか（当面）。</span></li>
+          <li onclick="toggleCheck(this)"><div class="check-box"></div><span>商品の直接宣伝になっていないか（当面）。</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+</main>
+
+<footer>
+  GYURUTT X投稿サンプル集 — Phase 1（〜フォロワー100人）運用版　2026年4月
+</footer>
+
+<script>
+function toggleCheck(li) {
+  const box = li.querySelector('.check-box');
+  const span = li.querySelector('span');
+  box.classList.toggle('checked');
+  li.classList.toggle('checked-item');
+}
+</script>
+</body>
+</html>
