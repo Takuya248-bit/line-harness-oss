@@ -22,6 +22,9 @@ export async function fetchPexelsImage(
     url.searchParams.set("query", query);
     url.searchParams.set("orientation", "portrait");
     url.searchParams.set("per_page", "15");
+    // ランダムページで異なる結果セットを取得（上位固定を回避）
+    const page = Math.floor(Math.random() * 10) + 1;
+    url.searchParams.set("page", String(page));
 
     const res = await fetch(url.toString(), {
       headers: { Authorization: apiKey },
