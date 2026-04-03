@@ -27,16 +27,17 @@ export function selectPatterns(count: number): Pattern[] {
   const weightsPath = path.join(__dirname, "weights.json");
   const weights: Record<string, number> = require(weightsPath);
   const allPatterns = getAllPatterns();
-
-  const totalWeight = allPatterns.reduce((sum, p) => sum + (weights[p.patternId] ?? 1.0), 0);
+  const remaining = [...allPatterns];
   const selected: Pattern[] = [];
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < count && remaining.length > 0; i++) {
+    const totalWeight = remaining.reduce((sum, p) => sum + (weights[p.patternId] ?? 1.0), 0);
     let rand = Math.random() * totalWeight;
-    for (const pattern of allPatterns) {
-      rand -= weights[pattern.patternId] ?? 1.0;
+    for (let j = 0; j < remaining.length; j++) {
+      rand -= weights[remaining[j].patternId] ?? 1.0;
       if (rand <= 0) {
-        selected.push(pattern);
+        selected.push(remaining[j]);
+        remaining.splice(j, 1);
         break;
       }
     }
