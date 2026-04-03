@@ -1,5 +1,23 @@
 export type ContentType = "carousel" | "reel";
 
+export type ReelFormat =
+  | "ranking"
+  | "cost_appeal"
+  | "before_after"
+  | "routine"
+  | "relatable";
+
+export type HookStyle = "question" | "assertion" | "number_first" | "pov";
+
+export interface ReelPlan {
+  hookText: string;
+  facts: string[];
+  narrationTexts: string[];
+  ctaText: string;
+  reelFormat: ReelFormat;
+  hookStyle: HookStyle;
+}
+
 export interface PipelineConfig {
   groqApiKey: string;
   notionApiKey: string;
