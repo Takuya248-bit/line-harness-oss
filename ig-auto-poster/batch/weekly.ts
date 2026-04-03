@@ -224,9 +224,8 @@ async function main() {
       // V2: Satori + 写真背景 + 実在スポット
       const area = "バリ島";
 
-      // A/Bテスト: 情報密度バリアント
-      const infoStyles = ["simple", "rich", "practical"] as const;
-      const infoStyle = infoStyles[i % infoStyles.length]!;
+      // 情報密度: rich固定（中央カードに詳細表示）
+      const infoStyle = "rich" as const;
 
       // real_spotsから実在スポットを取得
       interface RealSpotRow { id: number; name: string; area: string; website: string | null }
