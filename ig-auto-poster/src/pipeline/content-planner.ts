@@ -1,5 +1,13 @@
 import { groqJson } from "../groq";
-import type { ContentPlan, ContentType, NetaEntry, SlideContent } from "./types";
+import type {
+  ContentPlan,
+  ContentType,
+  HookStyle,
+  NetaEntry,
+  ReelFormat,
+  ReelPlan,
+  SlideContent,
+} from "./types";
 
 interface BuzzFormat {
   name: string;
@@ -229,4 +237,144 @@ export async function generateContentPlan(
   ], { temperature: 0.8, maxTokens: 2048 });
 
   return parseContentPlan(JSON.stringify(result), contentType, formatName, category, neta);
+}
+
+function reelFormatBlock(format: ReelFormat, category: string): string {
+  switch (format) {
+    case "ranking":
+      return `構造: バリ島の「${category}」をTOP5形式で紹介する。
+各ポイント（factsの各要素）は1行15文字以内の事実だけを書く。`;
+    case "cost_appeal":
+      return `構造: 費用・コストの魅力を軸に紹介する。
+具体的な金額（月○万円、1食○円など）を必ず各ポイントに含める。`;
+    case "before_after":
+      return `構造: ビフォー状態とアフター状態を対比させた「変化ストーリー」にする。
+各factはビフォー→アフターの対比が伝わる1行にまとめる。`;
+    case "routine":
+      return `構造: 時系列で1日の流れを描く。
+factsは5〜7件。朝から夜までのシーン順に並べる。`;
+    case "relatable":
+      return `構造: 留学生・海外在住者が共感する「あるある」を5選で紹介する。
+各factは共感ポイントが一発で伝わる短文にする。`;
+    default: {
+      const _exhaustive: never = format;
+      return _exhaustive;
+    }
+  }
+}
+
+function hookStyleBlock(hookStyle: HookStyle): string {
+  switch (hookStyle) {
+    case "question":
+      return `フックの書き方（hookText）: 「知ってた？」系の問いかけで冒頭の情報ギャップを作る。`;
+    case "assertion":
+      return `フックの書き方（hookText）: 「これが正解」系の断定・強い主張で止める。`;
+    case "number_first":
+      return `フックの書き方（hookText）: 数字先行（例: 「月3万円で〜」）で具体性から入る。`;
+    case "pov":
+      return `フックの書き方（hookText）: 「POV: あなたが〜」形式の主観視点で始める。`;
+    default: {
+      const _exhaustive: never = hookStyle;
+      return _exhaustive;
+    }
+  }
+}
+
+export function buildPromptForReelPlan(
+  format: ReelFormat,
+  category: string,
+  neta: NetaEntry[],
+  hookStyle: HookStyle,
+): string {
+  const netaList = neta
+    .map((n) => `- ${n.title}: ${n.content.slice(0, 200)}`)
+    .join("\n");
+
+  const formatRules = reelFormatBlock(format, category);
+  const hookRules = hookStyleBlock(hookStyle);
+
+  return `あなたはInstagramリール（縦動画）の台本作家です。
+
+カテゴリ: ${category}
+リールフォーマット: ${format}
+使えるネタ:
+${netaList}
+
+${formatRules}
+
+${hookRules}
+
+以下の条件でリール用の構成をJSON形式で作成してください:
+- バリリンガルの直接宣伝はしない。Tips・体験談ベースで価値提供
+- hookText: 冒頭フック（画面上・フック用。hookStyleの指定に従う）
+- facts: 本編各シーン用の短いテキスト（フォーマットの文字数・件数ルールに厳密に従う）
+- narrationTexts: 各factスライドの音声読み上げ用。factsと同じ要素数。口語で自然に（generate-reel.mjs のTTS想定）
+- ctaText: 締めのCTA（「保存して」「プロフのLINEから」などから適宜選択）
+
+必ずJSONのみを返す（説明文・マークダウン不要）。
+
+JSON形式:
+{
+  "hookText": "フック文",
+  "facts": ["ファクト1", "..."],
+  "narrationTexts": ["ナレーション1", "..."],
+  "ctaText": "CTA文言"
+}`;
+}
+
+interface GroqReelPlanResponse {
+  hookText?: string;
+  facts?: string[];
+  narrationTexts?: string[];
+  ctaText?: string;
+}
+
+export function parseReelPlan(
+  json: string,
+  reelFormat: ReelFormat,
+  hookStyle: HookStyle,
+): ReelPlan {
+  const parsed = JSON.parse(json) as GroqReelPlanResponse;
+  const hookText =
+    typeof parsed.hookText === "string" && parsed.hookText.trim().length > 0
+      ? parsed.hookText.trim()
+      : "バリ島、知ってた？";
+  const facts = Array.isArray(parsed.facts)
+    ? parsed.facts.map((f) => String(f).trim()).filter((f) => f.length > 0)
+    : [];
+  let narrationTexts = Array.isArray(parsed.narrationTexts)
+    ? parsed.narrationTexts.map((n) => String(n).trim()).filter((n) => n.length > 0)
+    : [];
+  if (narrationTexts.length !== facts.length) {
+    narrationTexts = facts.map((f, i) => narrationTexts[i] ?? f);
+  }
+  const ctaText =
+    typeof parsed.ctaText === "string" && parsed.ctaText.trim().length > 0
+      ? parsed.ctaText.trim()
+      : "プロフィールのリンクからLINEで詳しく";
+
+  return {
+    hookText,
+    facts,
+    narrationTexts,
+    ctaText,
+    reelFormat,
+    hookStyle,
+  };
+}
+
+export async function generateReelPlan(
+  groqApiKey: string,
+  format: ReelFormat,
+  category: string,
+  neta: NetaEntry[],
+  hookStyle: HookStyle,
+): Promise<ReelPlan> {
+  const prompt = buildPromptForReelPlan(format, category, neta, hookStyle);
+  const result = await groqJson<GroqReelPlanResponse>(groqApiKey, [{ role: "user", content: prompt }], {
+    temperature: 0.8,
+    maxTokens: 2048,
+  });
+
+  return parseReelPlan(JSON.stringify(result), format, hookStyle);
 }

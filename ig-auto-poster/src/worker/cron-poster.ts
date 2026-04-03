@@ -1,4 +1,4 @@
-import { publishCarousel } from "../instagram";
+import { publishCarousel, publishReel } from "../instagram";
 import { getNextScheduledPost, markPosted } from "../pipeline/scheduler";
 
 export async function handleDailyPostCron(
@@ -20,5 +20,10 @@ export async function handleDailyPostCron(
     const igMediaId = await publishCarousel(mediaUrls, post.caption, igAccessToken, igAccountId);
     await markPosted(db, post.id, igMediaId);
     console.log(`Posted carousel ${post.id}, IG media: ${igMediaId}`);
+  } else if (post.content_type === "reel") {
+    const videoUrl = mediaUrls[0]!;
+    const igMediaId = await publishReel(videoUrl, post.caption, igAccessToken, igAccountId);
+    await markPosted(db, post.id, igMediaId);
+    console.log(`Posted reel ${post.id}, IG media: ${igMediaId}`);
   }
 }
