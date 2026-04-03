@@ -8,12 +8,12 @@
   "50": {
     "class_type": "VHS_LoadVideo",
     "inputs": {
-      "video": "rina_source.mp4",
+      "video": "rina_faceswapped.mp4",
       "force_rate": 8,
       "force_size": "Custom Width",
-      "custom_width": 512,
+      "custom_width": 320,
       "custom_height": 0,
-      "frame_load_cap": 8,
+      "frame_load_cap": 16,
       "skip_first_frames": 0,
       "select_every_nth": 1
     }
@@ -25,7 +25,7 @@
       "detect_hand": "enable",
       "detect_body": "enable",
       "detect_face": "enable",
-      "resolution": 512
+      "resolution": 320
     }
   },
   "30": {
@@ -41,7 +41,7 @@
       "negative": ["7", 0],
       "control_net": ["30", 0],
       "image": ["51", 0],
-      "strength": 0.9,
+      "strength": 1.0,
       "start_percent": 0.0,
       "end_percent": 1.0
     }
@@ -52,11 +52,17 @@
       "model_name": "mm_sd_v15_v2.ckpt"
     }
   },
+  "62": {
+    "class_type": "ADE_ApplyAnimateDiffModelSimple",
+    "inputs": {
+      "motion_model": ["60", 0]
+    }
+  },
   "61": {
     "class_type": "ADE_UseEvolvedSampling",
     "inputs": {
       "model": ["20", 0],
-      "motion_model": ["60", 0],
+      "m_models": ["62", 0],
       "beta_schedule": "autoselect"
     }
   },
@@ -73,31 +79,30 @@
       "model": ["61", 0],
       "ipadapter": ["20", 1],
       "image": ["12", 0],
-      "weight": 0.85,
+      "weight": 0.65,
       "start_at": 0.0,
-      "end_at": 1.0,
-      "weight_type": "style transfer"
+      "end_at": 0.85,
+      "weight_type": "standard"
     }
   },
   "12": {
     "class_type": "LoadImage",
     "inputs": {
-      "image": "WhatsApp Image 2026-04-01 at 23.48.24.jpeg"
+      "image": "deepfake_person.jpeg"
     }
   },
-  "5": {
-    "class_type": "EmptyLatentImage",
+  "70": {
+    "class_type": "VAEEncode",
     "inputs": {
-      "width": 480,
-      "height": 848,
-      "batch_size": 8
+      "pixels": ["50", 0],
+      "vae": ["4", 2]
     }
   },
   "6": {
     "class_type": "CLIPTextEncode",
     "inputs": {
       "clip": ["4", 1],
-      "text": "a young japanese woman, medium length brown hair with bangs, white t-shirt, silver necklace, natural lighting, high quality, photorealistic, detailed face, beautiful"
+      "text": "a cute young japanese woman, long straight dark brown hair with soft bangs, wearing cream polka dot dress with pink fluffy cardigan, adorable natural face, soft skin, gentle smile, natural lighting, high quality, photorealistic, detailed face, beautiful, kawaii, innocent"
     }
   },
   "7": {
@@ -113,13 +118,13 @@
       "model": ["21", 0],
       "positive": ["32", 0],
       "negative": ["32", 1],
-      "latent_image": ["5", 0],
-      "seed": 42,
+      "latent_image": ["70", 0],
+      "seed": 5678,
       "steps": 20,
-      "cfg": 7.0,
+      "cfg": 6.0,
       "sampler_name": "dpmpp_2m",
       "scheduler": "karras",
-      "denoise": 1.0
+      "denoise": 0.55
     }
   },
   "8": {
@@ -136,7 +141,7 @@
       "images": ["8", 0],
       "frame_rate": 8,
       "loop_count": 0,
-      "filename_prefix": "animatediff_result",
+      "filename_prefix": "animatediff_img2img",
       "format": "video/h264-mp4",
       "pingpong": false,
       "save_output": true
