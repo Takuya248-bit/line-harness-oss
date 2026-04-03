@@ -13,7 +13,7 @@ export async function uploadToR2(
       Authorization: `Bearer ${apiToken}`,
       "Content-Type": contentType,
     },
-    body: data,
+    body: new Uint8Array(data),
   });
   if (!res.ok) throw new Error(`R2 upload error: ${res.status}`);
   return key;
