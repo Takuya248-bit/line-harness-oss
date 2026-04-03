@@ -17,8 +17,37 @@ const FONT_FAMILY = "Zen Maru Gothic";
 const TMP_DIR = path.join("/tmp", "ig-reels");
 
 const DUR_HOOK = 2;
-const DUR_FACT = 1.5;
 const DUR_CTA = 3;
+/** Crossfade between stitched segments (seconds) */
+const XFADE_DUR = 0.3;
+
+/** Target reel length by planner format (seconds). Unknown key → defaultTotalSec. */
+const FORMAT_DURATION = {
+  bali_tips: 25,
+  english_phrase: 15,
+  bali_english: 20,
+  bali_life: 30,
+  relatable: 20,
+};
+
+function targetDurationSecForReelFormat(reelFormat, defaultTotalSec = 25) {
+  if (reelFormat != null && FORMAT_DURATION[reelFormat] != null) {
+    return FORMAT_DURATION[reelFormat];
+  }
+  return defaultTotalSec;
+}
+
+function factDurationSec(targetTotalSec, factCount) {
+  if (factCount <= 0) return 0;
+  return (targetTotalSec - DUR_HOOK - DUR_CTA) / factCount;
+}
+
+/** Output duration after chaining segments with xfade between each pair. */
+function stitchedTimelineSec(segmentDurations) {
+  if (segmentDurations.length === 0) return 0;
+  const sum = segmentDurations.reduce((a, d) => a + d, 0);
+  return sum - (segmentDurations.length - 1) * XFADE_DUR;
+}
 /** ASS \fad fade-in (ms) */
 const ASS_FADE_IN_MS = 300;
 
@@ -410,20 +439,72 @@ function mixFinalWithBgm(videoWithVoicePath, bgmPath, totalDuration, outPath) {
   ]);
 }
 
-function concatSegments(segmentPaths, outPath) {
+/**
+ * Chain segment files with video xfade (fade) and matching audio acrossfade.
+ * @param {string[]} segmentPaths
+ * @param {number[]} segmentDurations parallel durations (seconds), used for xfade offsets
+ * @param {string} outPath
+ */
+function concatSegments(segmentPaths, segmentDurations, outPath) {
+  if (segmentPaths.length !== segmentDurations.length) {
+    throw new Error("concatSegments: segmentPaths and segmentDurations length mismatch");
+  }
+  const n = segmentPaths.length;
+  if (n === 0) return;
+
+  if (n === 1) {
+    const one = ["-y", "-i", segmentPaths[0], "-c", "copy", outPath];
+    if (DRY_RUN) {
+      console.log("[generate-reel] dry-run ffmpeg:", "ffmpeg", one.join(" "));
+      if (segmentPaths[0]) fs.copyFileSync(segmentPaths[0], outPath);
+      return;
+    }
+    execFileSync("ffmpeg", one, { stdio: "inherit" });
+    return;
+  }
+
+  const fcParts = [];
+  let prevV = "0:v";
+  let prevA = "0:a";
+  for (let i = 1; i < n; i++) {
+    const sumUpToI = segmentDurations.slice(0, i).reduce((acc, d) => acc + d, 0);
+    const offset = sumUpToI - i * XFADE_DUR;
+    const vOut = i === n - 1 ? "vout" : `vx${i}`;
+    const aOut = i === n - 1 ? "aout" : `ax${i}`;
+    fcParts.push(
+      `[${prevV}][${i}:v]xfade=transition=fade:duration=${XFADE_DUR}:offset=${offset.toFixed(6)}[${vOut}]`,
+    );
+    fcParts.push(`[${prevA}][${i}:a]acrossfade=d=${XFADE_DUR}:c1=tri:c2=tri[${aOut}]`);
+    prevV = vOut;
+    prevA = aOut;
+  }
+  const fc = fcParts.join(";");
+
+  const args = ["-y"];
+  for (let i = 0; i < n; i++) args.push("-i", segmentPaths[i]);
+  args.push(
+    "-filter_complex",
+    fc,
+    "-map",
+    "[vout]",
+    "-map",
+    "[aout]",
+    "-c:v",
+    "libx264",
+    "-pix_fmt",
+    "yuv420p",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "192k",
+    outPath,
+  );
+
   if (DRY_RUN) {
-    console.log("[generate-reel] dry-run concat", segmentPaths);
+    console.log("[generate-reel] dry-run ffmpeg:", "ffmpeg", args.join(" "));
     if (segmentPaths[0]) fs.copyFileSync(segmentPaths[0], outPath);
     return;
   }
-  const args = ["-y"];
-  let fcIn = "";
-  for (let i = 0; i < segmentPaths.length; i++) {
-    args.push("-i", segmentPaths[i]);
-    fcIn += `[${i}:v][${i}:a]`;
-  }
-  const fc = `${fcIn}concat=n=${segmentPaths.length}:v=1:a=1[v][a]`;
-  args.push("-filter_complex", fc, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", outPath);
   execFileSync("ffmpeg", args, { stdio: "inherit" });
 }
 
@@ -457,6 +538,8 @@ async function main() {
       const facts = Array.isArray(content.facts) ? content.facts : [];
       const videoUrls = Array.isArray(content.videoClipUrls) ? content.videoClipUrls : [];
       const hookText = content.hookText || content.title || "バリ島、知ってた？";
+      const targetTotalSec = targetDurationSecForReelFormat(content.reelFormat);
+      const durFact = factDurationSec(targetTotalSec, facts.length);
 
       const ts = Date.now();
       const workBase = path.join(TMP_DIR, `${item.id}-${ts}`);
@@ -525,17 +608,17 @@ async function main() {
         const vUrl = videoUrls[i + 1] ?? null;
         const imgUrl = content.factImageUrls?.[i] ?? content.imageUrls?.[i] ?? null;
         const silentV = path.join(workBase, `fact-${i}-silent.mp4`);
-        const factAss = generateAssFile(hookText, facts, DUR_FACT, workBase, { type: "fact", index: i });
+        const factAss = generateAssFile(hookText, facts, durFact, workBase, { type: "fact", index: i });
         if (vUrl) {
           const fp = path.join(workBase, `fact-${i}-src.mp4`);
           const ok = await downloadVideoFile(vUrl, fp);
           if (ok) {
-            renderClipToVideo(fp, DUR_FACT, factAss, silentV);
+            renderClipToVideo(fp, durFact, factAss, silentV);
           } else {
             const still = path.join(workBase, `fact-${i}.jpg`);
             const factBuf = await generateFactBackgroundJpeg(imgUrl);
             fs.writeFileSync(still, factBuf);
-            renderStillKenBurnsToVideo(still, DUR_FACT, factAss, {
+            renderStillKenBurnsToVideo(still, durFact, factAss, {
               outPath: silentV,
               kbPattern: kbPatternsFacts[i] ?? 0,
             });
@@ -544,13 +627,13 @@ async function main() {
           const still = path.join(workBase, `fact-${i}.jpg`);
           const factBuf = await generateFactBackgroundJpeg(imgUrl);
           fs.writeFileSync(still, factBuf);
-          renderStillKenBurnsToVideo(still, DUR_FACT, factAss, {
+          renderStillKenBurnsToVideo(still, durFact, factAss, {
             outPath: silentV,
             kbPattern: kbPatternsFacts[i] ?? 0,
           });
         }
         const factSeg = path.join(workBase, `fact-${i}-seg.mp4`);
-        muxSegmentVideoAudio(silentV, voicePaths[i + 1], DUR_FACT, factSeg);
+        muxSegmentVideoAudio(silentV, voicePaths[i + 1], durFact, factSeg);
         silentParts.push(factSeg);
       }
 
@@ -565,9 +648,10 @@ async function main() {
       silentParts.push(ctaSeg);
 
       const concatPath = path.join(workBase, "concat-voice.mp4");
-      concatSegments(silentParts, concatPath);
+      const segmentDurations = [DUR_HOOK, ...facts.map(() => durFact), DUR_CTA];
+      concatSegments(silentParts, segmentDurations, concatPath);
 
-      const totalDuration = DUR_HOOK + DUR_FACT * facts.length + DUR_CTA;
+      const totalDuration = stitchedTimelineSec(segmentDurations);
       const bgmPath = pickBgmPath();
       const videoPath = path.join(workBase, "final.mp4");
       mixFinalWithBgm(concatPath, bgmPath, totalDuration, videoPath);
