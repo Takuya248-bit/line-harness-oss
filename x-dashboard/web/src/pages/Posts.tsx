@@ -14,6 +14,7 @@ export function Posts() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [tab, setTab] = useState<PostStatus | 'all'>('all');
   const [showForm, setShowForm] = useState(false);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const isAdmin = true; // TODO: detect from Cloudflare Access header
@@ -21,7 +22,7 @@ export function Posts() {
   const load = () => {
     const params: Record<string, string> = {};
     if (tab !== 'all') params.status = tab;
-    api.posts.list(params).then(setPosts);
+    api.posts.list(params).then(setPosts).catch(() => {});
   };
 
   useEffect(() => { load(); }, [tab]);
@@ -34,7 +35,11 @@ export function Posts() {
   }, new Map());
 
   const handleAction = async (action: string, id: string) => {
-    if (action === 'submit') { await api.posts.submit(id); load(); }
+    if (action === 'edit') {
+      const post = posts.find((p) => p.id === id);
+      if (post) { setEditingPost(post); setShowForm(true); }
+    }
+    else if (action === 'submit') { await api.posts.submit(id); load(); }
     else if (action === 'approve') { await api.posts.approve(id); load(); }
     else if (action === 'reject') { setRejectingId(id); }
     else if (action === 'delete') { await api.posts.delete(id); load(); }
@@ -51,7 +56,7 @@ export function Posts() {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-xl font-bold">Posts</h1>
-        {isAdmin && <button onClick={() => setShowForm(true)} className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-md">New Post</button>}
+        {isAdmin && <button onClick={() => { setEditingPost(null); setShowForm(true); }} className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-md">New Post</button>}
       </div>
       <div className="flex gap-2 mb-4">
         {tabs.map((t) => (
@@ -61,7 +66,18 @@ export function Posts() {
       </div>
       {showForm && (
         <div className="mb-4">
-          <PostForm onSubmit={async (data) => { await api.posts.create(data); setShowForm(false); load(); }} onCancel={() => setShowForm(false)} />
+          <PostForm
+            onSubmit={async (data) => {
+              if (editingPost) {
+                await api.posts.update(editingPost.id, data);
+              } else {
+                await api.posts.create(data);
+              }
+              setShowForm(false); setEditingPost(null); load();
+            }}
+            onCancel={() => { setShowForm(false); setEditingPost(null); }}
+            initial={editingPost ? { content: editingPost.content, scheduled_at: editingPost.scheduled_at || undefined } : undefined}
+          />
         </div>
       )}
       <div className="space-y-3">

@@ -13,9 +13,10 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   posts: {
-    list: (params?: Record<string, string>) => {
+    list: async (params?: Record<string, string>) => {
       const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-      return fetchJson<Post[]>(`/posts${qs}`);
+      const data = await fetchJson<{ posts: Post[] }>(`/posts${qs}`);
+      return data.posts;
     },
     create: (body: { content: string; media_urls?: string[]; scheduled_at?: string; thread_items?: { content: string }[] }) =>
       fetchJson<{ id: string }>('/posts', { method: 'POST', body: JSON.stringify(body) }),
@@ -28,11 +29,20 @@ export const api = {
       fetchJson(`/posts/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
   },
   metrics: {
-    summary: (days = 7) => fetchJson<MetricsSummary>(`/metrics/summary?days=${days}`),
-    posts: (days = 7) => fetchJson<PostMetric[]>(`/metrics/posts?days=${days}`),
+    summary: async (days = 7) => {
+      const data = await fetchJson<{ summary: MetricsSummary }>(`/metrics/summary?days=${days}`);
+      return data.summary;
+    },
+    posts: async (days = 7) => {
+      const data = await fetchJson<{ posts: PostMetric[] }>(`/metrics/posts?days=${days}`);
+      return data.posts;
+    },
   },
   followers: {
-    list: (days = 30) => fetchJson<FollowerPoint[]>(`/followers?days=${days}`),
+    list: async (days = 30) => {
+      const data = await fetchJson<{ followers: FollowerPoint[] }>(`/followers?days=${days}`);
+      return data.followers;
+    },
   },
   calendar: {
     get: (month: string) => fetchJson<{ posts: Post[]; threadChildren: Post[] }>(`/calendar?month=${month}`),

@@ -12,8 +12,6 @@ const app = new Hono<{ Bindings: Env }>();
 app.use('/api/*', cors());
 app.use('/api/*', authMiddleware);
 
-app.get('/', (c) => c.json({ status: 'ok' }));
-
 app.route('/api/posts', posts);
 app.route('/api/metrics', metrics);
 app.route('/api/followers', followers);

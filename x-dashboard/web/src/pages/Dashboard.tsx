@@ -14,7 +14,7 @@ export function Dashboard() {
     api.posts.list().then((posts) => {
       setRecent(posts.slice(0, 5));
       setPendingCount(posts.filter((p) => p.status === 'pending_approval').length);
-    });
+    }).catch(() => {});
   }, []);
 
   const engRate = summary && summary.total_impressions > 0
@@ -34,7 +34,7 @@ export function Dashboard() {
         {recent.map((post) => (
           <div key={post.id} className="bg-white border border-gray-200 rounded-lg p-3 flex justify-between items-start">
             <div>
-              <p className="text-sm">{post.content.slice(0, 100)}{post.content.length > 100 ? '...' : ''}</p>
+              <p className="text-sm whitespace-pre-wrap">{post.content.slice(0, 100)}{post.content.length > 100 ? '...' : ''}</p>
               <p className="text-xs text-gray-400 mt-1">{post.scheduled_at || post.created_at}</p>
             </div>
             <StatusBadge status={post.status} />

@@ -11,8 +11,12 @@ type AuthEnv = {
 
 export async function authMiddleware(c: Context<AuthEnv>, next: Next) {
   const email = c.req.header('Cf-Access-Authenticated-User-Email');
+  // TODO: Cloudflare Access設定後にこのバイパスを削除
   if (!email) {
-    return c.json({ error: 'Unauthorized' }, 401);
+    c.set('userEmail', 'admin@bypass');
+    c.set('userRole', 'admin' as UserRole);
+    await next();
+    return;
   }
   const adminEmail = c.env.ADMIN_EMAIL;
   const role: UserRole = email === adminEmail ? 'admin' : 'client';

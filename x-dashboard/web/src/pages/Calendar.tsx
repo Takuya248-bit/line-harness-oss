@@ -18,7 +18,7 @@ export function Calendar() {
   const month = currentDate.getMonth() + 1;
   const monthStr = getMonthString(currentDate);
 
-  useEffect(() => { api.calendar.get(monthStr).then((data) => setPosts(data.posts)); }, [monthStr]);
+  useEffect(() => { api.calendar.get(monthStr).then((data) => setPosts(data.posts)).catch(() => {}); }, [monthStr]);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDow = new Date(year, month - 1, 1).getDay();
