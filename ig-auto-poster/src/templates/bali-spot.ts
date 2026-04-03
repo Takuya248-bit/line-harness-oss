@@ -1,6 +1,6 @@
 import type { SatoriNode } from "../satori-types";
 import { FONT_FAMILY, WIDTH, HEIGHT } from "./styles";
-import { h, photoBackground, baliLogo, numberBadge, wrapText } from "./base";
+import { h, photoBackground, numberBadge, wrapText } from "./base";
 
 export interface BaliSpotData {
   imageUrl: string;
@@ -16,71 +16,35 @@ export interface BaliSpotData {
   infoStyle?: "simple" | "rich" | "practical";
 }
 
-function infoRow(icon: string, text: string): SatoriNode {
-  return h("div", {
-    style: { display: "flex", alignItems: "center", gap: 10 },
-  },
-    h("span", {
-      style: { fontSize: 26, fontFamily: FONT_FAMILY },
-    }, icon),
-    h("span", {
-      style: {
-        fontSize: 26,
-        fontWeight: 700,
-        color: "white",
-        fontFamily: FONT_FAMILY,
-      },
-    }, text),
-  );
-}
-
 export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
-  const nameLines = wrapText(data.spotName, {
-    fontSize: 42,
-    fontWeight: 900,
-    color: "white",
-    fontFamily: FONT_FAMILY,
-    textAlign: "center",
-  }, 18);
+  // 説明文は2行（60文字）に収める
+  const shortDesc = data.description.slice(0, 60) + (data.description.length > 60 ? "…" : "");
 
-  const descLines = wrapText(data.description, {
-    fontSize: 18,
+  const descLines = wrapText(shortDesc, {
+    fontSize: 22,
     fontWeight: 700,
-    color: "rgba(255,255,255,0.9)",
+    color: "rgba(255,255,255,0.95)",
     fontFamily: FONT_FAMILY,
-    lineHeight: 1.5,
-  }, 36);
+    lineHeight: 1.6,
+  }, 26);
 
-  // 情報行を構築
-  const infoRows: SatoriNode[] = [];
-
-  if (data.area) {
-    infoRows.push(infoRow("📍", data.area));
-  }
-  if (data.hours) {
-    infoRows.push(infoRow("⏰", data.hours));
-  }
-  if (data.highlight) {
-    infoRows.push(infoRow("✨", data.highlight));
-  }
-  if (data.recommendedMenu) {
-    infoRows.push(infoRow("🍽", data.recommendedMenu));
-  }
+  // エリアとhighlight
+  const metaText = [data.area, data.highlight].filter(Boolean).join("  ·  ");
 
   return photoBackground(data.imageUrl,
-    // ヘッダー: ロゴ + 番号バッジ
+    // ヘッダー: 番号バッジ + ロゴ
     h("div", {
       style: {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "flex-start",
-        padding: "24px 32px 0 32px",
+        padding: "28px 36px 0 36px",
       },
     },
       numberBadge(String(data.spotNumber)),
       h("span", {
         style: {
-          fontSize: 32,
+          fontSize: 28,
           fontWeight: 700,
           color: "white",
           fontFamily: FONT_FAMILY,
@@ -89,54 +53,57 @@ export function buildBaliSpotNode(data: BaliSpotData): SatoriNode {
       }, "Barilingual"),
     ),
 
-    // 情報カード（上部に寄せて長文対応）
+    // 写真エリア（上部80%）
+    h("div", { style: { display: "flex", flex: 1 } }),
+
+    // 下部テキストエリア（グラデーション背景）
     h("div", {
       style: {
         display: "flex",
         flexDirection: "column",
-        margin: "16px 24px 0 24px",
-        backgroundColor: "rgba(0,0,0,0.65)",
-        borderRadius: 20,
-        padding: "24px 28px",
+        padding: "48px 40px 40px 40px",
+        background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.75) 30%, rgba(0,0,0,0.85) 100%)",
         gap: 12,
-        border: "1px solid rgba(255,255,255,0.15)",
-        flex: 1,
       },
     },
-      // 店名
+      // 店名（大きく中央）
+      h("span", {
+        style: {
+          fontSize: 48,
+          fontWeight: 900,
+          color: "white",
+          fontFamily: FONT_FAMILY,
+          textAlign: "center",
+          textShadow: "0 2px 12px rgba(0,0,0,0.5)",
+        },
+      }, data.spotName),
+
+      // 説明文（2行以内）
       h("div", {
         style: {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 4,
-          paddingBottom: 12,
-          borderBottom: "1px solid rgba(255,255,255,0.2)",
+          gap: 2,
+          marginTop: 4,
         },
-      }, ...nameLines),
-
-      // 説明文
-      h("div", {
-        style: { display: "flex", flexDirection: "column", gap: 4 },
       }, ...descLines),
 
-      // 詳細情報行
-      ...(infoRows.length > 0
+      // エリア · highlight（小さく）
+      ...(metaText
         ? [
-            h("div", {
+            h("span", {
               style: {
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-                paddingTop: 8,
-                borderTop: "1px solid rgba(255,255,255,0.15)",
+                fontSize: 18,
+                fontWeight: 700,
+                color: "rgba(255,255,255,0.7)",
+                fontFamily: FONT_FAMILY,
+                textAlign: "center",
+                marginTop: 8,
               },
-            }, ...infoRows),
+            }, metaText),
           ]
         : []),
     ),
-
-    // 下部スペーサー
-    h("div", { style: { display: "flex", minHeight: 16 } }),
   );
 }
