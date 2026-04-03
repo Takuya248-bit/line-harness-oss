@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>IG Review</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f1115;
+        --surface: #1a1d24;
+        --text: #e8eaed;
+        --muted: #9aa0a6;
+        --border: #2d323c;
+        --green: #34a853;
+        --red: #ea4335;
+        --gray: #5f6368;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+        padding: max(12px, env(safe-area-inset-top)) 12px max(24px, env(safe-area-inset-bottom));
+        max-width: 480px;
+        margin-inline: auto;
+      }
+      h1 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin: 0 0 8px;
+      }
+      #status {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin-bottom: 16px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 14px;
+      }
+      .media {
+        border-radius: 8px;
+        overflow: hidden;
+        background: #000;
+        margin-bottom: 10px;
+      }
+      .media img,
+      .media video {
+        display: block;
+        width: 100%;
+        height: auto;
+        vertical-align: middle;
+      }
+      .media-placeholder {
+        padding: 2rem 12px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: #333842;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+      .caption {
+        margin: 0 0 8px;
+        font-size: 0.95rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .hashtags {
+        margin: 0 0 6px;
+        font-size: 0.8rem;
+        color: #8ab4f8;
+        word-break: break-word;
+      }
+      .meta {
+        margin: 0 0 12px;
+        font-size: 0.75rem;
+        color: var(--muted);
+        word-break: break-all;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        flex: 1 1 28%;
+        min-height: 44px;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        color: #fff;
+      }
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .btn-approve {
+        background: var(--green);
+      }
+      .btn-reject {
+        background: var(--red);
+      }
+      .btn-hold {
+        background: var(--gray);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>投稿レビュー</h1>
+    <div id="status">準備中…</div>
+    <div id="list"></div>
+    <!-- app.ts をビルドした app.js を読み込み（npx esbuild app.ts --bundle --format=esm --outfile=app.js --target=es2022） -->
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

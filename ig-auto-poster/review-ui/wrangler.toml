@@ -1,0 +1,11 @@
+# Cloudflare Pages (review UI + /api/* Functions)
+# Deploy: wrangler pages deploy . --project-name=<your-project>
+# TODO: pages project name / production branch はダッシュボードで合わせる
+name = "ig-auto-poster-review-ui"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ig-auto-poster-db"
+database_id = "5d6c137b-4667-4862-a087-5372aebe1e48"
