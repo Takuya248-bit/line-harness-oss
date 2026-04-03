@@ -1,0 +1,14 @@
+# Per-platform crawl and proposal settings (extend keys as implementations land).
+defaults:
+  request_timeout_seconds: 30
+  user_agent: "crowdsourcing-autopilot/0.1"
+
+platforms:
+  crowdworks:
+    enabled: true
+    base_url: "https://crowdworks.jp"
+    job_search_url: "https://crowdworks.jp/public/jobs/search"
+  lancers:
+    enabled: true
+    base_url: "https://www.lancers.jp"
+    job_search_url: "https://www.lancers.jp/work/search"

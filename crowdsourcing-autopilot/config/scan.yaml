@@ -1,0 +1,11 @@
+# Scan job discovery: schedule, filters, and rate limits.
+schedule:
+  interval_minutes: 15
+
+filters:
+  keywords: []
+  exclude_keywords: []
+
+limits:
+  max_pages_per_run: 5
+  min_interval_seconds_between_requests: 2.0
