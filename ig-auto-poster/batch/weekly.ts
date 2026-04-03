@@ -59,7 +59,6 @@ async function main() {
   const igToken = env("IG_ACCESS_TOKEN");
   const igAccountId = env("IG_BUSINESS_ACCOUNT_ID");
   const pexelsKey = optEnv("PEXELS_API_KEY");
-  const foursquareKey = optEnv("FOURSQUARE_API_KEY");
   const useSatoriV2 = !!pexelsKey;
 
   const week = await getWeekString();
@@ -77,33 +76,30 @@ async function main() {
     console.error("Neta collection failed (continuing):", e);
   }
 
-  // Step 1.5: スポット収集 (Foursquare)
-  if (foursquareKey) {
-    console.log("--- Step 1.5: スポット収集 ---");
-    try {
-      // real_spotsテーブルがなければ作成
-      await d1Execute(cfAccountId, d1DbId, cfApiToken,
-        `CREATE TABLE IF NOT EXISTS real_spots (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          area TEXT NOT NULL,
-          category TEXT NOT NULL DEFAULT 'cafe',
-          latitude REAL,
-          longitude REAL,
-          website TEXT,
-          foursquare_id TEXT UNIQUE,
-          price_level TEXT,
-          description TEXT,
-          used_count INTEGER DEFAULT 0,
-          fetched_at TEXT DEFAULT (datetime('now')),
-          created_at TEXT DEFAULT (datetime('now'))
-        )`,
-      );
-      const newSpots = await collectSpots(foursquareKey, cfAccountId, d1DbId, cfApiToken, "cafe", 50);
-      console.log(`Collected ${newSpots} new spots from Foursquare`);
-    } catch (e) {
-      console.error("Spot collection failed (continuing):", e);
-    }
+  // Step 1.5: スポット収集 (Overpass/OpenStreetMap - 認証不要・無料)
+  console.log("--- Step 1.5: スポット収集 ---");
+  try {
+    await d1Execute(cfAccountId, d1DbId, cfApiToken,
+      `CREATE TABLE IF NOT EXISTS real_spots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        area TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'cafe',
+        latitude REAL,
+        longitude REAL,
+        website TEXT,
+        foursquare_id TEXT UNIQUE,
+        price_level TEXT,
+        description TEXT,
+        used_count INTEGER DEFAULT 0,
+        fetched_at TEXT DEFAULT (datetime('now')),
+        created_at TEXT DEFAULT (datetime('now'))
+      )`,
+    );
+    const newSpots = await collectSpots(cfAccountId, d1DbId, cfApiToken, "cafe", 50);
+    console.log(`Collected ${newSpots} new spots from OpenStreetMap`);
+  } catch (e) {
+    console.error("Spot collection failed (continuing):", e);
   }
 
   // Step 2: 週次レポート
@@ -234,20 +230,16 @@ async function main() {
 
       // real_spotsから実在スポットを取得
       interface RealSpotRow { id: number; name: string; area: string; website: string | null }
-      let realSpots: RealSpotRow[] = [];
-      if (foursquareKey) {
-        realSpots = await d1Query<RealSpotRow>(
-          cfAccountId, d1DbId, cfApiToken,
-          "SELECT id, name, area, website FROM real_spots WHERE category = ? ORDER BY used_count ASC, RANDOM() LIMIT 5",
-          [category === "cafe" ? "cafe" : category],
+      const realSpots = await d1Query<RealSpotRow>(
+        cfAccountId, d1DbId, cfApiToken,
+        "SELECT id, name, area, website FROM real_spots WHERE category = ? ORDER BY used_count ASC, RANDOM() LIMIT 5",
+        [category === "cafe" ? "cafe" : category],
+      );
+      for (const spot of realSpots) {
+        await d1Execute(cfAccountId, d1DbId, cfApiToken,
+          "UPDATE real_spots SET used_count = used_count + 1 WHERE id = ?",
+          [spot.id],
         );
-        // used_count更新
-        for (const spot of realSpots) {
-          await d1Execute(cfAccountId, d1DbId, cfApiToken,
-            "UPDATE real_spots SET used_count = used_count + 1 WHERE id = ?",
-            [spot.id],
-          );
-        }
       }
 
       // プロンプト生成: 実在スポットがあれば新プロンプト、なければ従来プロンプト
