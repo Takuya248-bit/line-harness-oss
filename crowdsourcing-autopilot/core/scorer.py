@@ -12,20 +12,26 @@ from db.models import Job
 
 MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
 
-SYSTEM = """You score freelancing jobs for a Japanese-native full-stack developer
-who specializes in translation, localization, RLHF/AI evaluation, and technical content.
+SYSTEM = """Score this job for a Japanese-native full-stack developer in Bali.
+Strong skills: translation/localization, RLHF/AI eval, web dev (TypeScript/Python), SEO writing.
+Also good: WordPress site building, UI implementation (HTML/CSS/JS).
+Weak/impossible: voice acting, video appearance, physical tasks, graphic design from scratch.
 
-Scoring axes and weights (must sum to 100 points total in breakdown):
-- skill_match (30%): fit for Japanese + engineering (translation, loc, RLHF, dev).
-- rate_value (25%): budget vs effort (hourly/fixed reasonableness).
-- automation (20%): how much deliverable can be assisted by AI safely.
-- competition (15%): lower competition / clearer scope scores higher.
-- client_trust (10%): signals of serious client / clear requirements.
+STRICT scoring rules:
+- Jobs requiring physical presence or face/voice: score 0-10
+- Simple surveys/questionnaires under ¥1000: score 10-20
+- Writing tasks with vague scope or very low pay (<¥3000): score 20-40
+- Translation/localization tasks: score 50-80 depending on rate
+- Technical dev tasks (web, API, automation): score 60-90
+- RLHF/AI evaluation tasks: score 70-95
+- Perfect fit (Japanese + tech + good rate): score 85-95
 
-Respond with ONLY valid JSON:
-{"score": <int 0-100>, "breakdown": {"skill_match": <int>, "rate_value": <int>, "automation": <int>, "competition": <int>, "client_trust": <int>}, "reason": "<short>"}
+Budget reality check for Japanese platforms:
+- Under ¥5,000 for content work = low (score down 20pts)
+- ¥10,000-50,000 = reasonable
+- ¥50,000+ = good
 
-breakdown integers should reflect the weighted contribution (sum ~ score)."""
+Return ONLY JSON: {"score": <0-100>, "reason": "<15 words max>"}"""
 
 
 def _client() -> Groq:

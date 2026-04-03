@@ -13,8 +13,11 @@ jobs:
           python-version: '3.12'
       - name: Install dependencies
         run: pip install -r crowdsourcing-autopilot/requirements.txt
-      - name: Run scan
-        run: cd crowdsourcing-autopilot && python main.py scan
+      - name: Init DB + Run scan
+        run: |
+          cd crowdsourcing-autopilot
+          python -c "from db.migrate import migrate, default_db_path; import asyncio; asyncio.run(migrate(default_db_path()))"
+          python main.py scan
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           DISCORD_WEBHOOK_UPWORK: ${{ secrets.DISCORD_WEBHOOK_UPWORK }}
