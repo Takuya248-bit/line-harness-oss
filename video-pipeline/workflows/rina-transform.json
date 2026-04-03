@@ -1,0 +1,122 @@
+{
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "v1-5-pruned-emaonly.safetensors"
+    }
+  },
+  "11": {
+    "class_type": "LoadImage",
+    "_comment": "元フレーム（ポーズ・構図の参照）",
+    "inputs": {
+      "image": "rina_frame_000.png"
+    }
+  },
+  "12": {
+    "class_type": "LoadImage",
+    "_comment": "スタイル参照（なりたい顔・髪型・服装）",
+    "inputs": {
+      "image": "WhatsApp Image 2026-04-01 at 23.48.24.jpeg"
+    }
+  },
+  "20": {
+    "class_type": "IPAdapterUnifiedLoader",
+    "inputs": {
+      "model": ["4", 0],
+      "preset": "PLUS (high strength)"
+    }
+  },
+  "21": {
+    "class_type": "IPAdapter",
+    "_comment": "参照画像のスタイルを強めに適用",
+    "inputs": {
+      "model": ["20", 0],
+      "ipadapter": ["20", 1],
+      "image": ["12", 0],
+      "weight": 0.9,
+      "start_at": 0.0,
+      "end_at": 1.0,
+      "weight_type": "style transfer"
+    }
+  },
+  "30": {
+    "class_type": "ControlNetLoader",
+    "inputs": {
+      "control_net_name": "control_v11p_sd15_openpose.safetensors"
+    }
+  },
+  "31": {
+    "class_type": "OpenposePreprocessor",
+    "_comment": "元フレームからポーズ検出",
+    "inputs": {
+      "image": ["11", 0],
+      "detect_hand": "enable",
+      "detect_body": "enable",
+      "detect_face": "enable",
+      "resolution": 512
+    }
+  },
+  "32": {
+    "class_type": "ControlNetApplyAdvanced",
+    "inputs": {
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "control_net": ["30", 0],
+      "image": ["31", 0],
+      "strength": 0.85,
+      "start_percent": 0.0,
+      "end_percent": 1.0
+    }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 480,
+      "height": 848,
+      "batch_size": 1
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["4", 1],
+      "text": "a young japanese woman, medium length brown hair with bangs, white t-shirt, silver necklace, natural lighting, portrait photo, high quality, detailed face"
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["4", 1],
+      "text": "bad quality, blurry, deformed, ugly, watermark, text, logo, short hair, black hair"
+    }
+  },
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["21", 0],
+      "positive": ["32", 0],
+      "negative": ["32", 1],
+      "latent_image": ["5", 0],
+      "seed": 12345,
+      "steps": 25,
+      "cfg": 7.0,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "denoise": 1.0
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["3", 0],
+      "vae": ["4", 2]
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "rina_transformed",
+      "images": ["8", 0]
+    }
+  }
+}

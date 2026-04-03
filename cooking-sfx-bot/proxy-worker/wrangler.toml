@@ -1,0 +1,10 @@
+name = "cooking-sfx-proxy"
+main = "src/index.js"
+compatibility_date = "2024-09-01"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "114f3b50671b4c8e98fdcd2b9326e678"
+
+[vars]
+AUTH_KEY = "sfx-proxy-update-key-2026"

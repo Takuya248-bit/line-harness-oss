@@ -1,0 +1,92 @@
+{
+  "_comment": "IP-Adapter + ControlNet OpenPose: 服装・髪型変更ワークフロー (SD1.5, 512x768, 8GB VRAM対応)",
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "cfg": 7.5,
+      "denoise": 0.75,
+      "latent_image": ["5", 0],
+      "model": ["10", 0],
+      "negative": ["7", 0],
+      "positive": ["6", 0],
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "seed": 42,
+      "steps": 25
+    }
+  },
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "v1-5-pruned-emaonly.safetensors"
+    }
+  },
+  "5": {
+    "class_type": "VAEEncode",
+    "inputs": {
+      "pixels": ["12", 0],
+      "vae": ["4", 2]
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["4", 1],
+      "text": "a woman wearing casual summer dress, natural hairstyle, high quality photo"
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["4", 1],
+      "text": "bad quality, blurry, deformed, ugly, watermark"
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["3", 0],
+      "vae": ["4", 2]
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "appearance_changed",
+      "images": ["8", 0]
+    }
+  },
+  "10": {
+    "class_type": "IPAdapterApply",
+    "_comment": "IP-Adapterで参照画像の服装・スタイルを適用",
+    "inputs": {
+      "model": ["4", 0],
+      "ipadapter": ["11", 0],
+      "clip_vision": ["11", 1],
+      "image": ["13", 0],
+      "weight": 0.8,
+      "noise": 0.1,
+      "weight_type": "linear"
+    }
+  },
+  "11": {
+    "class_type": "IPAdapterModelLoader",
+    "inputs": {
+      "ipadapter_file": "ip-adapter-plus_sd15.safetensors"
+    }
+  },
+  "12": {
+    "class_type": "LoadImage",
+    "_comment": "元画像（ポーズ・構図の参照元）",
+    "inputs": {
+      "image": "SOURCE_IMAGE.png"
+    }
+  },
+  "13": {
+    "class_type": "LoadImage",
+    "_comment": "スタイル参照画像（なりたい服装・髪型）",
+    "inputs": {
+      "image": "STYLE_REFERENCE.png"
+    }
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "realisticVisionV51.safetensors"
+    }
+  },
+  "11": {
+    "class_type": "LoadImage",
+    "_comment": "元フレーム（img2img入力 = 構図・ポーズ・背景を保持）",
+    "inputs": {
+      "image": "rina_original_frame.png"
+    }
+  },
+  "12": {
+    "class_type": "LoadImage",
+    "_comment": "スタイル参照（なりたい髪型・服装）",
+    "inputs": {
+      "image": "WhatsApp Image 2026-04-01 at 23.48.24.jpeg"
+    }
+  },
+  "15": {
+    "class_type": "VAEEncode",
+    "_comment": "元フレームをlatentに変換（img2imgの核）",
+    "inputs": {
+      "pixels": ["11", 0],
+      "vae": ["4", 2]
+    }
+  },
+  "20": {
+    "class_type": "IPAdapterUnifiedLoader",
+    "inputs": {
+      "model": ["4", 0],
+      "preset": "PLUS (high strength)"
+    }
+  },
+  "21": {
+    "class_type": "IPAdapter",
+    "_comment": "参照画像のスタイル（髪型・服装）を適用",
+    "inputs": {
+      "model": ["20", 0],
+      "ipadapter": ["20", 1],
+      "image": ["12", 0],
+      "weight": 0.5,
+      "start_at": 0.0,
+      "end_at": 1.0,
+      "weight_type": "style transfer"
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["4", 1],
+      "text": "a young japanese woman, medium length brown hair with bangs, white t-shirt, silver necklace, natural lighting, high quality, detailed"
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["4", 1],
+      "text": "bad quality, blurry, deformed, ugly, watermark, text, logo, short hair, black hair, printed shirt"
+    }
+  },
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["21", 0],
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "latent_image": ["15", 0],
+      "seed": 12345,
+      "steps": 25,
+      "cfg": 7.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 0.45
+    }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": ["3", 0],
+      "vae": ["4", 2]
+    }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "filename_prefix": "hair_clothing_test",
+      "images": ["8", 0]
+    }
+  }
+}

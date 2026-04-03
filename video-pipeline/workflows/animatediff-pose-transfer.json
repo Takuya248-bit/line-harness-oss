@@ -1,0 +1,145 @@
+{
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "realisticVisionV51.safetensors"
+    }
+  },
+  "50": {
+    "class_type": "VHS_LoadVideo",
+    "inputs": {
+      "video": "rina_source.mp4",
+      "force_rate": 8,
+      "force_size": "Custom Width",
+      "custom_width": 512,
+      "custom_height": 0,
+      "frame_load_cap": 8,
+      "skip_first_frames": 0,
+      "select_every_nth": 1
+    }
+  },
+  "51": {
+    "class_type": "OpenposePreprocessor",
+    "inputs": {
+      "image": ["50", 0],
+      "detect_hand": "enable",
+      "detect_body": "enable",
+      "detect_face": "enable",
+      "resolution": 512
+    }
+  },
+  "30": {
+    "class_type": "ControlNetLoader",
+    "inputs": {
+      "control_net_name": "control_v11p_sd15_openpose.safetensors"
+    }
+  },
+  "32": {
+    "class_type": "ControlNetApplyAdvanced",
+    "inputs": {
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "control_net": ["30", 0],
+      "image": ["51", 0],
+      "strength": 0.9,
+      "start_percent": 0.0,
+      "end_percent": 1.0
+    }
+  },
+  "60": {
+    "class_type": "ADE_LoadAnimateDiffModel",
+    "inputs": {
+      "model_name": "mm_sd_v15_v2.ckpt"
+    }
+  },
+  "61": {
+    "class_type": "ADE_UseEvolvedSampling",
+    "inputs": {
+      "model": ["20", 0],
+      "motion_model": ["60", 0],
+      "beta_schedule": "autoselect"
+    }
+  },
+  "20": {
+    "class_type": "IPAdapterUnifiedLoader",
+    "inputs": {
+      "model": ["4", 0],
+      "preset": "PLUS (high strength)"
+    }
+  },
+  "21": {
+    "class_type": "IPAdapter",
+    "inputs": {
+      "model": ["61", 0],
+      "ipadapter": ["20", 1],
+      "image": ["12", 0],
+      "weight": 0.85,
+      "start_at": 0.0,
+      "end_at": 1.0,
+      "weight_type": "style transfer"
+    }
+  },
+  "12": {
+    "class_type": "LoadImage",
+    "inputs": {
+      "image": "WhatsApp Image 2026-04-01 at 23.48.24.jpeg"
+    }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 480,
+      "height": 848,
+      "batch_size": 8
+    }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["4", 1],
+      "text": "a young japanese woman, medium length brown hair with bangs, white t-shirt, silver necklace, natural lighting, high quality, photorealistic, detailed face, beautiful"
+    }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": ["4", 1],
+      "text": "bad quality, blurry, deformed, ugly, watermark, text, logo, anime, cartoon, 3d render, painting"
+    }
+  },
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["21", 0],
+      "positive": ["32", 0],
+      "negative": ["32", 1],
+      "latent_image": ["5", 0],
+      "seed": 42,
+      "steps": 20,
+      "cfg": 7.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0
+    }
+  },
+  "8": {
+    "class_type": "VHS_VAEDecodeBatched",
+    "inputs": {
+      "samples": ["3", 0],
+      "vae": ["4", 2],
+      "per_batch": 4
+    }
+  },
+  "9": {
+    "class_type": "VHS_VideoCombine",
+    "inputs": {
+      "images": ["8", 0],
+      "frame_rate": 8,
+      "loop_count": 0,
+      "filename_prefix": "animatediff_result",
+      "format": "video/h264-mp4",
+      "pingpong": false,
+      "save_output": true
+    }
+  }
+}
