@@ -67,7 +67,7 @@ function topReviewsForDb(
   if (!reviews?.length) return [];
   const sorted = [...reviews].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
   return sorted
-    .slice(0, 2)
+    .slice(0, 5)
     .map((r) => ({
       text: (r.text?.text ?? "").trim(),
       rating: r.rating ?? 0,

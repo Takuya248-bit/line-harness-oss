@@ -152,17 +152,12 @@ export function buildPromptForV2PlanWithRealSpots(
       let line = `${i + 1}. ${s.name}（${s.area}）`;
       if (s.rating) line += ` ★${s.rating}`;
       if (s.review_count) line += `（${s.review_count}件）`;
-      if (s.price_level) line += ` ${s.price_level}`;
-      if (s.website) line += ` / ${s.website}`;
       if (s.opening_hours) line += `\n   営業: ${s.opening_hours.split("\n")[0]}`;
       if (s.reviews_json) {
         try {
           const reviews = JSON.parse(s.reviews_json) as { text: string; rating: number }[];
-          if (reviews.length > 0) {
-            line += `\n   口コミ: 「${reviews[0]!.text.slice(0, 80)}」`;
-            if (reviews.length > 1) {
-              line += `\n   口コミ2: 「${reviews[1]!.text.slice(0, 80)}」`;
-            }
+          for (let ri = 0; ri < reviews.length; ri++) {
+            line += `\n   口コミ${ri + 1}: 「${reviews[ri]!.text.slice(0, 200)}」`;
           }
         } catch {
           /* ignore invalid json */
@@ -170,47 +165,49 @@ export function buildPromptForV2PlanWithRealSpots(
       }
       return line;
     })
-    .join("\n");
+    .join("\n\n");
 
-  return `あなたはバリ島在住のインスタグラマーです。実際に訪れた場所の情報を発信しています。
+  return `あなたはバリ島に住んでいて、実際にこれらのお店に通っているインスタグラマーです。
+友達に「ここ絶対行って！」とおすすめするような、熱量のある文章を書いてください。
 
 カテゴリ: ${category}
 参考ネタ:
 ${netaList}
 
-以下は実在するスポットです。名前はそのまま使ってください:
+以下は実在するスポットと、実際の来店者の口コミです:
 ${spotsList}
 
-重要ルール:
+文章のルール:
 - ${NO_DIRECT_PROMO_RULE}
-- 上記スポットの名前・評価・口コミ内容を変えない。そのまま使う
-- LLMの役割はデータ整形のみ。新しい情報を捏造しない
-- descriptionには上記の口コミ情報を要約・日本語整形して使う
-- テンプレ的な表現（「〜が魅力」「〜で有名」）は避け、口コミベースのリアルな文章にする
+- スポット名は変えない。口コミに書かれている事実（料理名、スタッフ名、雰囲気）をたっぷり使う
+- 口コミにない情報を捏造しない。ただし口コミの情報を膨らませて魅力的に書くのはOK
+- スタッフや口コミ投稿者の個人名は使わない（Antari, Gita等は省く）
+- 「〜が魅力」「〜で有名」「〜がおすすめ」のような薄い表現は禁止。具体的に書く
+- 読んだ人が「行きたい！」と思える、五感に訴える文章にする（香り、味、空間の雰囲気、店員さんの笑顔など）
+- 価格情報より体験の質を優先して書く
 
 JSONのみを返してください。
 
 {
-  "title": "${category}に合った魅力的な日本語タイトル",
+  "title": "${category}に合った、思わず保存したくなる日本語タイトル",
   "coverData": {
-    "catchCopy": "思わずスワイプしたくなるキャッチコピー",
-    "mainTitle": "${category}に合ったメインタイトル",
+    "catchCopy": "情報ギャップを作るキャッチコピー（例: まだ知らないの？）",
+    "mainTitle": "メインタイトル",
     "countLabel": "${spots.length}選"
   },
   "spotsData": [
     {
       "spotNumber": 1,
       "spotName": "実在店名（リストの名前をそのまま使用）",
-      "description": "150文字以内。リストの口コミ・評価のみを要約し日本語整形する。新規の事実・推測は入れない",
+      "description": "400〜600文字。口コミから拾える具体的な体験を盛り込む。どんな空間で、何を食べて、どんな気持ちになったか。スタッフの名前が口コミにあれば使う。料理の味や見た目の描写を入れる。「ここでしか味わえない」感を出す",
       "area": "正確なエリア名",
-      "priceLevel": "$ / $$ / $$$",
-      "highlight": "一番の魅力を30文字以内で"
+      "highlight": "口コミから抜き出した、一番グッとくる一言（40文字以内）"
     }
   ],
   "summaryData": {
     "title": "まとめ",
     "spots": [
-      { "number": 1, "name": "スポット名", "oneLiner": "20文字以内の特徴" }
+      { "number": 1, "name": "スポット名", "oneLiner": "行きたくなる一言（25文字以内）" }
     ]
   }
 }`;
