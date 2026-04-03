@@ -1,6 +1,6 @@
 platforms:
   upwork:
-    enabled: true
+    enabled: false
     type: api
     auth: oauth2
     layer: L1
@@ -15,12 +15,12 @@ platforms:
     auth: api_key
     layer: L1
   freelancer:
-    enabled: true
+    enabled: false
     type: api
     auth: oauth2
     layer: L1
   fiverr:
-    enabled: true
+    enabled: false
     type: scrape
     auth: cookie
     layer: L1_L2
@@ -30,22 +30,22 @@ platforms:
     auth: cookie
     layer: L2
   scale_ai:
-    enabled: true
+    enabled: false
     type: scrape
     auth: cookie
     layer: L1_L2
   dataannotation:
-    enabled: true
+    enabled: false
     type: scrape
     auth: cookie
     layer: L1_L2
   remotasks:
-    enabled: true
+    enabled: false
     type: scrape
     auth: cookie
     layer: L1_L2
   appen:
-    enabled: true
+    enabled: false
     type: scrape
     auth: cookie
     layer: L2
