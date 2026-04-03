@@ -1,0 +1,28 @@
+name: Deploy GYURUTT X samples (GitHub Pages)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'gyurutt-x-samples/**'
+      - '.github/workflows/deploy-gyurutt-github-pages.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gyurutt-github-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: gyurutt-x-samples
+          branch: gh-pages
+          clean: true
