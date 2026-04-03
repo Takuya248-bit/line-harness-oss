@@ -36,6 +36,7 @@ export async function abstractAndConcretize(
   groqApiKey: string,
   items: { title: string; description: string }[],
   existingKnowledge: string[],
+  cerebrasApiKey?: string,
 ): Promise<AbstractedTheme[]> {
   const itemList = items
     .slice(0, 5)
@@ -56,6 +57,9 @@ ${itemList}
 2. バリリンガル（バリ島の語学学校）の視点で独自ネタに変換（具体化）
 3. カテゴリとタグを付与
 
+精度:
+- 記事に明記がない具体的な金額（月額総額・宿泊込みプラン等）や入学条件は捏造しない。断定を避け、Tipsの切り口に留める。
+
 JSON配列で返してください:
 [{"abstract": "抽象テーマ", "concrete": "具体化したネタタイトル", "category": "cafe|spot|food|beach|lifestyle|cost|visa|culture", "tags": ["tag1"]}]
 
@@ -63,7 +67,7 @@ JSON配列で返してください:
 
   return groqJson<AbstractedTheme[]>(groqApiKey, [
     { role: "user", content: prompt },
-  ], { temperature: 0.6, maxTokens: 1024 });
+  ], { temperature: 0.6, maxTokens: 1024, cerebrasApiKey });
 }
 
 export async function collectAndStoreNeta(
@@ -71,6 +75,7 @@ export async function collectAndStoreNeta(
   notionApiKey: string,
   notionDbId: string,
   rssFeeds: string[],
+  cerebrasApiKey?: string,
 ): Promise<NetaEntry[]> {
   const allItems: { title: string; description: string }[] = [];
   for (const feed of rssFeeds) {
@@ -80,7 +85,7 @@ export async function collectAndStoreNeta(
 
   if (allItems.length === 0) return [];
 
-  const themes = await abstractAndConcretize(groqApiKey, allItems, []);
+  const themes = await abstractAndConcretize(groqApiKey, allItems, [], cerebrasApiKey);
 
   const entries: NetaEntry[] = themes.map((t, i) => ({
     id: `auto_${Date.now()}_${i}`,

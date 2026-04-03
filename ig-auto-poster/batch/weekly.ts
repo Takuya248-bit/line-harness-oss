@@ -47,6 +47,8 @@ async function getWeekString(): Promise<string> {
 
 async function main() {
   const groqKey = env("GROQ_API_KEY");
+  const cerebrasKey = optEnv("CEREBRAS_API_KEY");
+  const llmOpt = cerebrasKey ? { cerebrasApiKey: cerebrasKey } : {};
   const notionKey = env("NOTION_API_KEY");
   const notionKnowledgeDb = env("NOTION_KNOWLEDGE_DB_ID");
   const lineToken = env("LINE_CHANNEL_ACCESS_TOKEN");
@@ -70,7 +72,7 @@ async function main() {
     "https://www.bali.com/feed",
   ];
   try {
-    const newNeta = await collectAndStoreNeta(groqKey, notionKey, notionKnowledgeDb, rssFeeds);
+    const newNeta = await collectAndStoreNeta(groqKey, notionKey, notionKnowledgeDb, rssFeeds, cerebrasKey || undefined);
     console.log(`Collected ${newNeta.length} new neta entries`);
   } catch (e) {
     console.error("Neta collection failed (continuing):", e);
@@ -256,7 +258,7 @@ async function main() {
         v2Raw = await groqJson<V2PlanRaw>(
           groqKey,
           [{ role: "user", content: v2Prompt }],
-          { temperature: 0.8, maxTokens: 2048 },
+          { temperature: 0.8, maxTokens: 2048, ...llmOpt },
         );
       } catch (e) {
         console.error(`V2 plan generation failed for ${category}, falling back to V1:`, e);
@@ -266,7 +268,7 @@ async function main() {
           const planJson = await groqJson<{ hook: string; slides: { heading: string; body: string; icon?: string; slideType: string }[]; ctaText: string }>(
             groqKey,
             [{ role: "user", content: prompt }],
-            { temperature: 0.8, maxTokens: 2048 },
+            { temperature: 0.8, maxTokens: 2048, ...llmOpt },
           );
           plan = parseContentPlan(JSON.stringify(planJson), "carousel", formatName, category, neta);
         } catch (e2) {
@@ -282,7 +284,7 @@ async function main() {
         const captionPromptFb = buildCaptionPrompt(plan);
         let captionBodyFb: string;
         try {
-          captionBodyFb = await groqChat(groqKey, [{ role: "user", content: captionPromptFb }], { temperature: 0.8, maxTokens: 512 });
+          captionBodyFb = await groqChat(groqKey, [{ role: "user", content: captionPromptFb }], { temperature: 0.8, maxTokens: 512, ...llmOpt });
         } catch (e2) {
           captionBodyFb = plan.hook;
         }
@@ -384,7 +386,7 @@ async function main() {
       const planJson = await groqJson<{ hook: string; slides: { heading: string; body: string; icon?: string; slideType: string }[]; ctaText: string }>(
         groqKey,
         [{ role: "user", content: prompt }],
-        { temperature: 0.8, maxTokens: 2048 },
+        { temperature: 0.8, maxTokens: 2048, ...llmOpt },
       );
       plan = parseContentPlan(JSON.stringify(planJson), "carousel", formatName, category, neta);
     } catch (e) {
@@ -421,7 +423,7 @@ async function main() {
     const captionPrompt = buildCaptionPrompt(plan);
     let captionBody: string;
     try {
-      captionBody = await groqChat(groqKey, [{ role: "user", content: captionPrompt }], { temperature: 0.8, maxTokens: 512 });
+      captionBody = await groqChat(groqKey, [{ role: "user", content: captionPrompt }], { temperature: 0.8, maxTokens: 512, ...llmOpt });
     } catch (e) {
       console.error(`Caption generation failed:`, e);
       captionBody = plan.hook;

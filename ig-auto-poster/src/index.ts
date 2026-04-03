@@ -21,6 +21,7 @@ export interface Env {
   NOTION_KNOWLEDGE_DB_ID: string;
   PEXELS_API_KEY?: string;
   GROQ_API_KEY?: string;
+  CEREBRAS_API_KEY?: string;
 }
 
 // --- 設定取得ヘルパー ---

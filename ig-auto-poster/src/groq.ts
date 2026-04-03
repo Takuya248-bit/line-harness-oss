@@ -7,26 +7,23 @@ export interface GroqResponse {
   choices: { message: { content: string } }[];
 }
 
-// LLM provider: CEREBRAS_API_KEY > GEMINI_API_KEY > GROQ_API_KEY の優先順
-function getProvider(groqKey: string): { url: string; model: string; headers: Record<string, string> } {
-  const cerebrasKey = process.env.CEREBRAS_API_KEY;
+export type GroqCallOptions = {
+  temperature?: number;
+  maxTokens?: number;
+  /** Cloudflare Workers: pass env.CEREBRAS_API_KEY. When set, Cerebras is used; otherwise Groq. */
+  cerebrasApiKey?: string;
+};
+
+function getProvider(
+  groqKey: string,
+  cerebrasKey?: string,
+): { url: string; model: string; headers: Record<string, string> } {
   if (cerebrasKey) {
     return {
       url: "https://api.cerebras.ai/v1/chat/completions",
       model: "qwen-3-235b-a22b-instruct-2507",
       headers: {
         Authorization: `Bearer ${cerebrasKey}`,
-        "Content-Type": "application/json",
-      },
-    };
-  }
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (geminiKey) {
-    return {
-      url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      model: "gemini-2.0-flash",
-      headers: {
-        Authorization: `Bearer ${geminiKey}`,
         "Content-Type": "application/json",
       },
     };
@@ -44,9 +41,9 @@ function getProvider(groqKey: string): { url: string; model: string; headers: Re
 export async function groqChat(
   apiKey: string,
   messages: GroqMessage[],
-  options?: { temperature?: number; maxTokens?: number },
+  options?: GroqCallOptions,
 ): Promise<string> {
-  const provider = getProvider(apiKey);
+  const provider = getProvider(apiKey, options?.cerebrasApiKey);
 
   const res = await fetch(provider.url, {
     method: "POST",
@@ -71,7 +68,7 @@ export async function groqChat(
 export async function groqJson<T>(
   apiKey: string,
   messages: GroqMessage[],
-  options?: { temperature?: number; maxTokens?: number },
+  options?: GroqCallOptions,
 ): Promise<T> {
   const messagesWithFormat = [
     ...messages,
