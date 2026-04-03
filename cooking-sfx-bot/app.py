@@ -317,13 +317,8 @@ async def download_video(token: str):
 
 
 def _read_public_url() -> str:
-    """PUBLIC_URL をファイルから読み取る（start.sh がトンネル確立後に書き込む）"""
-    url_file = os.path.join(os.path.dirname(__file__), "logs", "public_url.txt")
-    try:
-        with open(url_file) as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        return os.environ.get("PUBLIC_URL", "")
+    """固定プロキシURL を返す。トンネルURLが変わってもリンクは不変。"""
+    return os.environ.get("PROXY_URL", "https://cooking-sfx-proxy.archbridge24.workers.dev")
 
 
 def get_download_url(user_id: str) -> str:

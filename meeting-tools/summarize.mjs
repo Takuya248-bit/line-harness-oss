@@ -1,22 +1,18 @@
 #!/usr/bin/env node
 /**
- * summarize.mjs - 文字起こしテキストをClaude Haikuで要約し、Notion議事録DBに投入
+ * summarize.mjs - 文字起こしテキストをGroq (Llama) で要約し、Notion議事録DBに投入
  *
  * Usage: node summarize.mjs <transcript.txt> <meeting_name>
  *
- * Env: ANTHROPIC_API_KEY, NOTION_TOKEN, NOTION_DB_MEETINGS_ID
+ * Env: GROQ_API_KEY, NOTION_TOKEN, NOTION_DB_MEETINGS_ID
  */
 import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import process from "node:process";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-const apiKey = process.env.ANTHROPIC_API_KEY;
+const groqKey = process.env.GROQ_API_KEY;
 const notionToken = process.env.NOTION_TOKEN;
 const meetingsDbId = process.env.NOTION_DB_MEETINGS_ID;
-if (!apiKey) { console.error("ANTHROPIC_API_KEY が設定されていません"); process.exit(1); }
+if (!groqKey) { console.error("GROQ_API_KEY が設定されていません"); process.exit(1); }
 if (!notionToken || !meetingsDbId) { console.error("NOTION_TOKEN / NOTION_DB_MEETINGS_ID が設定されていません"); process.exit(1); }
 
 const [, , transcriptPath, meetingName] = process.argv;
@@ -31,8 +27,7 @@ if (!transcript) {
   process.exit(1);
 }
 
-// 文字起こしが長い場合は先頭と末尾を使う (Haiku入力制限対策)
-const MAX_CHARS = 80000;
+const MAX_CHARS = 30000;
 const trimmed =
   transcript.length > MAX_CHARS
     ? transcript.slice(0, MAX_CHARS / 2) +
@@ -59,39 +54,58 @@ ${trimmed}
 
 JSONのみ出力してください。`;
 
-// Claude API 呼び出し
-const res = await fetch("https://api.anthropic.com/v1/messages", {
+// Groq API 呼び出し (Llama 3.3-70B)
+const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
   method: "POST",
   headers: {
-    "x-api-key": apiKey,
-    "anthropic-version": "2023-06-01",
-    "content-type": "application/json",
+    Authorization: `Bearer ${groqKey}`,
+    "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    model: "claude-haiku-4-5-20251001",
+    model: "llama-3.3-70b-versatile",
     max_tokens: 1024,
+    temperature: 0.3,
     messages: [{ role: "user", content: prompt }],
   }),
 });
 
 if (!res.ok) {
   const err = await res.json();
-  console.error(`Claude API error ${res.status}: ${JSON.stringify(err)}`);
+  console.error(`Groq API error ${res.status}: ${JSON.stringify(err)}`);
   process.exit(1);
 }
 
 const data = await res.json();
-const rawText = data.content[0].text;
+const rawText = data.choices[0].message.content;
 
-// JSON抽出 (コードブロックで囲まれている場合に対応)
 const jsonMatch = rawText.match(/\{[\s\S]*\}/);
 if (!jsonMatch) {
-  console.error("Claude APIから有効なJSONが返されませんでした:");
+  console.error("Groq APIから有効なJSONが返されませんでした:");
   console.error(rawText);
   process.exit(1);
 }
 
-const result = JSON.parse(jsonMatch[0]);
+// JSON内の生改行をエスケープ (LLMが箇条書きを生改行で出力する場合の対策)
+const sanitized = jsonMatch[0].replace(/(?<=:\s*"[^"]*)\n/g, "\\n");
+let result;
+try {
+  result = JSON.parse(sanitized);
+} catch {
+  // フォールバック: 各フィールドを正規表現で抽出
+  const extract = (key) => {
+    const m = rawText.match(new RegExp(`"${key}"\\s*:\\s*"([\\s\\S]*?)"\\s*[,}]`));
+    return m ? m[1].replace(/\\n/g, "\n") : "";
+  };
+  result = {
+    title: extract("title"),
+    category: extract("category"),
+    subcategory: "meeting",
+    summary: extract("summary"),
+    decisions: extract("decisions"),
+    action_items: extract("action_items"),
+    tags: extract("tags"),
+  };
+}
 console.log("要約結果:");
 console.log(`  タイトル: ${result.title}`);
 console.log(`  カテゴリ: ${result.category}`);
@@ -102,7 +116,6 @@ if (result.action_items) console.log(`  アクション:\n${result.action_items}
 const today = new Date().toISOString().slice(0, 10);
 
 // Notion 議事録DBに投入
-// ブロック本文を組み立て (2000文字制限のため分割)
 function textBlocks(text, heading) {
   const blocks = [];
   if (heading) {
@@ -147,7 +160,7 @@ const notionRes = await fetch("https://api.notion.com/v1/pages", {
       Date: { date: { start: today } },
       Tags: { multi_select: (result.tags || meetingName).split(",").filter(Boolean).map((t) => ({ name: t.trim() })) },
     },
-    children: children.slice(0, 100), // Notion API上限100ブロック
+    children: children.slice(0, 100),
   }),
 });
 

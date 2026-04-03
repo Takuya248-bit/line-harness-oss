@@ -174,8 +174,8 @@ _transcribe_and_summarize() {
     local chunk_dir="$session_dir/chunks"
     mkdir -p "$chunk_dir"
 
-    # 10分ごとに分割
-    ffmpeg -i "$wav_file" -f segment -segment_time 600 \
+    # 5分ごとに分割 (Groq APIの25MB制限対応)
+    ffmpeg -i "$wav_file" -f segment -segment_time 300 \
       -c copy "$chunk_dir/chunk_%03d.wav" -y 2>/dev/null
 
     for chunk in "$chunk_dir"/chunk_*.wav; do

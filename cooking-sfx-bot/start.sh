@@ -16,6 +16,8 @@ fi
 : "${ANTHROPIC_API_KEY:?required}"
 
 export LINE_CHANNEL_SECRET LINE_CHANNEL_ACCESS_TOKEN ANTHROPIC_API_KEY
+export PROXY_URL="${PROXY_URL:-https://cooking-sfx-proxy.archbridge24.workers.dev}"
+export PROXY_AUTH_KEY="${PROXY_AUTH_KEY:-sfx-proxy-update-key-2026}"
 export SFX_DIR="${SFX_DIR:-$SCRIPT_DIR/assets/sfx}"
 export SESSIONS_DIR="${SESSIONS_DIR:-/tmp/cooking-sfx-sessions}"
 export LEARNING_DIR="${LEARNING_DIR:-$SCRIPT_DIR/data/learning}"
@@ -29,6 +31,11 @@ cleanup() {
   echo "[$(date)] Stopped."
 }
 trap cleanup EXIT
+
+# --- venv有効化 ---
+if [ -f "$SCRIPT_DIR/.venv/bin/activate" ]; then
+  source "$SCRIPT_DIR/.venv/bin/activate"
+fi
 
 # --- uvicorn ---
 cd "$SCRIPT_DIR"
@@ -63,11 +70,20 @@ for i in $(seq 1 30); do
   curl -sf --max-time 5 "$TUNNEL_URL/health" > /dev/null 2>&1 && break
   sleep 2
 done
+# app.pyがURLを読み取るファイルを更新
+echo "$TUNNEL_URL" > "$LOG_DIR/public_url.txt"
 echo "[$(date)] Tunnel ready: $TUNNEL_URL"
+
+# --- プロキシWorkerにトンネルURL登録 ---
+PROXY_RESP=$(curl -sf -X POST "$PROXY_URL/update-tunnel" \
+  -H "Content-Type: application/json" \
+  -H "X-Auth-Key: $PROXY_AUTH_KEY" \
+  -d "{\"tunnel_url\": \"$TUNNEL_URL\"}" 2>&1 || true)
+echo "[$(date)] Proxy update: $PROXY_RESP"
 
 # --- webhook更新 ---
 for attempt in 1 2 3; do
-  RESP=$(curl -s -X PUT \
+  RESP=$(curl -s --max-time 10 -X PUT \
     -H "Authorization: Bearer $LINE_CHANNEL_ACCESS_TOKEN" \
     -H "Content-Type: application/json" \
     -d "{\"endpoint\": \"${TUNNEL_URL}/webhook\"}" \
