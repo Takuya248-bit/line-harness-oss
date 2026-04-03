@@ -10,10 +10,10 @@ platforms:
     auth: api_key
     layer: L1
   lancers:
-    enabled: true
-    type: api
-    auth: api_key
-    layer: L1
+    enabled: false  # AWS WAF blocks httpx; needs Playwright Stealth
+    type: scrape
+    auth: cookie
+    layer: L3
   freelancer:
     enabled: false
     type: api

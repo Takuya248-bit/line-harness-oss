@@ -1,0 +1,282 @@
+---
+# Fiverr Gig Content - archbridge24@gmail.com
+# Generated: 2026-04-03
+# Profile: Full-Stack Developer & Japanese Localization Specialist
+
+gigs:
+
+  - id: japanese_localization
+    title: "I will localize your website, app, or game into natural Japanese"
+    category: "Writing & Translation"
+    subcategory: "Translation"
+    search_tags:
+      - japanese localization
+      - japanese translation
+      - app localization japanese
+      - website japanese
+      - game localization
+    description: |
+      Looking for Japanese that actually sounds natural — not machine-translated, not overly stiff?
+
+      I'm a native Japanese speaker based in Bali, Indonesia, currently running a language school
+      while working as a full-stack developer. That combination matters: I understand both the
+      technical side (string extraction, i18n frameworks, placeholder handling) and the linguistic
+      nuance that makes or breaks a product in Japan.
+
+      What I bring to your project:
+      - Native fluency with a sharp eye for tone — casual app UI, formal B2B copy, or playful
+        game dialogue. I adjust to fit your brand voice, not default to textbook Japanese.
+      - Technical background means I won't break your variables, HTML tags, or markdown formatting.
+        I've worked with .json, .po, .xliff, .strings, and plain CSV files.
+      - I use AI-assisted tooling (DeepL + Claude) as a first pass, then hand-edit every line.
+        You get the speed of machine translation with the accuracy of a native editor.
+
+      Typical turnaround: 500 words/day for careful localization work.
+
+      What I need from you:
+      - The source files or spreadsheet
+      - Brief context on your target audience (age, formality level)
+      - Any existing glossary or style guide (optional but helpful)
+
+      If you're unsure which package fits, message me first — I reply within a few hours.
+    packages:
+      basic:
+        name: "Starter"
+        description: "Up to 300 words of localization. UI strings, short copy, landing page sections."
+        delivery_days: 2
+        price: 10
+        revisions: 1
+      standard:
+        name: "Standard"
+        description: "Up to 1,000 words. Full landing page, onboarding flow, or app screen set."
+        delivery_days: 4
+        price: 35
+        revisions: 2
+      premium:
+        name: "Full Project"
+        description: "Up to 3,000 words. Complete app, game demo, or multi-page website."
+        delivery_days: 7
+        price: 90
+        revisions: 3
+    faq:
+      - q: "Do you handle technical file formats like .json or .xliff?"
+        a: "Yes. I work with .json, .xliff, .po, .strings, CSV, and plain text. If you use a
+            different format, send me a sample and I'll confirm before you order."
+      - q: "Can you localize from English to Japanese only, or other directions too?"
+        a: "My specialty is English → Japanese. I can also do Japanese → English proofreading,
+            but for full EN→JA translation the quality is highest."
+      - q: "How do you handle brand names, product names, and placeholders?"
+        a: "I preserve all placeholders (e.g. {username}, %s) exactly as-is and follow your
+            instructions on brand names. If no instructions are given, I'll use katakana
+            for foreign brand names, which is standard practice in Japan."
+    requirements:
+      - "Please share the source file(s) or paste the text to be localized."
+      - "Who is the target audience? (e.g. general consumers, business users, gamers)"
+      - "Any words or phrases that must NOT be translated (brand names, technical terms)?"
+
+  - id: seo_content_japanese
+    title: "I will write SEO-optimized Japanese blog posts and web content"
+    category: "Writing & Translation"
+    subcategory: "Articles & Blog Posts"
+    search_tags:
+      - japanese seo content
+      - japanese blog writing
+      - japanese copywriting
+      - japan seo
+      - japanese article writing
+    description: |
+      Most Japanese SEO content falls into one of two traps: it's written by non-natives who miss
+      the natural flow, or it's AI-generated filler that Google is increasingly deprioritizing.
+
+      I write Japanese content that ranks and reads well. Here's my background:
+
+      I'm a native Japanese speaker and developer running a language school in Bali. I write
+      regularly in Japanese on tech, education, and online business — topics I actually live.
+      I use Claude and search-intent analysis to structure articles, then write the actual copy
+      by hand to maintain voice and E-E-A-T signals.
+
+      What each article includes:
+      - Keyword research (I use the main keyword you provide + related terms from search suggestion)
+      - Proper heading structure (H1→H2→H3) with keyword placement
+      - Meta title and meta description (ready to paste into Yoast/RankMath)
+      - Natural internal link placeholders and CTA suggestions
+      - Word count matched to top-ranking competitors for your target keyword
+
+      I don't write about topics I have zero experience with and promise you #1 rankings.
+      What I do: write honest, well-structured articles that have a real shot at ranking because
+      they answer the user's actual question.
+
+      Best fit: SaaS targeting Japan, e-commerce product descriptions, affiliate blogs, company blogs.
+    packages:
+      basic:
+        name: "Short Post"
+        description: "600–800 word article on one keyword. Meta title + description included."
+        delivery_days: 3
+        price: 15
+        revisions: 1
+      standard:
+        name: "Standard Article"
+        description: "1,200–1,500 word pillar article. Heading structure + meta + CTA suggestions."
+        delivery_days: 4
+        price: 40
+        revisions: 2
+      premium:
+        name: "Comprehensive Guide"
+        description: "2,500–3,000 word comprehensive guide. Keyword research + full article +
+                       meta + internal link suggestions. Delivered as Google Doc."
+        delivery_days: 7
+        price: 95
+        revisions: 3
+    faq:
+      - q: "Do you provide keyword research or do I need to give you the keyword?"
+        a: "For Basic, please provide the main keyword. For Standard and Premium, I do keyword
+            research as part of the process — just tell me your topic and target audience."
+      - q: "Will the content pass AI detection tools?"
+        a: "I write the final copy by hand. I use AI for research structure and outlining,
+            then rewrite everything in my own voice. Most detection tools score my output
+            as human-written, but I can't guarantee any specific tool's result."
+      - q: "Can you write about technical topics like software or fintech?"
+        a: "Yes — tech and developer tools are my strongest area. I can also cover education,
+            e-commerce, and online business. For highly specialized medical or legal content,
+            please message me first."
+    requirements:
+      - "What is the main target keyword? (Japanese preferred, romaji OK)"
+      - "Who is the target reader? (age range, knowledge level, intent: information or purchase)"
+      - "Any competitor URLs or reference articles you'd like me to look at?"
+
+  - id: japanese_proofreading
+    title: "I will proofread and edit your Japanese text or EN-JA translation"
+    category: "Writing & Translation"
+    subcategory: "Proofreading & Editing"
+    search_tags:
+      - japanese proofreading
+      - japanese editing
+      - japanese translation check
+      - en ja proofreading
+      - japanese copyediting
+    description: |
+      Machine translation has gotten good. But "good" isn't the same as "natural" or "trustworthy"
+      — especially in Japanese, where the wrong level of formality can cost you a client.
+
+      I proofread and edit Japanese text with a native speaker's eye for:
+      - Keigo (honorific language) consistency — critical for B2B and customer-facing copy
+      - Unnatural word order that's technically correct but obviously translated
+      - Particle errors (は vs が, に vs で) that native readers notice immediately
+      - Punctuation and spacing conventions specific to Japanese typesetting
+
+      My background: I'm a developer and language school operator who writes Japanese professionally.
+      I've edited everything from app UI strings to investor pitch decks to customer support scripts.
+      I use a combination of manual review and AI-assisted consistency checking to catch errors
+      that pure manual review misses.
+
+      What you'll receive:
+      - Edited document with changes tracked (or clean version, your choice)
+      - Brief comment on recurring issues (so you can improve future drafts)
+
+      Note: This service covers Japanese text up to the word counts listed. For larger volumes,
+      message me and I'll quote accordingly.
+    packages:
+      basic:
+        name: "Quick Check"
+        description: "Up to 300 words. Light proofreading — spelling, obvious grammar, punctuation."
+        delivery_days: 1
+        price: 8
+        revisions: 1
+      standard:
+        name: "Editorial Review"
+        description: "Up to 800 words. Full edit including naturalness, formality consistency,
+                       and flow. Track-changes Google Doc."
+        delivery_days: 2
+        price: 25
+        revisions: 2
+      premium:
+        name: "Deep Edit"
+        description: "Up to 2,000 words. Comprehensive edit + comment on recurring issues +
+                       clean final version. Suitable for website copy, pitch decks, or app UI."
+        delivery_days: 4
+        price: 70
+        revisions: 3
+    faq:
+      - q: "What's the difference between proofreading and editing?"
+        a: "Proofreading catches errors (spelling, grammar, punctuation). Editing goes further —
+            improving naturalness, flow, and consistency of tone. Standard and Premium packages
+            include both."
+      - q: "Can you proofread content originally written in Japanese (not translated)?"
+        a: "Yes. I edit both translated text and originally-written Japanese. Please mention
+            which it is so I can adjust my focus."
+      - q: "Do you offer rush delivery?"
+        a: "Often yes — message me before ordering. I'm UTC+8 (Bali) so I can turn around
+            work overnight for US/Europe clients."
+    requirements:
+      - "Please paste or attach the Japanese text to be proofread."
+      - "Is this a translation (from what language?) or original Japanese writing?"
+      - "What is the intended tone? (formal business, friendly consumer, technical)"
+
+  - id: ai_content_review
+    title: "I will review and humanize your AI-generated Japanese content"
+    category: "Writing & Translation"
+    subcategory: "Proofreading & Editing"
+    search_tags:
+      - ai content review japanese
+      - humanize ai content japanese
+      - ai writing editor japanese
+      - chatgpt japanese editing
+      - ai text improvement
+    description: |
+      You're already using ChatGPT or Claude to draft Japanese content. Smart. But you've probably
+      noticed the output sounds slightly... off. Native readers can feel it even if they can't
+      articulate why.
+
+      I review AI-generated Japanese and fix the specific patterns that give it away:
+      - Overuse of 〜することができます when plain 〜できます sounds more natural
+      - Unnatural paragraph transitions that read like a list rather than a narrative
+      - Formality drift — starting keigo and sliding into casual mid-paragraph
+      - Hollow filler phrases (まず〜。次に〜。最後に〜。) that add length but not value
+      - Missing the cultural context that makes copy feel Japanese rather than just translated
+
+      Why me: I work with AI daily as a developer and content creator. I know exactly how Claude
+      and GPT-4 produce Japanese text — because I produce a lot of it myself before editing it.
+      I'm not anti-AI; I'm pro-quality.
+
+      This service is ideal for:
+      - Blog posts and articles drafted with AI
+      - Product descriptions or landing page copy
+      - Customer-facing emails or support templates
+      - Social media content batches
+
+      Deliverable: Edited document + brief summary of main issues found.
+    packages:
+      basic:
+        name: "Single Piece"
+        description: "One AI-generated article or piece up to 500 words. Edit + 3-point summary."
+        delivery_days: 1
+        price: 12
+        revisions: 1
+      standard:
+        name: "Content Pack"
+        description: "Up to 1,500 words total (e.g. 3 blog posts or 1 long article).
+                       Edit + pattern analysis to improve your AI prompts."
+        delivery_days: 3
+        price: 38
+        revisions: 2
+      premium:
+        name: "Monthly Batch"
+        description: "Up to 5,000 words. Full editorial review + prompt improvement guide
+                       + recurring issues report. Best for content teams publishing weekly."
+        delivery_days: 7
+        price: 95
+        revisions: 3
+    faq:
+      - q: "Which AI tools do you have experience reviewing output from?"
+        a: "Primarily ChatGPT (GPT-4), Claude (3.5/3.7), and DeepL Write. Each has distinct
+            patterns — I adjust my review focus based on which tool generated the text."
+      - q: "Will you tell me if the AI output is actually good and doesn't need much editing?"
+        a: "Yes. If the content is already solid, I'll say so and make minimal changes.
+            I'd rather give you an honest assessment than bill you for unnecessary edits."
+      - q: "Can this service help me improve my AI prompts?"
+        a: "Standard and Premium packages include a brief analysis of recurring patterns in
+            the AI output. This often translates directly into better prompts for your next batch."
+    requirements:
+      - "Please share the AI-generated Japanese text (paste or attach file)."
+      - "Which AI tool generated this content? (ChatGPT, Claude, DeepL, other)"
+      - "What is the intended use? (blog, product page, social media, email, other)"

@@ -10,7 +10,7 @@ from groq import Groq
 
 from db.models import Job
 
-MODEL = "llama-3.3-70b-versatile"
+MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
 
 SYSTEM = """You score freelancing jobs for a Japanese-native full-stack developer
 who specializes in translation, localization, RLHF/AI evaluation, and technical content.
@@ -51,22 +51,28 @@ def _job_payload(job: Job) -> dict[str, Any]:
 def _score_sync(job: Job) -> dict[str, Any]:
     client = _client()
     user = json.dumps(_job_payload(job), ensure_ascii=False)
-    chat = client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM},
-            {"role": "user", "content": user},
-        ],
-        temperature=0.2,
-    )
-    raw = (chat.choices[0].message.content or "").strip()
-    m = re.search(r"\{[\s\S]*\}", raw)
-    if not m:
-        return {"score": 0, "breakdown": {}, "reason": raw[:500]}
-    try:
-        return json.loads(m.group())
-    except json.JSONDecodeError:
-        return {"score": 0, "breakdown": {}, "reason": raw[:500]}
+    for model in MODELS:
+        try:
+            chat = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": SYSTEM},
+                    {"role": "user", "content": user},
+                ],
+                temperature=0.2,
+            )
+            raw = (chat.choices[0].message.content or "").strip()
+            m = re.search(r"\{[\s\S]*\}", raw)
+            if not m:
+                return {"score": 0, "breakdown": {}, "reason": raw[:500]}
+            try:
+                return json.loads(m.group())
+            except json.JSONDecodeError:
+                return {"score": 0, "breakdown": {}, "reason": raw[:500]}
+        except Exception as exc:
+            if "rate_limit" in str(exc) and model != MODELS[-1]:
+                continue
+            raise
 
 
 async def score_job(job: Job) -> dict[str, Any]:
