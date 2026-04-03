@@ -41,3 +41,7 @@ ig-reels-research/reels.db
 ig-reels-research/reels.db-shm
 ig-reels-research/reels.db-wal
 cloud-harness/
+
+# Crowdsourcing Autopilot (local venv + sqlite)
+crowdsourcing-autopilot/.venv/
+crowdsourcing-autopilot/data/

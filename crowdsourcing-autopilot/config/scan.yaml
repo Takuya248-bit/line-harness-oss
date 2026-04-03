@@ -1,0 +1,25 @@
+categories:
+  - Translation
+  - AI/ML
+  - Web Development
+  - Localization
+  - Content Writing
+keywords:
+  - Japanese
+  - 日本語
+  - localization
+  - RLHF
+  - AI evaluation
+  - translation
+  - 翻訳
+  - ローカライゼーション
+  - SEO
+  - ライティング
+budget_min:
+  hourly: 20
+  fixed: 50
+scan_interval: 300
+priority_window: 900
+thresholds:
+  high: 70
+  maybe: 50

@@ -1,0 +1,51 @@
+platforms:
+  upwork:
+    enabled: true
+    type: api
+    auth: oauth2
+    layer: L1
+  crowdworks:
+    enabled: true
+    type: api
+    auth: api_key
+    layer: L1
+  lancers:
+    enabled: true
+    type: api
+    auth: api_key
+    layer: L1
+  freelancer:
+    enabled: true
+    type: api
+    auth: oauth2
+    layer: L1
+  fiverr:
+    enabled: true
+    type: scrape
+    auth: cookie
+    layer: L1_L2
+  coconala:
+    enabled: true
+    type: scrape
+    auth: cookie
+    layer: L2
+  scale_ai:
+    enabled: true
+    type: scrape
+    auth: cookie
+    layer: L1_L2
+  dataannotation:
+    enabled: true
+    type: scrape
+    auth: cookie
+    layer: L1_L2
+  remotasks:
+    enabled: true
+    type: scrape
+    auth: cookie
+    layer: L1_L2
+  appen:
+    enabled: true
+    type: scrape
+    auth: cookie
+    layer: L2
