@@ -74,6 +74,21 @@ export async function enqueueWeekly(
   return ids;
 }
 
+export async function enqueueWeeklyReels(
+  db: D1Database,
+  posts: GeneratedPost[],
+  startDate: string,
+): Promise<number[]> {
+  const scheduledTime = "12:00";
+  const dates = buildScheduleDates(startDate, posts.length);
+  const ids: number[] = [];
+  for (let i = 0; i < posts.length; i++) {
+    const id = await enqueuePost(db, posts[i]!, dates[i]!, scheduledTime);
+    ids.push(id);
+  }
+  return ids;
+}
+
 export async function getNextScheduledPost(
   db: D1Database,
   today: string,
