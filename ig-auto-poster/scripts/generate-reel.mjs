@@ -18,6 +18,8 @@ const TMP_DIR = path.join("/tmp", "ig-reels");
 
 const DUR_HOOK = 2;
 const DUR_CTA = 3;
+const MIN_DUR_HOOK = 2;
+const MIN_DUR_FACT = 2;
 /** Crossfade between stitched segments (seconds) */
 const XFADE_DUR = 0.3;
 
@@ -226,8 +228,8 @@ ScriptType: v4.00+
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Hook,Zen Maru Gothic,56,&H00FFFFFF,&H000000FF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,3,3,2,2,60,60,80,1
-Style: Fact,Zen Maru Gothic,42,&H00FFFFFF,&H000000FF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,3,2,2,2,60,60,120,1
+Style: Hook,Zen Maru Gothic,56,&H00FFFFFF,&H000000FF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,3,3,2,2,60,60,500,1
+Style: Fact,Zen Maru Gothic,42,&H00FFFFFF,&H000000FF,&H00000000,&H96000000,-1,0,0,0,100,100,0,0,3,2,2,2,60,60,500,1
 Style: Number,Zen Maru Gothic,72,&H0000BCD4,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,1,3,0,7,30,0,30,1
 
 [Events]
@@ -252,6 +254,77 @@ function vfAssChain(assPath) {
   const assEsc = escapePathForVideoFilter(assPath);
   const fontsEsc = escapePathForVideoFilter(path.dirname(fontFilePath()));
   return `ass=${assEsc}:fontsdir=${fontsEsc}`;
+}
+
+/** Probe audio/video duration via ffprobe. Returns seconds or null. */
+function probeDurationSec(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return null;
+  try {
+    const out = execFileSync(
+      "ffprobe",
+      ["-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", filePath],
+      { encoding: "utf8" },
+    );
+    return parseFloat(out.trim()) || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Whoosh SFX via ffmpeg lavfi sine sweep 800→200Hz */
+function generateWhooshSfx(outPath, durationMs = 300) {
+  runFfmpeg([
+    "-y",
+    "-f",
+    "lavfi",
+    "-i",
+    `sine=frequency=800:duration=${durationMs / 1000}`,
+    "-af",
+    `afade=t=in:st=0:d=0.05,afade=t=out:st=${(durationMs - 100) / 1000}:d=0.1,aformat=sample_rates=44100`,
+    outPath,
+  ]);
+}
+
+/**
+ * Overlay whoosh SFX onto the last 0.3s of a muxed segment.
+ * Returns outPath (new file). If DRY_RUN or error, returns original segPath.
+ */
+function addWhooshToSegment(segPath, sfxPath, durationSec, outPath) {
+  if (DRY_RUN) {
+    console.log("[generate-reel] dry-run addWhoosh", segPath, "->", outPath);
+    fs.copyFileSync(segPath, outPath);
+    return outPath;
+  }
+  if (!sfxPath || !fs.existsSync(sfxPath)) {
+    fs.copyFileSync(segPath, outPath);
+    return outPath;
+  }
+  const sfxStart = Math.max(0, durationSec - 0.3);
+  runFfmpeg([
+    "-y",
+    "-i",
+    segPath,
+    "-i",
+    sfxPath,
+    "-filter_complex",
+    `[0:a]aformat=sample_rates=44100:channel_layouts=stereo[base];` +
+      `[1:a]volume=0.3,adelay=${Math.round(sfxStart * 1000)}|${Math.round(sfxStart * 1000)},aformat=sample_rates=44100:channel_layouts=stereo[sfx];` +
+      `[base][sfx]amix=inputs=2:duration=first[aout]`,
+    "-map",
+    "0:v",
+    "-map",
+    "[aout]",
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    "-b:a",
+    "192k",
+    "-t",
+    String(durationSec),
+    outPath,
+  ]);
+  return outPath;
 }
 
 function runFfmpeg(args) {
@@ -539,7 +612,6 @@ async function main() {
       const videoUrls = Array.isArray(content.videoClipUrls) ? content.videoClipUrls : [];
       const hookText = content.hookText || content.title || "バリ島、知ってた？";
       const targetTotalSec = targetDurationSecForReelFormat(content.reelFormat);
-      const durFact = factDurationSec(targetTotalSec, facts.length);
 
       const ts = Date.now();
       const workBase = path.join(TMP_DIR, `${item.id}-${ts}`);
@@ -553,6 +625,18 @@ async function main() {
 
       const voicePaths = generateAllVoices(voiceTasks);
 
+      // Probe TTS durations and derive per-segment durations
+      const hookVoiceDur = probeDurationSec(voicePaths[0]);
+      const durHook = hookVoiceDur != null ? Math.max(MIN_DUR_HOOK, hookVoiceDur + 0.5) : DUR_HOOK;
+      const factVoiceDurs = facts.map((_, i) => probeDurationSec(voicePaths[i + 1]));
+      const durFacts = facts.map((_, i) =>
+        factVoiceDurs[i] != null ? Math.max(MIN_DUR_FACT, factVoiceDurs[i] + 0.5) : factDurationSec(targetTotalSec, facts.length),
+      );
+
+      // Generate whoosh SFX once
+      const sfxPath = path.join(workBase, "whoosh.aac");
+      generateWhooshSfx(sfxPath, 300);
+
       const silentParts = [];
       const kbPatternHook = Math.floor(Math.random() * 3);
       const kbPatternsFacts = facts.map(() => Math.floor(Math.random() * 3));
@@ -560,12 +644,12 @@ async function main() {
       /** Hook */
       const hookUrl = videoUrls[0] ?? null;
       const hookSilent = path.join(workBase, "hook-silent.mp4");
-      const hookAss = generateAssFile(hookText, facts, DUR_HOOK, workBase, { type: "hook" });
+      const hookAss = generateAssFile(hookText, facts, durHook, workBase, { type: "hook" });
       if (hookUrl) {
         const hookClip = path.join(workBase, "hook-src.mp4");
         const ok = await downloadVideoFile(hookUrl, hookClip);
         if (ok) {
-          renderClipToVideo(hookClip, DUR_HOOK, hookAss, hookSilent);
+          renderClipToVideo(hookClip, durHook, hookAss, hookSilent);
         } else {
           const hookStillPath = path.join(workBase, "hook-fallback.jpg");
           const bgSvg = Buffer.from(`<svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
@@ -577,7 +661,7 @@ async function main() {
   </svg>`);
           const hookFbBuf = await sharp(bgSvg).jpeg({ quality: 92 }).toBuffer();
           fs.writeFileSync(hookStillPath, hookFbBuf);
-          renderStillKenBurnsToVideo(hookStillPath, DUR_HOOK, hookAss, {
+          renderStillKenBurnsToVideo(hookStillPath, durHook, hookAss, {
             outPath: hookSilent,
             kbPattern: kbPatternHook,
           });
@@ -593,14 +677,16 @@ async function main() {
   </svg>`);
         const plainHook = await sharp(bgSvg).jpeg({ quality: 92 }).toBuffer();
         fs.writeFileSync(hookStillPath, plainHook);
-        renderStillKenBurnsToVideo(hookStillPath, DUR_HOOK, hookAss, {
+        renderStillKenBurnsToVideo(hookStillPath, durHook, hookAss, {
           outPath: hookSilent,
           kbPattern: kbPatternHook,
         });
       }
 
+      const hookSegRaw = path.join(workBase, "hook-seg-raw.mp4");
+      muxSegmentVideoAudio(hookSilent, voicePaths[0], durHook, hookSegRaw);
       const hookSeg = path.join(workBase, "hook-seg.mp4");
-      muxSegmentVideoAudio(hookSilent, voicePaths[0], DUR_HOOK, hookSeg);
+      addWhooshToSegment(hookSegRaw, sfxPath, durHook, hookSeg);
       silentParts.push(hookSeg);
 
       /** Facts */
@@ -608,17 +694,18 @@ async function main() {
         const vUrl = videoUrls[i + 1] ?? null;
         const imgUrl = content.factImageUrls?.[i] ?? content.imageUrls?.[i] ?? null;
         const silentV = path.join(workBase, `fact-${i}-silent.mp4`);
-        const factAss = generateAssFile(hookText, facts, durFact, workBase, { type: "fact", index: i });
+        const dFact = durFacts[i];
+        const factAss = generateAssFile(hookText, facts, dFact, workBase, { type: "fact", index: i });
         if (vUrl) {
           const fp = path.join(workBase, `fact-${i}-src.mp4`);
           const ok = await downloadVideoFile(vUrl, fp);
           if (ok) {
-            renderClipToVideo(fp, durFact, factAss, silentV);
+            renderClipToVideo(fp, dFact, factAss, silentV);
           } else {
             const still = path.join(workBase, `fact-${i}.jpg`);
             const factBuf = await generateFactBackgroundJpeg(imgUrl);
             fs.writeFileSync(still, factBuf);
-            renderStillKenBurnsToVideo(still, durFact, factAss, {
+            renderStillKenBurnsToVideo(still, dFact, factAss, {
               outPath: silentV,
               kbPattern: kbPatternsFacts[i] ?? 0,
             });
@@ -627,13 +714,15 @@ async function main() {
           const still = path.join(workBase, `fact-${i}.jpg`);
           const factBuf = await generateFactBackgroundJpeg(imgUrl);
           fs.writeFileSync(still, factBuf);
-          renderStillKenBurnsToVideo(still, durFact, factAss, {
+          renderStillKenBurnsToVideo(still, dFact, factAss, {
             outPath: silentV,
             kbPattern: kbPatternsFacts[i] ?? 0,
           });
         }
+        const factSegRaw = path.join(workBase, `fact-${i}-seg-raw.mp4`);
+        muxSegmentVideoAudio(silentV, voicePaths[i + 1], dFact, factSegRaw);
         const factSeg = path.join(workBase, `fact-${i}-seg.mp4`);
-        muxSegmentVideoAudio(silentV, voicePaths[i + 1], durFact, factSeg);
+        addWhooshToSegment(factSegRaw, sfxPath, dFact, factSeg);
         silentParts.push(factSeg);
       }
 
@@ -648,7 +737,7 @@ async function main() {
       silentParts.push(ctaSeg);
 
       const concatPath = path.join(workBase, "concat-voice.mp4");
-      const segmentDurations = [DUR_HOOK, ...facts.map(() => durFact), DUR_CTA];
+      const segmentDurations = [durHook, ...durFacts, DUR_CTA];
       concatSegments(silentParts, segmentDurations, concatPath);
 
       const totalDuration = stitchedTimelineSec(segmentDurations);

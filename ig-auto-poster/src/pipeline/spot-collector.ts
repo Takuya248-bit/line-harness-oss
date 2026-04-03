@@ -3,7 +3,7 @@ import { d1Query, d1Execute } from "../../batch/d1-rest";
 const PLACES_SEARCH_TEXT_URL = "https://places.googleapis.com/v1/places:searchText";
 
 const FIELD_MASK =
-  "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.priceLevel,places.websiteUri,places.regularOpeningHours,places.reviews,places.location";
+  "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.priceLevel,places.websiteUri,places.regularOpeningHours,places.reviews,places.location,places.photos";
 
 const SEARCH_QUERIES: Record<string, string> = {
   cafe: "best cafes in Bali",
@@ -30,6 +30,7 @@ interface GooglePlace {
     relativePublishTimeDescription?: string;
   }[];
   location?: { latitude: number; longitude: number };
+  photos?: { name: string; widthPx: number; heightPx: number }[];
 }
 
 interface GooglePlacesResponse {
@@ -163,6 +164,7 @@ export async function collectSpots(
       : null;
     const topRev = topReviewsForDb(place.reviews);
     const reviewsJson = topRev.length > 0 ? JSON.stringify(topRev) : null;
+    const photoReferences = JSON.stringify(place.photos?.slice(0, 3).map((p) => p.name) ?? []);
 
     await d1Execute(
       cfAccountId,
@@ -170,8 +172,8 @@ export async function collectSpots(
       cfApiToken,
       `INSERT INTO real_spots (
         foursquare_id, name, area, category, website, latitude, longitude,
-        description, used_count, rating, review_count, reviews_json, opening_hours, price_level
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?, ?, ?)`,
+        description, used_count, rating, review_count, reviews_json, opening_hours, price_level, photo_references
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?, ?, ?, ?, ?)`,
       [
         placeKey,
         name,
@@ -185,6 +187,7 @@ export async function collectSpots(
         reviewsJson,
         openingHours,
         priceLevel,
+        photoReferences,
       ],
     );
     existingIds.add(placeKey);

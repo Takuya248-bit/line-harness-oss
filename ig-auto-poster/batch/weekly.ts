@@ -107,6 +107,7 @@ async function main() {
       "ALTER TABLE real_spots ADD COLUMN review_count INTEGER",
       "ALTER TABLE real_spots ADD COLUMN reviews_json TEXT",
       "ALTER TABLE real_spots ADD COLUMN opening_hours TEXT",
+      "ALTER TABLE real_spots ADD COLUMN photo_references TEXT",
     ] as const) {
       try {
         await d1Execute(cfAccountId, d1DbId, cfApiToken, sql);
