@@ -66,16 +66,18 @@ export async function fetchSpotImages(
   const usedUrls = new Set<string>();
   const results: string[] = [];
 
-  // 順次実行で重複排除を確実にする
+  // 順次実行で重複排除。Pexelsは店名を理解しないので、
+  // ジェネリッククエリのバリエーションで多様な写真を取得する
   for (let idx = 0; idx < spotNames.length; idx++) {
-    const spotName = spotNames[idx]!;
     let chosen = FALLBACK_URL;
 
-    // 1. 実在店名 + cafe + bali
-    const url1 = await fetchPexelsImage(`${spotName} cafe bali`, usedUrls);
+    // 1. スポットごとに異なるジェネリッククエリ（多様性最優先）
+    const q = GENERIC_QUERIES[idx % GENERIC_QUERIES.length]!;
+    const url1 = await fetchPexelsImage(q, usedUrls);
     if (url1 !== FALLBACK_URL) { chosen = url1; }
-    else {
-      // 2. エリア名 + bali + category
+
+    if (chosen === FALLBACK_URL) {
+      // 2. エリア名ベース
       const spotArea = spotAreas?.[idx];
       if (spotArea && spotArea.length > 0) {
         const url2 = await fetchPexelsImage(`${spotArea} bali ${category}`, usedUrls);
@@ -84,14 +86,7 @@ export async function fetchSpotImages(
     }
 
     if (chosen === FALLBACK_URL) {
-      // 3. スポットごとに異なるジェネリッククエリ
-      const q = GENERIC_QUERIES[idx % GENERIC_QUERIES.length]!;
-      const url3 = await fetchPexelsImage(q, usedUrls);
-      if (url3 !== FALLBACK_URL) { chosen = url3; }
-    }
-
-    if (chosen === FALLBACK_URL) {
-      // 4. 最終フォールバック
+      // 3. 最終フォールバック
       chosen = await fetchPexelsImage(`tropical cafe coffee`, usedUrls);
     }
 
