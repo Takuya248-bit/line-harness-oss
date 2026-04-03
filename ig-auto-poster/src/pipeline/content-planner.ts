@@ -228,18 +228,18 @@ export async function generateContentPlan(
 
 function reelFormatBlock(format: ReelFormat, category: string): string {
   switch (format) {
-    case "ranking":
-      return `構造: バリ島の「${category}」をTOP5形式で紹介する。
-各ポイント（factsの各要素）は1行15文字以内の事実だけを書く。`;
-    case "cost_appeal":
-      return `構造: 費用・コストの魅力を軸に紹介する。
-具体的な金額（月○万円、1食○円など）を必ず各ポイントに含める。`;
-    case "before_after":
-      return `構造: ビフォー状態とアフター状態を対比させた「変化ストーリー」にする。
-各factはビフォー→アフターの対比が伝わる1行にまとめる。`;
-    case "routine":
-      return `構造: 時系列で1日の流れを描く。
-factsは5〜7件。朝から夜までのシーン順に並べる。`;
+    case "bali_tips":
+      return `構造: バリ島の「${category}」をTips中心に紹介する（例: 隠れスポットTOP5、節約のコツ）。
+各ポイント（factsの各要素）は1行15文字以内の具体的事実だけを書く。語学学校・留学の宣伝は書かない。`;
+    case "english_phrase":
+      return `構造: ネイティブっぽい英語表現や、日本語話者が間違えやすい英語を1本にまとめる。
+各factは「フレーズ＋一言の使い方／注意」が伝わる1行にする。`;
+    case "bali_english":
+      return `構造: バリ島で実際に使える英語表現、現地の英語事情・インドネシア英語あるあるを扱う。
+各factは現場で使える短文にする。`;
+    case "bali_life":
+      return `構造: バリ在住・長期滞在者視点のライフスタイル（1日の流れ、食費、カフェ文化など）。
+factsは5〜7件。時系列やカテゴリで整理する。`;
     case "relatable":
       return `構造: 留学生・海外在住者が共感する「あるある」を5選で紹介する。
 各factは共感ポイントが一発で伝わる短文にする。`;

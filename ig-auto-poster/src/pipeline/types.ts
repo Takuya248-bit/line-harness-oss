@@ -1,10 +1,10 @@
 export type ContentType = "carousel" | "reel";
 
 export type ReelFormat =
-  | "ranking"
-  | "cost_appeal"
-  | "before_after"
-  | "routine"
+  | "bali_tips"
+  | "english_phrase"
+  | "bali_english"
+  | "bali_life"
   | "relatable";
 
 export type HookStyle = "question" | "assertion" | "number_first" | "pov";
