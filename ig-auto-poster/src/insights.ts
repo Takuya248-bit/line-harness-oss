@@ -169,3 +169,108 @@ export async function collectInsightsV4(
     console.log(`Profile views (7d): ${totalViews}`);
   }
 }
+
+type ReelInsightsMeta = Record<string, unknown> & {
+  reelFormat?: string;
+  targetKpi?: string;
+  successThreshold?: number;
+};
+
+function evaluateReelHypothesis(meta: ReelInsightsMeta, saveRate: number, shareRate: number): boolean | null {
+  const th = meta.successThreshold;
+  if (typeof th !== "number" || !Number.isFinite(th)) return null;
+  const kpi = typeof meta.targetKpi === "string" ? meta.targetKpi.toLowerCase() : "";
+  const actual = kpi.includes("share") ? shareRate : saveRate;
+  return actual >= th;
+}
+
+/**
+ * Posted reels: fetch reach/saved/shares, merge into ab_test_meta,
+ * evaluate hypothesis vs successThreshold, log per-reelFormat aggregates.
+ */
+export async function collectReelInsights(
+  db: D1Database,
+  igAccessToken: string,
+  igAccountId: string,
+): Promise<void> {
+  void igAccountId;
+
+  const rows = await db
+    .prepare(
+      `SELECT id, ig_media_id, ab_test_meta
+       FROM schedule_queue
+       WHERE content_type = 'reel'
+         AND status = 'posted'
+         AND ig_media_id IS NOT NULL
+         AND posted_at IS NOT NULL
+         AND posted_at <= datetime('now', '-2 days')
+       ORDER BY posted_at ASC
+       LIMIT 50`,
+    )
+    .all<{ id: number; ig_media_id: string; ab_test_meta: string | null }>();
+
+  const byFormat = new Map<string, { n: number; sumSaveRate: number; sumShareRate: number }>();
+
+  for (const row of rows.results) {
+    const url = `https://graph.facebook.com/v21.0/${row.ig_media_id}/insights?metric=reach,saved,shares&access_token=${igAccessToken}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error(`Reel insights fetch failed ${row.ig_media_id}: ${res.status}`);
+      continue;
+    }
+
+    const parsed = (await res.json()) as InsightsResponse;
+    if (parsed.error) {
+      console.error(`Reel insights API error ${row.ig_media_id}: ${parsed.error.message}`);
+      continue;
+    }
+
+    const metrics: Record<string, number> = {};
+    for (const m of parsed.data) {
+      metrics[m.name] = m.values[0]?.value ?? 0;
+    }
+
+    const reach = metrics.reach ?? 0;
+    const saves = metrics.saved ?? 0;
+    const shares = metrics.shares ?? 0;
+    const saveRate = reach > 0 ? saves / reach : 0;
+    const shareRate = reach > 0 ? shares / reach : 0;
+
+    const meta = JSON.parse(row.ab_test_meta || "{}") as ReelInsightsMeta;
+    meta.saves = saves;
+    meta.reach = reach;
+    meta.shares = shares;
+    meta.saveRate = saveRate;
+    meta.shareRate = shareRate;
+    meta.insightsCollectedAt = new Date().toISOString();
+
+    const passed = evaluateReelHypothesis(meta, saveRate, shareRate);
+    if (passed === null) meta.hypothesisPassed = null;
+    else meta.hypothesisPassed = passed;
+
+    await db
+      .prepare(`UPDATE schedule_queue SET ab_test_meta = ? WHERE id = ?`)
+      .bind(JSON.stringify(meta), row.id)
+      .run();
+
+    const fmt = typeof meta.reelFormat === "string" ? meta.reelFormat : "(no format)";
+    const agg = byFormat.get(fmt) ?? { n: 0, sumSaveRate: 0, sumShareRate: 0 };
+    agg.n += 1;
+    agg.sumSaveRate += saveRate;
+    agg.sumShareRate += shareRate;
+    byFormat.set(fmt, agg);
+
+    console.log(
+      `Reel insights queue#${row.id} ${row.ig_media_id}: reach=${reach} saves=${saves} shares=${shares} hypothesisPassed=${String(passed)}`,
+    );
+  }
+
+  for (const [fmt, agg] of byFormat) {
+    if (agg.n === 0) continue;
+    const avgSave = agg.sumSaveRate / agg.n;
+    const avgShare = agg.sumShareRate / agg.n;
+    console.log(
+      `Reel format "${fmt}" weekly aggregate: n=${agg.n} avgSaveRate=${avgSave.toFixed(5)} avgShareRate=${avgShare.toFixed(5)}`,
+    );
+  }
+}

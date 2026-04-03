@@ -1,6 +1,6 @@
 import { publishCarousel, publishReel } from "./instagram";
 import { sendPreview, sendNotification, parsePostback } from "./line-preview";
-import { collectInsights, collectInsightsV4 } from "./insights";
+import { collectInsights, collectInsightsV4, collectReelInsights } from "./insights";
 import { renderGalleryList, renderGalleryDetail } from "./gallery";
 import { fetchKnowledge, fetchGuardrails, formatKnowledgeForPrompt } from "./knowledge";
 import type { KnowledgeEntry } from "./knowledge";
@@ -90,6 +90,9 @@ async function handleWeeklyInsightsCron(env: Env): Promise<void> {
   // V4 insights (A/B test results)
   await collectInsightsV4(env.DB, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
   console.log("V4 insights collected");
+
+  await collectReelInsights(env.DB, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
+  console.log("Reel insights collected");
 }
 
 // --- LINE Webhookハンドラー ---
@@ -167,8 +170,8 @@ export default {
       return;
     }
 
-    // V4: 毎日 UTC 9:00 (バリ 17:00) → スケジュールキューから投稿
-    if (hour === 9) {
+    // V4: 毎日 UTC 3:00 (バリ 11:00) / UTC 9:00 (バリ 17:00) → スケジュールキューから投稿
+    if (hour === 3 || hour === 9) {
       await handleDailyPostCron(env.DB, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
       return;
     }
