@@ -44,6 +44,18 @@ export async function fetchPexelsImage(
   }
 }
 
+// スポットごとにクエリを変えて写真の多様性を確保するジェネリッククエリ
+const GENERIC_QUERIES = [
+  "bali cafe interior cozy",
+  "bali coffee shop aesthetic",
+  "tropical cafe wooden table",
+  "bali restaurant food",
+  "indonesia cafe latte art",
+  "bali smoothie bowl cafe",
+  "tropical coffee garden",
+  "bali brunch cafe",
+];
+
 export async function fetchSpotImages(
   area: string,
   category: string,
@@ -72,13 +84,14 @@ export async function fetchSpotImages(
     }
 
     if (chosen === FALLBACK_URL) {
-      // 3. ジェネリック: bali cafe interior
-      const url3 = await fetchPexelsImage(`bali ${category} interior`, usedUrls);
+      // 3. スポットごとに異なるジェネリッククエリ
+      const q = GENERIC_QUERIES[idx % GENERIC_QUERIES.length]!;
+      const url3 = await fetchPexelsImage(q, usedUrls);
       if (url3 !== FALLBACK_URL) { chosen = url3; }
     }
 
     if (chosen === FALLBACK_URL) {
-      // 4. 最終: tropical cafe
+      // 4. 最終フォールバック
       chosen = await fetchPexelsImage(`tropical cafe coffee`, usedUrls);
     }
 
