@@ -27,3 +27,16 @@ cooking-sfx-bot/data/
 # スクショは自動除外。必要なものだけリネームしてコミット
 スクリーンショット*
 Screenshot*
+
+# Runtime / generated
+cooking-sfx-bot/.venv/
+cooking-sfx-bot/__pycache__/
+cooking-sfx-bot/pipeline/__pycache__/
+meeting-tools/.recording.meta
+meeting-tools/.recording.pid
+meeting-tools/meetings/
+ig-reels-research/.pw-profile/
+ig-reels-research/downloads/
+ig-reels-research/reels.db
+ig-reels-research/reels.db-shm
+ig-reels-research/reels.db-wal
