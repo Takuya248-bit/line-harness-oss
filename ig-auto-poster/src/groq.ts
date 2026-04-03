@@ -7,12 +7,23 @@ export interface GroqResponse {
   choices: { message: { content: string } }[];
 }
 
-// LLM provider: GEMINI_API_KEY があれば Gemini 2.0 Flash、なければ Groq
-function getProvider(apiKey: string): { url: string; model: string; headers: Record<string, string> } {
+// LLM provider: CEREBRAS_API_KEY > GEMINI_API_KEY > GROQ_API_KEY の優先順
+function getProvider(groqKey: string): { url: string; model: string; headers: Record<string, string> } {
+  const cerebrasKey = process.env.CEREBRAS_API_KEY;
+  if (cerebrasKey) {
+    return {
+      url: "https://api.cerebras.ai/v1/chat/completions",
+      model: "qwen-3-235b-a22b-instruct-2507",
+      headers: {
+        Authorization: `Bearer ${cerebrasKey}`,
+        "Content-Type": "application/json",
+      },
+    };
+  }
   const geminiKey = process.env.GEMINI_API_KEY;
   if (geminiKey) {
     return {
-      url: `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`,
+      url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
       model: "gemini-2.0-flash",
       headers: {
         Authorization: `Bearer ${geminiKey}`,
@@ -24,7 +35,7 @@ function getProvider(apiKey: string): { url: string; model: string; headers: Rec
     url: "https://api.groq.com/openai/v1/chat/completions",
     model: "llama-3.3-70b-versatile",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${groqKey}`,
       "Content-Type": "application/json",
     },
   };
