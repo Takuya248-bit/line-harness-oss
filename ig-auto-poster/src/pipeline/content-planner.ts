@@ -14,6 +14,10 @@ interface BuzzFormat {
   weight: number;
 }
 
+/** 全コンテンツプロンプト共通の宣伝・トーン制約 */
+const NO_DIRECT_PROMO_RULE =
+  "バリリンガル・語学学校・留学費用の直接宣伝はしない。一般的なバリ島情報・英語学習ノウハウとして価値提供する";
+
 export function selectBuzzFormat(formats: BuzzFormat[]): string {
   const total = formats.reduce((s, f) => s + f.weight, 0);
   if (total <= 0 || formats.length === 0) return "知ってた系";
@@ -48,7 +52,7 @@ ${netaList}
 - 9枚目: まとめ（全ポイントをリスト形式で総括）
 - 10枚目: CTA（「保存して」「友達に送って」「プロフのLINEから」のいずれか）
 - フォーマット「${formatName}」のトーンに合わせる
-- バリリンガルの直接宣伝はしない。Tips型で価値提供
+- ${NO_DIRECT_PROMO_RULE}
 
 JSON形式:
 {
@@ -88,6 +92,7 @@ export function buildPromptForV2Plan(
 ${netaList}
 
 重要ルール:
+- ${NO_DIRECT_PROMO_RULE}
 - 実在する場所・店のみ紹介する（架空の名前は絶対NG）
 - descriptionは具体的な体験談風に書く（「〜がおすすめ」「〜で有名」等の一般論は避ける）
 - 各スポットのエリア名は正確に（ウブド、スミニャック、チャングー、クタ、サヌール、ヌサドゥア等）
@@ -147,6 +152,7 @@ ${netaList}
 ${spotsList}
 
 重要ルール:
+- ${NO_DIRECT_PROMO_RULE}
 - 上記スポットの名前を変えない。そのまま使う
 - descriptionは具体的な体験談風に書く（メニュー名、価格、雰囲気、おすすめの時間帯など）
 - テンプレ的な表現（「〜が魅力」「〜で有名」）は避け、実際に行った人が書くようなリアルな文章にする
@@ -226,23 +232,43 @@ export async function generateContentPlan(
   return parseContentPlan(JSON.stringify(result), contentType, formatName, category, neta);
 }
 
+/** リール形式ごとのDM誘導CTAの骨子（モデルがctaTextに反映する） */
+export function ctaForCategory(format: ReelFormat): string {
+  switch (format) {
+    case "bali_tips":
+      return `ctaTextの方針: 動画のテーマに合わせ「カフェ」など一言キーワードをコメントでもらい、DMで場所・続き・補足に誘導する一文にする（サービス名の直宣伝は書かない）。`;
+    case "english_phrase":
+      return `ctaTextの方針: 「英語」とコメントでもらい、DMで例文・ニュアンスの続きに誘導する一文にする（教室紹介や料金の話はしない）。`;
+    case "bali_english":
+      return `ctaTextの方針: 「バリ英語」や表現のキーワードをコメントでもらい、DMで現地用例の補足に誘導する一文にする。`;
+    case "bali_life":
+      return `ctaTextの方針: 「日常」や気になる生活トピックをコメントでもらい、DMで金額・手続きなどの続きに誘導する一文にする。`;
+    case "relatable":
+      return `ctaTextの方針: 「あるある」や自分の体験ワードをコメントでもらい、DMで共感ネタの続きに誘導する一文にする。`;
+    default: {
+      const _exhaustive: never = format;
+      return _exhaustive;
+    }
+  }
+}
+
 function reelFormatBlock(format: ReelFormat, category: string): string {
   switch (format) {
     case "bali_tips":
-      return `構造: バリ島の「${category}」をTips中心に紹介する（例: 隠れスポットTOP5、節約のコツ）。
-各ポイント（factsの各要素）は1行15文字以内の具体的事実だけを書く。語学学校・留学の宣伝は書かない。`;
+      return `構造: バリ島の「${category}」をTOP5形式で紹介する。具体的な店名・場所名を必ず含める。
+各ポイント（factsの各要素）は1行15文字以内の具体的事実だけを書く。`;
     case "english_phrase":
-      return `構造: ネイティブっぽい英語表現や、日本語話者が間違えやすい英語を1本にまとめる。
-各factは「フレーズ＋一言の使い方／注意」が伝わる1行にする。`;
+      return `構造: ネイティブが実際に使う英語フレーズを紹介する。日本語話者の言い回しとの違いを対比する。
+各factは「フレーズ＋一言の使い方／日本語との違い」が伝わる1行にする。`;
     case "bali_english":
-      return `構造: バリ島で実際に使える英語表現、現地の英語事情・インドネシア英語あるあるを扱う。
+      return `構造: バリ島で使える英語表現や、インドネシア人の英語あるある（現地の英語事情）を扱う。
 各factは現場で使える短文にする。`;
     case "bali_life":
-      return `構造: バリ在住・長期滞在者視点のライフスタイル（1日の流れ、食費、カフェ文化など）。
-factsは5〜7件。時系列やカテゴリで整理する。`;
+      return `構造: バリ島在住者の日常を時系列で紹介する。具体的な金額（ルピア等）・場所名を含める。
+factsは5〜7件。`;
     case "relatable":
-      return `構造: 留学生・海外在住者が共感する「あるある」を5選で紹介する。
-各factは共感ポイントが一発で伝わる短文にする。`;
+      return `構造: 海外生活の「あるある」を扱う。日本との文化の違いで共感を生む内容にする。
+各factは共感ポイントが一発で伝わる短文にする（5選程度）。`;
     default: {
       const _exhaustive: never = format;
       return _exhaustive;
@@ -279,6 +305,7 @@ export function buildPromptForReelPlan(
 
   const formatRules = reelFormatBlock(format, category);
   const hookRules = hookStyleBlock(hookStyle);
+  const ctaRules = ctaForCategory(format);
 
   return `あなたはInstagramリール（縦動画）の台本作家です。
 
@@ -291,12 +318,14 @@ ${formatRules}
 
 ${hookRules}
 
+${ctaRules}
+
 以下の条件でリール用の構成をJSON形式で作成してください:
-- バリリンガルの直接宣伝はしない。Tips・体験談ベースで価値提供
+- ${NO_DIRECT_PROMO_RULE}
 - hookText: 冒頭フック（画面上・フック用。hookStyleの指定に従う）
 - facts: 本編各シーン用の短いテキスト（フォーマットの文字数・件数ルールに厳密に従う）
 - narrationTexts: 各factスライドの音声読み上げ用。factsと同じ要素数。口語で自然に（generate-reel.mjs のTTS想定）
-- ctaText: 締めのCTA（「保存して」「プロフのLINEから」などから適宜選択）
+- ctaText: 締めのCTA。上記「ctaTextの方針」に沿い、コメント→DMの流れで自然な一文にする
 
 必ずJSONのみを返す（説明文・マークダウン不要）。
 
@@ -338,7 +367,7 @@ export function parseReelPlan(
   const ctaText =
     typeof parsed.ctaText === "string" && parsed.ctaText.trim().length > 0
       ? parsed.ctaText.trim()
-      : "プロフィールのリンクからLINEで詳しく";
+      : "気になる点をコメントで一言。DMで続き送るね";
 
   return {
     hookText,
