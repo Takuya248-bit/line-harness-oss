@@ -116,8 +116,10 @@ async function main() {
     }
     const googlePlacesApiKey = process.env.GOOGLE_PLACES_API_KEY;
     if (googlePlacesApiKey) {
-      const newSpots = await collectSpots(cfAccountId, d1DbId, cfApiToken, googlePlacesApiKey, "cafe", 20);
-      console.log(`Collected ${newSpots} new spots from Google Places`);
+      for (const cat of ["cafe", "restaurant", "spot", "food", "beach"]) {
+        const newSpots = await collectSpots(cfAccountId, d1DbId, cfApiToken, googlePlacesApiKey, cat, 20);
+        console.log(`Collected ${newSpots} new ${cat} spots from Google Places`);
+      }
     } else {
       console.warn("GOOGLE_PLACES_API_KEY not set, skipping spot collection");
     }
