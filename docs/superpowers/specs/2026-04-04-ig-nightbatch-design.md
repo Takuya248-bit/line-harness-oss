@@ -191,8 +191,8 @@ CREATE TABLE pattern_weights (
 
 ---
 
-## 未解決事項
+## 決定事項
 
-- ComfyUIのバリ風動画生成ワークフロー（モデル確認が必要）
-- 生成画像/動画の保存先（R2 vs Windowsローカル共有）
-- Cloudflare Pages確認UIの認証方法（Basic Auth or Cloudflare Access）
+- 生成画像/動画の保存先: Cloudflare R2（WindowsからアップロードしてPagesから直接表示）
+- 確認UIの認証: Cloudflare Access（Googleアカウント認証、無料枠）
+- ComfyUIのバリ風動画生成ワークフロー: Phase 1完了後にモデル確認して選定
