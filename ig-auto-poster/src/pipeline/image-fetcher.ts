@@ -1,4 +1,4 @@
-const FALLBACK_URL = "https://images.unsplash.com/photo-placeholder?w=1080&h=1350";
+export const FALLBACK_URL = "https://images.unsplash.com/photo-placeholder?w=1080&h=1350";
 
 interface PexelsPhoto {
   src: {
@@ -39,16 +39,30 @@ export async function fetchPexelsImage(query: string): Promise<string> {
 export async function fetchSpotImages(
   area: string,
   category: string,
-  spotNames: string[]
+  spotNames: string[],
+  spotAreas?: string[],
 ): Promise<string[]> {
-  // category is reserved for future use
-  void category;
-
+  void area;
   const results = await Promise.all(
-    spotNames.map((spotName) =>
-      fetchPexelsImage(`${area} ${spotName} bali`)
-    )
-  );
+    spotNames.map(async (spotName, idx) => {
+      // 1. 実在店名 + bali + category
+      const url1 = await fetchPexelsImage(`${spotName} bali ${category}`);
+      if (url1 !== FALLBACK_URL) return url1;
 
+      // 2. エリア名 + bali + category（エリア情報がある場合）
+      const spotArea = spotAreas?.[idx];
+      if (spotArea) {
+        const url2 = await fetchPexelsImage(`${spotArea} bali ${category}`);
+        if (url2 !== FALLBACK_URL) return url2;
+      }
+
+      // 3. ジェネリック検索
+      const url3 = await fetchPexelsImage(`bali ${category} interior`);
+      if (url3 !== FALLBACK_URL) return url3;
+
+      // 4. 最終フォールバック
+      return fetchPexelsImage(`bali coffee shop`);
+    })
+  );
   return results;
 }

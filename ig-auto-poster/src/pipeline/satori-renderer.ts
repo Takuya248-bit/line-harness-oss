@@ -17,8 +17,8 @@ export async function renderSatoriNode(node: SatoriNode): Promise<Buffer> {
     width: WIDTH,
     height: HEIGHT,
     fonts: [
-      { name: "ZenMaruGothic", data: fontBold, weight: 700, style: "normal" },
-      { name: "ZenMaruGothic", data: fontBlack, weight: 900, style: "normal" },
+      { name: "Zen Maru Gothic", data: fontBold, weight: 700, style: "normal" },
+      { name: "Zen Maru Gothic", data: fontBlack, weight: 900, style: "normal" },
     ],
   });
 
