@@ -243,15 +243,14 @@ export default {
       if (request.method === "GET" && url.pathname === "/api/pending-images") {
         const rows = await env.DB
           .prepare(
-            "SELECT id, content_json, caption, category, format_type, template_name FROM generated_content WHERE status = 'pending_images' ORDER BY id ASC LIMIT 5",
+            "SELECT id, content_json, caption, category, COALESCE(NULLIF(TRIM(format_type), ''), 'carousel') AS format_type FROM generated_content WHERE status = 'pending_images' ORDER BY id ASC LIMIT 5",
           )
           .all<{
             id: number;
             content_json: string;
             caption: string;
             category: string;
-            format_type: string | null;
-            template_name: string | null;
+            format_type: string;
           }>();
         return json({ items: rows.results });
       }
@@ -314,6 +313,27 @@ export default {
           .run();
 
         return json({ success: true, contentId: body.contentId, slideCount: body.slides.length, slideUrls });
+      }
+
+      // --- 即時投稿 (画像base64 → R2 → IG投稿) ---
+      if (request.method === "POST" && url.pathname === "/api/post-now") {
+        const body = await request.json() as {
+          images: string[]; // base64 PNG
+          caption: string;
+        };
+        if (!body.images?.length || !body.caption) {
+          return json({ error: "images and caption are required" }, 400);
+        }
+        const timestamp = Date.now();
+        const imageUrls: string[] = [];
+        for (let i = 0; i < body.images.length; i++) {
+          const binary = Uint8Array.from(atob(body.images[i]), (c) => c.charCodeAt(0));
+          const key = `post-now/${timestamp}/slide-${i + 1}.png`;
+          await env.IMAGES.put(key, binary, { httpMetadata: { contentType: "image/png" } });
+          imageUrls.push(`${env.R2_PUBLIC_URL}/${key}`);
+        }
+        const igMediaId = await publishCarousel(imageUrls, body.caption, env.IG_ACCESS_TOKEN, env.IG_BUSINESS_ACCOUNT_ID);
+        return json({ success: true, igMediaId, imageUrls });
       }
 
       // --- Status ---
