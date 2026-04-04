@@ -43,6 +43,24 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
+async function editOriginalMessage(
+  applicationId: string,
+  token: string,
+  payload: { content?: string; embeds?: any[]; components?: any[]; flags?: number },
+): Promise<void> {
+  const res = await fetch(
+    `https://discord.com/api/v10/webhooks/${applicationId}/${token}/messages/@original`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+  );
+  if (!res.ok) {
+    console.error('editOriginalMessage failed:', res.status, await res.text());
+  }
+}
+
 // --- メインルート ---
 discordInteractions.post('/discord/interactions', async (c) => {
   const signature = c.req.header('x-signature-ed25519') ?? '';
@@ -94,57 +112,52 @@ discordInteractions.post('/discord/interactions', async (c) => {
         return c.json({ type: 4, data: { content: '既に処理済みか、見つかりません。', flags: 64 } });
       }
 
-      // LINE送信
-      let lineSendOk = false;
-      try {
-        const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
-        await lineClient.pushMessage(row.line_user_id, [{ type: 'text', text: row.draft }]);
-        lineSendOk = true;
-      } catch (err) {
-        console.error('LINE push error:', err);
-      }
+      const applicationId = body.application_id;
+      const interactionToken = body.token;
+      const embedsBefore = [...(body.message?.embeds ?? [])];
 
-      // D1更新
-      const newStatus = lineSendOk ? 'sent' : 'send_failed';
-      await db
-        .prepare(`UPDATE inquiry_queue SET status = ?, final_reply = ?, sent_at = datetime('now') WHERE id = ?`)
-        .bind(newStatus, row.draft, queueId)
-        .run();
+      c.executionCtx.waitUntil(
+        (async () => {
+          let lineSendOk = false;
+          try {
+            const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+            await lineClient.pushMessage(row.line_user_id, [{ type: 'text', text: row.draft }]);
+            lineSendOk = true;
+          } catch (err) {
+            console.error('LINE push error:', err);
+          }
 
-      // 修正ログ記録
-      await db
-        .prepare(
-          'INSERT INTO inquiry_correction_log (inquiry_id, correction_type, original_draft, final_draft) VALUES (?, ?, ?, ?)',
-        )
-        .bind(queueId, 'approved', row.draft, row.draft)
-        .run();
+          const newStatus = lineSendOk ? 'sent' : 'send_failed';
+          await db
+            .prepare(`UPDATE inquiry_queue SET status = ?, final_reply = ?, sent_at = datetime('now') WHERE id = ?`)
+            .bind(newStatus, row.draft, queueId)
+            .run();
 
-      // Discordメッセージ更新（ボタン除去+結果表示）
-      const statusEmbed = lineSendOk
-        ? { color: 0x22c55e, description: '✅ LINE送信完了' }
-        : { color: 0xef4444, description: '❌ LINE送信失敗（ユーザーIDが無効）' };
+          await db
+            .prepare(
+              'INSERT INTO inquiry_correction_log (inquiry_id, correction_type, original_draft, final_draft) VALUES (?, ?, ?, ?)',
+            )
+            .bind(queueId, 'approved', row.draft, row.draft)
+            .run();
 
-      const msgId = body.message?.id;
-      if (msgId && c.env.DISCORD_BOT_TOKEN) {
-        const originalEmbeds = body.message?.embeds ?? [];
-        originalEmbeds.push({
-          ...statusEmbed,
-          timestamp: new Date().toISOString(),
-        });
-        await fetch(
-          `https://discord.com/api/v10/channels/${body.channel_id}/messages/${msgId}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bot ${c.env.DISCORD_BOT_TOKEN}`,
-            },
-            body: JSON.stringify({ embeds: originalEmbeds, components: [] }),
-          },
-        );
-      }
+          const statusEmbed = lineSendOk
+            ? { color: 0x22c55e, description: '✅ LINE送信完了' }
+            : { color: 0xef4444, description: '❌ LINE送信失敗（ユーザーIDが無効）' };
 
-      return c.json({ type: 7, data: {} });
+          await editOriginalMessage(applicationId, interactionToken, {
+            embeds: [
+              ...embedsBefore,
+              {
+                ...statusEmbed,
+                timestamp: new Date().toISOString(),
+              },
+            ],
+            components: [],
+          });
+        })().catch((err) => console.error('approve_ background:', err)),
+      );
+
+      return c.json({ type: 6, data: {} });
     }
 
     // edit_<id> — 修正モーダル表示
@@ -222,61 +235,77 @@ discordInteractions.post('/discord/interactions', async (c) => {
     if (customId.startsWith('edit_submit_')) {
       const queueId = customId.replace('edit_submit_', '');
       const editedText = getValue('edited_reply');
+      const applicationId = body.application_id;
+      const interactionToken = body.token;
 
-      const row = await db
-        .prepare('SELECT * FROM inquiry_queue WHERE id = ?')
-        .bind(queueId)
-        .first<any>();
+      c.executionCtx.waitUntil(
+        (async () => {
+          const row = await db
+            .prepare('SELECT * FROM inquiry_queue WHERE id = ?')
+            .bind(queueId)
+            .first<any>();
 
-      if (!row) {
-        return c.json({ type: 4, data: { content: '見つかりません。', flags: 64 } });
-      }
+          if (!row) {
+            await editOriginalMessage(applicationId, interactionToken, {
+              content: '見つかりません。',
+              flags: 64,
+            });
+            return;
+          }
 
-      // LINE送信
-      let lineSendOk = false;
-      try {
-        const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
-        await lineClient.pushMessage(row.line_user_id, [{ type: 'text', text: editedText }]);
-        lineSendOk = true;
-      } catch (err) {
-        console.error('LINE push error (edit):', err);
-      }
+          let lineSendOk = false;
+          try {
+            const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
+            await lineClient.pushMessage(row.line_user_id, [{ type: 'text', text: editedText }]);
+            lineSendOk = true;
+          } catch (err) {
+            console.error('LINE push error (edit):', err);
+          }
 
-      // D1更新
-      await db
-        .prepare(`UPDATE inquiry_queue SET status = ?, final_reply = ?, sent_at = datetime('now') WHERE id = ?`)
-        .bind(lineSendOk ? 'sent' : 'send_failed', editedText, queueId)
-        .run();
+          await db
+            .prepare(`UPDATE inquiry_queue SET status = ?, final_reply = ?, sent_at = datetime('now') WHERE id = ?`)
+            .bind(lineSendOk ? 'sent' : 'send_failed', editedText, queueId)
+            .run();
 
-      // 修正ログ
-      await db
-        .prepare(
-          'INSERT INTO inquiry_correction_log (inquiry_id, correction_type, instruction, original_draft, final_draft) VALUES (?, ?, ?, ?, ?)',
-        )
-        .bind(queueId, 'manual_edit', editedText, row.draft, editedText)
-        .run();
+          await db
+            .prepare(
+              'INSERT INTO inquiry_correction_log (inquiry_id, correction_type, instruction, original_draft, final_draft) VALUES (?, ?, ?, ?, ?)',
+            )
+            .bind(queueId, 'manual_edit', editedText, row.draft, editedText)
+            .run();
 
-      const msg = lineSendOk ? '✅ 修正版をLINE送信しました。' : '❌ LINE送信失敗（修正内容はDBに保存済み）';
-      return c.json({ type: 4, data: { content: msg, flags: 64 } });
+          const msg = lineSendOk ? '✅ 修正版をLINE送信しました。' : '❌ LINE送信失敗（修正内容はDBに保存済み）';
+          await editOriginalMessage(applicationId, interactionToken, { content: msg, flags: 64 });
+        })().catch((err) => console.error('edit_submit_ background:', err)),
+      );
+
+      return c.json({ type: 5, data: { flags: 64 } });
     }
 
     // regen_submit_<id> — 再生成してDiscordに新メッセージ
     if (customId.startsWith('regen_submit_')) {
       const queueId = customId.replace('regen_submit_', '');
       const regenPrompt = getValue('regen_prompt');
+      const applicationId = body.application_id;
+      const interactionToken = body.token;
 
-      const row = await db
-        .prepare('SELECT * FROM inquiry_queue WHERE id = ?')
-        .bind(queueId)
-        .first<any>();
+      c.executionCtx.waitUntil(
+        (async () => {
+          const row = await db
+            .prepare('SELECT * FROM inquiry_queue WHERE id = ?')
+            .bind(queueId)
+            .first<any>();
 
-      if (!row) {
-        return c.json({ type: 4, data: { content: '見つかりません。', flags: 64 } });
-      }
+          if (!row) {
+            await editOriginalMessage(applicationId, interactionToken, {
+              content: '見つかりません。',
+              flags: 64,
+            });
+            return;
+          }
 
-      // Groqで再生成
-      const newDraft = await generateDraftWithGroq({
-        systemPrompt: `あなたはバリリンガル（バリ島の英語留学学校）のLINE返信担当です。
+          const newDraft = await generateDraftWithGroq({
+            systemPrompt: `あなたはバリリンガル（バリ島の英語留学学校）のLINE返信担当です。
 元のドラフトに対してユーザーから修正指示がありました。指示に従って返信を再生成してください。
 
 ## 元の問い合わせ
@@ -284,39 +313,47 @@ ${row.message}
 
 ## 元のドラフト
 ${row.draft}`,
-        userPrompt: `修正指示: ${regenPrompt}\n\n上記の指示に従って返信を再生成してください。`,
-        groqApiKey: c.env.GROQ_API_KEY ?? '',
-      });
+            userPrompt: `修正指示: ${regenPrompt}\n\n上記の指示に従って返信を再生成してください。`,
+            groqApiKey: c.env.GROQ_API_KEY ?? '',
+          });
 
-      if (!newDraft) {
-        return c.json({ type: 4, data: { content: '再生成に失敗しました。', flags: 64 } });
-      }
+          if (!newDraft) {
+            await editOriginalMessage(applicationId, interactionToken, {
+              content: '再生成に失敗しました。',
+              flags: 64,
+            });
+            return;
+          }
 
-      // D1更新
-      await db.prepare('UPDATE inquiry_queue SET draft = ? WHERE id = ?').bind(newDraft, queueId).run();
+          await db.prepare('UPDATE inquiry_queue SET draft = ? WHERE id = ?').bind(newDraft, queueId).run();
 
-      // 修正ログ
-      await db
-        .prepare(
-          'INSERT INTO inquiry_correction_log (inquiry_id, correction_type, instruction, original_draft, final_draft) VALUES (?, ?, ?, ?, ?)',
-        )
-        .bind(queueId, 'regen', regenPrompt, row.draft, newDraft)
-        .run();
+          await db
+            .prepare(
+              'INSERT INTO inquiry_correction_log (inquiry_id, correction_type, instruction, original_draft, final_draft) VALUES (?, ?, ?, ?, ?)',
+            )
+            .bind(queueId, 'regen', regenPrompt, row.draft, newDraft)
+            .run();
 
-      // Discordに新ボタン付きメッセージ送信
-      if (c.env.DISCORD_BOT_TOKEN && c.env.DISCORD_CHANNEL_ID) {
-        await notifyDiscord(c.env.DISCORD_BOT_TOKEN, c.env.DISCORD_CHANNEL_ID, {
-          username: row.username,
-          message: `🔄 再生成（指示: ${regenPrompt}）\n\n元メッセージ: ${row.message}`,
-          module: row.module,
-          confidence: row.confidence,
-          draft: newDraft,
-          inquiryId: String(row.id),
-          draftSource: 'groq',
-        });
-      }
+          if (c.env.DISCORD_BOT_TOKEN && c.env.DISCORD_CHANNEL_ID) {
+            await notifyDiscord(c.env.DISCORD_BOT_TOKEN, c.env.DISCORD_CHANNEL_ID, {
+              username: row.username,
+              message: `🔄 再生成（指示: ${regenPrompt}）\n\n元メッセージ: ${row.message}`,
+              module: row.module,
+              confidence: row.confidence,
+              draft: newDraft,
+              inquiryId: String(row.id),
+              draftSource: 'groq',
+            });
+          }
 
-      return c.json({ type: 4, data: { content: '🔄 再生成しました。新しいドラフトを確認してください。', flags: 64 } });
+          await editOriginalMessage(applicationId, interactionToken, {
+            content: '🔄 再生成しました。新しいドラフトを確認してください。',
+            flags: 64,
+          });
+        })().catch((err) => console.error('regen_submit_ background:', err)),
+      );
+
+      return c.json({ type: 5, data: { flags: 64 } });
     }
   }
 
@@ -330,22 +367,32 @@ ${row.draft}`,
     // xpost_approve_{postId}
     if (customId.startsWith('xpost_approve_')) {
       const postId = customId.replace('xpost_approve_', '');
-      const result = await updateXPostStatus(c.env, postId, 'approved', null);
-      if (!result.ok) {
-        return c.json({ type: 4, data: { content: `❌ 更新失敗: ${result.error}`, flags: 64 } });
-      }
-      // Discordメッセージのボタンを除去
-      const msgId = body.message?.id;
-      if (msgId && c.env.DISCORD_BOT_TOKEN) {
-        const originalEmbeds = body.message?.embeds ?? [];
-        originalEmbeds.push({ color: 0x22c55e, description: `✅ 承認済み (postId: ${postId})`, timestamp: new Date().toISOString() });
-        await fetch(`https://discord.com/api/v10/channels/${body.channel_id}/messages/${msgId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bot ${c.env.DISCORD_BOT_TOKEN}` },
-          body: JSON.stringify({ embeds: originalEmbeds, components: [] }),
-        });
-      }
-      return c.json({ type: 7, data: {} });
+      const applicationId = body.application_id;
+      const interactionToken = body.token;
+      const embedsBefore = [...(body.message?.embeds ?? [])];
+
+      c.executionCtx.waitUntil(
+        (async () => {
+          const result = await updateXPostStatus(c.env, postId, 'approved', null);
+          const statusEmbed = result.ok
+            ? {
+                color: 0x22c55e,
+                description: `✅ 承認済み (postId: ${postId})`,
+                timestamp: new Date().toISOString(),
+              }
+            : {
+                color: 0xef4444,
+                description: `❌ 更新失敗: ${result.error}`,
+                timestamp: new Date().toISOString(),
+              };
+          await editOriginalMessage(applicationId, interactionToken, {
+            embeds: [...embedsBefore, statusEmbed],
+            components: [],
+          });
+        })().catch((err) => console.error('xpost_approve_ background:', err)),
+      );
+
+      return c.json({ type: 6, data: {} });
     }
 
     // xpost_reject_{postId} — 却下理由入力モーダルを表示
@@ -415,11 +462,20 @@ ${row.draft}`,
       return '';
     };
     const editedText = getValue('edited_text');
-    const result = await updateXPostStatus(c.env, postId, 'approved', editedText);
-    const msg = result.ok
-      ? `✅ 編集して承認しました (postId: ${postId})`
-      : `❌ 更新失敗: ${result.error}`;
-    return c.json({ type: 4, data: { content: msg, flags: 64 } });
+    const applicationId = body.application_id;
+    const interactionToken = body.token;
+
+    c.executionCtx.waitUntil(
+      (async () => {
+        const result = await updateXPostStatus(c.env, postId, 'approved', editedText);
+        const msg = result.ok
+          ? `✅ 編集して承認しました (postId: ${postId})`
+          : `❌ 更新失敗: ${result.error}`;
+        await editOriginalMessage(applicationId, interactionToken, { content: msg, flags: 64 });
+      })().catch((err) => console.error('xpost_edit_submit_ background:', err)),
+    );
+
+    return c.json({ type: 5, data: { flags: 64 } });
   }
 
   // xpost_reject_submit_{postId} — 却下理由付きで rejected 更新 + 学習データ保存
@@ -434,35 +490,46 @@ ${row.draft}`,
       return '';
     };
     const reason = getValue('reject_reason');
-
-    // review JSON を rejected に更新
-    const result = await updateXPostStatus(c.env, postId, 'rejected', null);
-
-    // 却下理由を学習データとして保存（GitHub API で data/rejection-lessons/{account}.json に追記）
-    if (result.ok && reason) {
-      await saveRejectionLesson(c.env, postId, reason);
-    }
-
-    // Discordメッセージ更新（ボタン除去+却下理由表示）
+    const applicationId = body.application_id;
+    const interactionToken = body.token;
+    const channelId = body.channel_id;
     const msgId = body.message?.id;
-    if (msgId && c.env.DISCORD_BOT_TOKEN) {
-      const originalEmbeds = body.message?.embeds ?? [];
-      originalEmbeds.push({
-        color: 0x6b7280,
-        description: `🚫 却下 (postId: ${postId})\n理由: ${reason}`,
-        timestamp: new Date().toISOString(),
-      });
-      await fetch(`https://discord.com/api/v10/channels/${body.channel_id}/messages/${msgId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bot ${c.env.DISCORD_BOT_TOKEN}` },
-        body: JSON.stringify({ embeds: originalEmbeds, components: [] }),
-      });
-    }
+    const embedsBefore = [...(body.message?.embeds ?? [])];
 
-    const msg = result.ok
-      ? `🚫 却下しました。理由「${reason}」を学習データに保存しました。`
-      : `❌ 更新失敗: ${result.error}`;
-    return c.json({ type: 4, data: { content: msg, flags: 64 } });
+    c.executionCtx.waitUntil(
+      (async () => {
+        const result = await updateXPostStatus(c.env, postId, 'rejected', null);
+
+        if (result.ok && reason) {
+          await saveRejectionLesson(c.env, postId, reason);
+        }
+
+        if (msgId && c.env.DISCORD_BOT_TOKEN) {
+          await fetch(`https://discord.com/api/v10/channels/${channelId}/messages/${msgId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bot ${c.env.DISCORD_BOT_TOKEN}` },
+            body: JSON.stringify({
+              embeds: [
+                ...embedsBefore,
+                {
+                  color: 0x6b7280,
+                  description: `🚫 却下 (postId: ${postId})\n理由: ${reason}`,
+                  timestamp: new Date().toISOString(),
+                },
+              ],
+              components: [],
+            }),
+          });
+        }
+
+        const msg = result.ok
+          ? `🚫 却下しました。理由「${reason}」を学習データに保存しました。`
+          : `❌ 更新失敗: ${result.error}`;
+        await editOriginalMessage(applicationId, interactionToken, { content: msg, flags: 64 });
+      })().catch((err) => console.error('xpost_reject_submit_ background:', err)),
+    );
+
+    return c.json({ type: 5, data: { flags: 64 } });
   }
 
   return c.json({ type: 1 });
