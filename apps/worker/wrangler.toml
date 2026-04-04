@@ -11,7 +11,7 @@ account_id = "229bf2a0291a81cfe581a1f9bbb24432"
 WORKER_URL = "https://line-crm-worker.line-crm-api.workers.dev"
 ALLOWED_ORIGINS = "*"
 DISCORD_APP_PUBLIC_KEY = "e66f66f0bdb79e8b7d603e6a76a523e2f82561d761490f274160ae04f34a4c68"
-DISCORD_CHANNEL_ID = "1488528552860323941"
+DISCORD_CHANNEL_ID = "1489292558528938198"
 
 [[d1_databases]]
 binding = "DB"
