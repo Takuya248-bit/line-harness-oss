@@ -34,6 +34,8 @@ async def notify_job(
         f"Proposals (est.): {proposal_count}",
         "",
         desc or "(no description)",
+        "",
+        f"`python main.py apply {job_db_id}`",
     ]
     if link:
         body_lines.insert(0, f"[案件リンク]({link})")
