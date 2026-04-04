@@ -34,8 +34,8 @@ import {
 import type { SurveyChoice } from '@line-crm/db';
 import { classify } from '../../../../os/core/classifier.js';
 import { handleInquiry, tryQuickAnswer } from '../../../../os/modules/inquiry/handler.js';
-import { notifyDiscord } from '../services/discord-notify.js';
-import { generateDraftWithGroq } from '../services/groq-draft.js';
+import { generateGeminiDraft } from '../services/gemini-draft.js';
+import { notifyTelegram } from '../services/telegram-notify.js';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import { buildSurveyQuestionFlex } from '../services/survey-flex.js';
@@ -141,7 +141,7 @@ webhook.post('/webhook', async (c) => {
               'INSERT INTO os_inquiry_log (line_user_id, message, module, confidence, status) VALUES (?, ?, ?, ?, ?)'
             ).bind(userId, text, classResult.module, classResult.confidence, 'received').run();
 
-            // ドラフト生成（Groq優先→Haikuフォールバック）
+            // ドラフト生成（テンプレート優先→Gemini）
             let draft: string | undefined;
             let draftSource: string | undefined;
             if (classResult.module === 'inquiry') {
@@ -149,70 +149,20 @@ webhook.post('/webhook', async (c) => {
               if (quickDraft) {
                 draft = quickDraft;
                 draftSource = 'テンプレート';
-              } else {
+              } else if (c.env.GEMINI_API_KEY) {
                 try {
-                  // D1から友だち情報+履歴取得
-                  const friend = await db.prepare(
-                    'SELECT id, display_name, created_at FROM friends WHERE line_user_id = ? LIMIT 1'
-                  ).bind(userId).first<any>();
-                  const friendTags = friend ? await getFriendTags(db, friend.id) : [];
-                  const tagNames = friendTags.map((t: any) => t.name || t.tag_name).join(', ');
-                  const history = friend ? await db.prepare(
-                    'SELECT direction, content FROM messages_log WHERE friend_id = ? ORDER BY created_at DESC LIMIT 5'
-                  ).bind(friend.id).all() : { results: [] };
-                  const historyText = (history.results as any[]).reverse()
-                    .map((m: any) => `${m.direction === 'incoming' ? '友だち' : 'こちら'}: ${m.content}`)
-                    .join('\n');
-
-                  const systemPrompt = `あなたはバリリンガル（バリ島の英語留学学校）のLINE返信担当です。
-
-## 料金表
-【1人部屋】1週119,800円/2週219,800円/4週349,800円(人気)/8週629,000円/12週899,000円
-【ペア留学】1週98,000円/4週320,000円/8週539,000円
-【外泊】1週85,000円(最安)/4週246,000円/8週435,000円
-※入学金30,000円別途。含む:授業料・食事(朝昼)・空港送迎・卒業証書
-
-## 授業
-1日4コマ(50分×4)、マンツーマン3+グループ1(最大3名)、月〜金、初心者OK、卒業生200名超、バリ島チャングー
-
-## コース
-日常英会話/TOEIC/TOEFL/英検/ワーホリ準備/サーフィン×英語/ヨガRYT200/副業スキル×英語/親子留学
-
-## 返信ルール
-- 丁寧語ベース、「!」OK、絵文字最小限
-- 押し売りしない。聞き出す→提案
-- CTA1つ含める
-- 「スタッフ常駐」と書かない
-- 入学金30,000円別途を必ず伝える`;
-
-                  const userPrompt = `名前: ${friend?.display_name ?? '不明'} / タグ: ${tagNames || 'なし'}\n直近のやり取り:\n${historyText || 'なし'}\n\n今回のメッセージ: ${text}\n\n返信ドラフトを作成してください。`;
-
-                  // Groq優先
-                  if (c.env.GROQ_API_KEY) {
-                    draft = await generateDraftWithGroq({ systemPrompt, userPrompt, groqApiKey: c.env.GROQ_API_KEY }) ?? undefined;
-                    if (draft) draftSource = 'Groq';
-                  }
-                  // Haikuフォールバック
-                  if (!draft && c.env.ANTHROPIC_API_KEY) {
-                    const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'x-api-key': c.env.ANTHROPIC_API_KEY,
-                        'anthropic-version': '2023-06-01',
-                      },
-                      body: JSON.stringify({
-                        model: 'claude-haiku-4-5-20251001',
-                        max_tokens: 500,
-                        system: systemPrompt,
-                        messages: [{ role: 'user', content: userPrompt }],
-                      }),
-                    });
-                    if (apiRes.ok) {
-                      const data = await apiRes.json() as { content: { text: string }[] };
-                      draft = data.content?.[0]?.text;
-                      if (draft) draftSource = 'Haiku';
-                    }
+                  const friendRow = await db
+                    .prepare('SELECT id, display_name FROM friends WHERE line_user_id = ? LIMIT 1')
+                    .bind(userId)
+                    .first<{ id: string; display_name: string | null }>();
+                  const geminiDraft = await buildGeminiInquiryDraft(db, {
+                    message: text,
+                    geminiApiKey: c.env.GEMINI_API_KEY,
+                    friendId: friendRow?.id,
+                  });
+                  if (geminiDraft) {
+                    draft = geminiDraft;
+                    draftSource = 'Gemini';
                   }
                 } catch (err) {
                   console.error('Draft generation error:', err);
@@ -220,18 +170,17 @@ webhook.post('/webhook', async (c) => {
               }
             }
 
-            // Discord通知
-            if (classResult.module === 'inquiry' && c.env.DISCORD_BOT_TOKEN && c.env.DISCORD_CHANNEL_ID) {
-              const friend = await db.prepare(
-                'SELECT display_name FROM friends WHERE line_user_id = ? LIMIT 1'
-              ).bind(userId).first<any>();
-              await notifyDiscord(c.env.DISCORD_BOT_TOKEN, c.env.DISCORD_CHANNEL_ID, {
-                username: friend?.display_name ?? userId,
+            // Telegram通知（inquiry のみ）
+            if (
+              classResult.module === 'inquiry' &&
+              draft &&
+              c.env.TELEGRAM_BOT_TOKEN &&
+              c.env.TELEGRAM_CHAT_ID
+            ) {
+              await sendInquiryTelegramNotification(db, c.env, {
+                lineUserId: userId,
                 message: text,
-                module: classResult.module,
-                confidence: classResult.confidence,
                 draft,
-                draftSource,
               });
             }
           } catch (err) {
@@ -805,7 +754,7 @@ async function handleEvent(
         'received'
       ).run();
 
-      // ドラフト生成（inquiry のみ、Groq優先→Haikuフォールバック）
+      // ドラフト生成（テンプレート優先→Gemini）
       let draft: string | undefined;
       let draftSource: string | undefined;
       if (classResult.module === 'inquiry') {
@@ -813,80 +762,16 @@ async function handleEvent(
         if (quickDraft) {
           draft = quickDraft;
           draftSource = 'テンプレート';
-        } else {
+        } else if (env?.GEMINI_API_KEY) {
           try {
-            // D1から友だち情報+タグ+直近履歴を取得
-            const friendTags = friend ? await getFriendTags(db, friend.id) : [];
-            const tagNames = friendTags.map((t: any) => t.name || t.tag_name).join(', ');
-            const history = friend ? await db.prepare(
-              `SELECT direction, content, created_at FROM messages_log WHERE friend_id = ? ORDER BY created_at DESC LIMIT 5`
-            ).bind(friend.id).all() : { results: [] };
-            const historyText = (history.results as any[]).reverse()
-              .map((m) => `${m.direction === 'incoming' ? '友だち' : 'こちら'}: ${m.content}`)
-              .join('\n');
-
-            const systemPrompt = `あなたはバリリンガル（バリ島の英語留学学校）のLINE返信担当です。
-
-## 料金表
-【1人部屋】1週119,800円/2週219,800円/3週289,000円/4週349,800円(人気)/8週629,000円/12週899,000円
-【ペア留学】1週98,000円/2週189,000円/4週320,000円/8週539,000円
-【外泊】1週85,000円(最安)/2週163,000円/4週246,000円/8週435,000円
-※入学金30,000円が別途かかる。料金に含む:授業料・食事(朝昼)・空港送迎・卒業証書
-
-## 授業
-1日4コマ(50分×4)、マンツーマン3+グループ1(最大3名)、月〜金9:00-17:00
-インドネシア人講師(英語漬け)、初心者OK、卒業生200名以上、場所:バリ島チャングー
-
-## コース
-日常英会話/TOEIC対策(3ヶ月で200点UP)/TOEFL対策/英検対策/ワーホリ準備(1-3ヶ月)/サーフィン×英語(4-10月)/ヨガRYT200/副業スキル×英語/親子留学
-
-## 返信ルール
-- 親しみやすいが信頼感あり。丁寧語ベース
-- 「!」OK、絵文字は最小限
-- 押し売りしない。相手の状況を聞き出す→提案
-- CTAを1つ含める
-- 「スタッフ常駐」と書かない(寮にスタッフ常駐していない)
-- 入学金30,000円は別途かかることを必ず伝える`;
-
-            const userPrompt = `## 友だち情報
-名前: ${friend?.display_name ?? '不明'}
-タグ: ${tagNames || 'なし'}
-登録日: ${friend?.created_at ?? '不明'}
-
-## 直近のやり取り
-${historyText || 'なし'}
-
-## 今回のメッセージ
-${incomingText}
-
-上記を踏まえて返信ドラフトを作成してください。`;
-
-            // Groq優先
-            if (env?.GROQ_API_KEY) {
-              draft = await generateDraftWithGroq({ systemPrompt, userPrompt, groqApiKey: env.GROQ_API_KEY }) ?? undefined;
-              if (draft) draftSource = 'Groq';
-            }
-            // Haikuフォールバック
-            if (!draft && env?.ANTHROPIC_API_KEY) {
-              const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'x-api-key': env.ANTHROPIC_API_KEY,
-                  'anthropic-version': '2023-06-01',
-                },
-                body: JSON.stringify({
-                  model: 'claude-haiku-4-5-20251001',
-                  max_tokens: 500,
-                  system: systemPrompt,
-                  messages: [{ role: 'user', content: userPrompt }],
-                }),
-              });
-              if (apiRes.ok) {
-                const data = await apiRes.json() as { content: { text: string }[] };
-                draft = data.content?.[0]?.text;
-                if (draft) draftSource = 'Haiku';
-              }
+            const geminiDraft = await buildGeminiInquiryDraft(db, {
+              message: incomingText,
+              geminiApiKey: env.GEMINI_API_KEY,
+              friendId: friend?.id,
+            });
+            if (geminiDraft) {
+              draft = geminiDraft;
+              draftSource = 'Gemini';
             }
           } catch (err) {
             console.error('Draft generation error:', err);
@@ -894,15 +779,17 @@ ${incomingText}
         }
       }
 
-      // Discord通知（inquiry のみ。全メッセージ通知は騒がしいため）
-      if (classResult.module === 'inquiry' && env?.DISCORD_BOT_TOKEN && env?.DISCORD_CHANNEL_ID) {
-        await notifyDiscord(env.DISCORD_BOT_TOKEN, env.DISCORD_CHANNEL_ID, {
-          username: friend?.display_name ?? event.source?.userId ?? 'unknown',
+      // Telegram通知（inquiry のみ）
+      if (
+        classResult.module === 'inquiry' &&
+        draft &&
+        env?.TELEGRAM_BOT_TOKEN &&
+        env?.TELEGRAM_CHAT_ID
+      ) {
+        await sendInquiryTelegramNotification(db, env, {
+          lineUserId: event.source?.userId ?? 'unknown',
           message: incomingText,
-          module: classResult.module,
-          confidence: classResult.confidence,
           draft,
-          draftSource,
         });
       }
     } catch (err) {
@@ -1346,6 +1233,83 @@ async function forwardToLstep(url: string, rawBody: string, signature: string): 
   } catch (err) {
     console.error('Lstep forward error:', err);
   }
+}
+
+async function buildGeminiInquiryDraft(
+  db: D1Database,
+  params: { message: string; geminiApiKey: string; friendId: string | undefined },
+): Promise<string | null> {
+  const fewShotRows = await db
+    .prepare(
+      `SELECT icl.final_draft as finalDraft, oil.message
+       FROM inquiry_correction_log icl
+       JOIN os_inquiry_log oil ON icl.inquiry_id = oil.id
+       WHERE icl.correction_type = 'approved' AND icl.final_draft IS NOT NULL
+       ORDER BY icl.created_at DESC LIMIT 3`,
+    )
+    .all<{ finalDraft: string; message: string }>();
+  const fewShots = (fewShotRows.results ?? []).map((r) => ({
+    message: r.message,
+    finalDraft: r.finalDraft,
+  }));
+
+  const historyRows = params.friendId
+    ? await db
+        .prepare(
+          `SELECT direction, content FROM messages_log
+           WHERE friend_id = ? ORDER BY created_at DESC LIMIT 10`,
+        )
+        .bind(params.friendId)
+        .all<{ direction: string; content: string }>()
+    : { results: [] as { direction: string; content: string }[] };
+
+  const history = [...(historyRows.results ?? [])].reverse().map(
+    (r) => `${r.direction === 'incoming' ? 'ユーザー' : '返信'}: ${r.content}`,
+  );
+
+  return generateGeminiDraft({
+    message: params.message,
+    geminiApiKey: params.geminiApiKey,
+    history,
+    fewShots,
+  });
+}
+
+async function sendInquiryTelegramNotification(
+  db: D1Database,
+  bindings: Env['Bindings'],
+  params: { lineUserId: string; message: string; draft: string },
+): Promise<void> {
+  const token = bindings.TELEGRAM_BOT_TOKEN;
+  const chatId = bindings.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+
+  const logRow = await db
+    .prepare(`SELECT id FROM os_inquiry_log WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 1`)
+    .bind(params.lineUserId)
+    .first<{ id: string }>();
+
+  const friendForName = await db
+    .prepare('SELECT display_name FROM friends WHERE line_user_id = ? LIMIT 1')
+    .bind(params.lineUserId)
+    .first<{ display_name: string | null }>();
+
+  if (!logRow) return;
+
+  await db
+    .prepare(`UPDATE os_inquiry_log SET telegram_draft = ? WHERE id = ?`)
+    .bind(params.draft, logRow.id)
+    .run();
+
+  await notifyTelegram({
+    botToken: token,
+    chatId,
+    lineUserId: params.lineUserId,
+    userName: friendForName?.display_name ?? params.lineUserId,
+    message: params.message,
+    draft: params.draft,
+    inquiryLogId: logRow.id,
+  });
 }
 
 export { webhook };

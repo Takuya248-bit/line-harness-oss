@@ -48,6 +48,7 @@ import { processPhaseTransitions } from './services/phase-cron.js';
 import { osDashboard } from './routes/os-dashboard.js';
 import { osIntake } from './routes/os-intake.js';
 import { discordInteractions } from './routes/discord-interactions.js';
+import { telegramWebhook } from './routes/telegram-webhook.js';
 import { checkDormantFriends, sendWeeklyReport } from './services/os-cron.js';
 
 export type Env = {
@@ -82,6 +83,9 @@ export type Env = {
     DISCORD_APP_PUBLIC_KEY?: string;
     DISCORD_CHANNEL_ID?: string;
     GROQ_API_KEY?: string;
+    TELEGRAM_BOT_TOKEN?: string;
+    TELEGRAM_CHAT_ID?: string;
+    GEMINI_API_KEY?: string;
     // Notion knowledge DB
     NOTION_API_KEY?: string;
     NOTION_KNOWLEDGE_DB_ID?: string;
@@ -175,6 +179,7 @@ app.route('/', savedFilters);
 app.route('/', osDashboard);
 app.route('/', osIntake);
 app.route('/', discordInteractions);
+app.route('/', telegramWebhook);
 
 // Short link: /r/:ref → landing page with LINE open button
 app.get('/r/:ref', (c) => {
