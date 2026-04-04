@@ -56,6 +56,7 @@ _PLATFORM_URLS = {
     "coconala": "https://coconala.com/requests/{eid}",
     "lancers": "https://www.lancers.jp/work/detail/{eid}",
     "upwork": "https://www.upwork.com/jobs/~{eid}",
+    "remoteok": "https://remoteok.com/remote-jobs/{eid}",
 }
 
 

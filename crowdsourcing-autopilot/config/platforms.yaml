@@ -4,6 +4,11 @@ platforms:
     type: api
     auth: oauth2
     layer: L1
+  remoteok:
+    enabled: true
+    type: api
+    auth: none
+    layer: L1
   crowdworks:
     enabled: true
     type: api

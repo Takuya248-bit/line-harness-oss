@@ -1,97 +1,75 @@
 from __future__ import annotations
 
-import os
+import re
+import xml.etree.ElementTree as ET
+from datetime import datetime
+from email.utils import parsedate_to_datetime
 from typing import List
+from urllib.parse import urlencode
 
 import httpx
 
 from adapters.base import BaseAdapter
 from db.models import Job
 
+RSS_URL = "https://www.upwork.com/ab/feed/jobs/rss"
+
 
 class UpworkAdapter(BaseAdapter):
-    """Upwork GraphQL API skeleton. Requires OAuth2 approval for production."""
+    """Upwork RSS feed adapter. No auth required."""
 
     platform_key = "upwork"
-    GRAPHQL_URL = "https://api.upwork.com/graphql"
-
-    def __init__(self) -> None:
-        self._client_id = os.environ.get("UPWORK_CLIENT_ID", "")
-        self._client_secret = os.environ.get("UPWORK_CLIENT_SECRET", "")
 
     async def fetch_jobs(self, keywords: List[str], **filters) -> List[Job]:
-        if not self._client_id or not self._client_secret:
-            return []
         try:
             return await self._fetch_jobs_impl(keywords)
         except Exception:
             return []
 
     async def _fetch_jobs_impl(self, keywords: List[str]) -> List[Job]:
-        query = """
-        query JobSearch($keywords: String!) {
-          marketplaceJobPostingsSearch(keywords: $keywords) {
-            edges {
-              node {
-                id
-                title
-                description
-                budget { minimum maximum type }
-                postedOn
-              }
-            }
-          }
+        params = {"q": " ".join(keywords[:5]), "sort": "recency"}
+        url = f"{RSS_URL}?{urlencode(params)}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
         }
-        """
-        headers = {"Authorization": f"Bearer {await self._access_token()}"}
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                self.GRAPHQL_URL,
-                json={
-                    "query": query,
-                    "variables": {"keywords": " ".join(keywords[:5])},
-                },
-                headers=headers,
-            )
-            resp.raise_for_status()
-            data = resp.json().get("data") or {}
+        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
+            r = await client.get(url, headers=headers)
+            r.raise_for_status()
+
+        root = ET.fromstring(r.text)
+        ns = {"dc": "http://purl.org/dc/elements/1.1/"}
+        channel = root.find("channel")
+        if channel is None:
+            return []
+
         jobs: List[Job] = []
-        edges = (
-            (data.get("marketplaceJobPostingsSearch") or {}).get("edges") or []
-        )
-        for edge in edges:
-            node = edge.get("node") or {}
-            ext = str(node.get("id") or "").replace(":", "-")
+        for item in channel.findall("item"):
+            guid = (item.findtext("guid") or "").strip()
+            ext = _extract_id(guid)
             if not ext:
                 continue
-            budget = node.get("budget") or {}
+
+            title = (item.findtext("title") or "").strip()
+            desc_raw = (item.findtext("description") or "").strip()
+            description = _strip_html(desc_raw)[:1000]
+            posted_at = _parse_date(item.findtext("pubDate"))
+            budget_min, budget_max, budget_type = _parse_budget(description)
+            category = _parse_category(item, ns)
+
             jobs.append(
                 Job(
                     platform=self.platform_key,
                     external_id=ext,
-                    title=str(node.get("title") or "(no title)"),
-                    description=node.get("description"),
-                    budget_min=_f(budget.get("minimum")),
-                    budget_max=_f(budget.get("maximum")),
-                    budget_type=_budget_type(budget.get("type")),
-                    category="tech",
+                    title=title[:500],
+                    description=description,
+                    budget_min=budget_min,
+                    budget_max=budget_max,
+                    budget_type=budget_type,
+                    category=category,
+                    posted_at=posted_at,
                 )
             )
-        return jobs
-
-    async def _access_token(self) -> str:
-        token_url = "https://www.upwork.com/api/v3/oauth2/token"
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            r = await client.post(
-                token_url,
-                data={
-                    "grant_type": "client_credentials",
-                    "client_id": self._client_id,
-                    "client_secret": self._client_secret,
-                },
-            )
-            r.raise_for_status()
-            return str(r.json().get("access_token") or "")
+        return jobs[:50]
 
     async def submit_proposal(self, job: Job, text: str) -> bool:
         return False
@@ -100,19 +78,53 @@ class UpworkAdapter(BaseAdapter):
         return False
 
 
-def _f(v) -> float | None:
+def _extract_id(guid: str) -> str:
+    # guid例: https://www.upwork.com/jobs/~01abc123...
+    m = re.search(r"~([0-9a-f]+)", guid)
+    if m:
+        return m.group(1)
+    # fallback: URL末尾の数字
+    m2 = re.search(r"/(\d+)/?$", guid)
+    return m2.group(1) if m2 else ""
+
+
+def _strip_html(text: str) -> str:
+    return re.sub(r"<[^>]+>", "", text).strip()
+
+
+def _parse_date(raw: str | None) -> datetime | None:
+    if not raw:
+        return None
     try:
-        if v is None:
-            return None
-        return float(v)
-    except (TypeError, ValueError):
+        return parsedate_to_datetime(raw)
+    except Exception:
         return None
 
 
-def _budget_type(raw) -> str | None:
-    if raw is None:
+def _parse_budget(desc: str) -> tuple[float | None, float | None, str | None]:
+    # "Budget: $500" or "Hourly Range: $20.00-$40.00"
+    m = re.search(r"Hourly Range[:\s]+\$([0-9,]+(?:\.[0-9]+)?)[–\-]\$([0-9,]+(?:\.[0-9]+)?)", desc)
+    if m:
+        return _f(m.group(1)), _f(m.group(2)), "hourly"
+    m2 = re.search(r"Budget[:\s]+\$([0-9,]+(?:\.[0-9]+)?)", desc)
+    if m2:
+        v = _f(m2.group(1))
+        return v, v, "fixed"
+    return None, None, None
+
+
+def _parse_category(item: ET.Element, ns: dict) -> str:
+    cat = item.findtext("category")
+    if cat:
+        return cat.strip()
+    dc_subject = item.find("dc:subject", ns)
+    if dc_subject is not None and dc_subject.text:
+        return dc_subject.text.strip()
+    return "tech"
+
+
+def _f(v: str) -> float | None:
+    try:
+        return float(v.replace(",", ""))
+    except (ValueError, AttributeError):
         return None
-    s = str(raw).lower()
-    if "hour" in s:
-        return "hourly"
-    return "fixed"

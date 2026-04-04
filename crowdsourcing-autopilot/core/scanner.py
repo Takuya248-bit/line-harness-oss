@@ -16,6 +16,7 @@ from adapters.lancers import LancersAdapter
 from adapters.remotasks import RemotasksAdapter
 from adapters.scale_ai import ScaleAIAdapter
 from adapters.upwork import UpworkAdapter
+from adapters.remoteok import RemoteOKAdapter
 from db.migrate import default_db_path
 from db.models import Job
 from db.queries import (
@@ -30,6 +31,7 @@ from core.scorer import score_job
 
 ADAPTER_FACTORIES: Dict[str, Callable[[], Any]] = {
     "upwork": UpworkAdapter,
+    "remoteok": RemoteOKAdapter,
     "crowdworks": CrowdWorksAdapter,
     "lancers": LancersAdapter,
     "freelancer": FreelancerComAdapter,

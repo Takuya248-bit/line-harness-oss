@@ -46,9 +46,11 @@ def _build_adapters():
     from adapters.remotasks import RemotasksAdapter
     from adapters.scale_ai import ScaleAIAdapter
     from adapters.upwork import UpworkAdapter
+    from adapters.remoteok import RemoteOKAdapter
 
     return {
         "upwork": UpworkAdapter(),
+        "remoteok": RemoteOKAdapter(),
         "crowdworks": CrowdWorksAdapter(),
         "lancers": LancersAdapter(),
         "freelancer": FreelancerComAdapter(),
