@@ -26,7 +26,12 @@ class LancersAdapter(BaseAdapter):
         if cookie:
             self._headers["Cookie"] = cookie
 
-    _JP_KEYWORDS = ["翻訳", "ローカライゼーション", "ライティング", "SEO", "AI", "データ入力", "校正", "Webサイト", "Python", "自動化"]
+    _JP_KEYWORDS = [
+        "翻訳", "ローカライゼーション", "ライティング", "SEO", "AI",
+        "データ入力", "校正", "Webサイト", "Python", "自動化",
+        "英語", "記事作成", "WordPress", "スクレイピング", "ChatGPT",
+        "プログラミング", "アプリ開発", "LP制作", "Webデザイン",
+    ]
 
     async def fetch_jobs(self, keywords: List[str], **filters) -> List[Job]:
         cookie = os.environ.get("LANCERS_SESSION", "")
@@ -35,61 +40,66 @@ class LancersAdapter(BaseAdapter):
         self._headers["Cookie"] = cookie
 
         ja_kw = [k for k in keywords if any(ord(c) > 0x3000 for c in k)]
-        search_kws = list(dict.fromkeys(ja_kw + self._JP_KEYWORDS))[:8]
+        search_kws = list(dict.fromkeys(ja_kw + self._JP_KEYWORDS))[:15]
 
         seen: set = set()
         jobs: List[Job] = []
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             for kw in search_kws:
-                url = f"{self.BASE}/work/search?open=1&keyword={quote_plus(kw)}&order=new"
-                r = await client.get(url, headers=self._headers)
-                if r.status_code in (403, 405) or "/user/login" in str(r.url):
-                    raise CookieExpiredError(self.platform_key)
-                if r.status_code >= 400:
-                    continue
+                for page in range(1, 4):  # 各キーワード3ページ取得
+                    url = f"{self.BASE}/work/search?open=1&keyword={quote_plus(kw)}&order=new&page={page}"
+                    r = await client.get(url, headers=self._headers)
+                    if r.status_code in (403, 405) or "/user/login" in str(r.url):
+                        raise CookieExpiredError(self.platform_key)
+                    if r.status_code >= 400:
+                        break
 
-                soup = BeautifulSoup(r.text, "html.parser")
-                for card in soup.select("div.p-search-job-media"):
-                    a = card.select_one("a.p-search-job-media__title")
-                    if not a:
-                        continue
-                    href = a.get("href", "")
-                    m = re.search(r"/work/detail/(\d+)", href)
-                    if not m:
-                        continue
-                    eid = m.group(1)
-                    if eid in seen:
-                        continue
-                    seen.add(eid)
+                    soup = BeautifulSoup(r.text, "html.parser")
+                    cards = soup.select("div.p-search-job-media")
+                    if not cards:
+                        break  # 次のページがない
 
-                    title = a.get_text(strip=True)
-                    nums = [
-                        int(n.get_text(strip=True).replace(",", ""))
-                        for n in card.select("span.p-search-job-media__number")
-                        if n.get_text(strip=True).replace(",", "").isdigit()
-                    ]
-                    budget_min = nums[0] if nums else None
-                    budget_max = nums[1] if len(nums) > 1 else budget_min
-                    units = [u.get_text(strip=True) for u in card.select("span.c-media__job-unit")]
-                    budget_type = "hourly" if any("時間" in u for u in units) else "fixed"
-                    desc_el = card.select_one("div.c-media__description")
-                    desc = desc_el.get_text(strip=True)[:1000] if desc_el else ""
+                    for card in cards:
+                        a = card.select_one("a.p-search-job-media__title")
+                        if not a:
+                            continue
+                        href = a.get("href", "")
+                        m = re.search(r"/work/detail/(\d+)", href)
+                        if not m:
+                            continue
+                        eid = m.group(1)
+                        if eid in seen:
+                            continue
+                        seen.add(eid)
 
-                    jobs.append(Job(
-                        platform=self.platform_key,
-                        external_id=eid,
-                        title=title[:500],
-                        description=desc,
-                        budget_min=budget_min,
-                        budget_max=budget_max,
-                        budget_type=budget_type,
-                        category="content",
-                    ))
+                        title = a.get_text(strip=True)
+                        nums = [
+                            int(n.get_text(strip=True).replace(",", ""))
+                            for n in card.select("span.p-search-job-media__number")
+                            if n.get_text(strip=True).replace(",", "").isdigit()
+                        ]
+                        budget_min = nums[0] if nums else None
+                        budget_max = nums[1] if len(nums) > 1 else budget_min
+                        units = [u.get_text(strip=True) for u in card.select("span.c-media__job-unit")]
+                        budget_type = "hourly" if any("時間" in u for u in units) else "fixed"
+                        desc_el = card.select_one("div.c-media__description")
+                        desc = desc_el.get_text(strip=True)[:1000] if desc_el else ""
 
-                if len(jobs) >= 200:
+                        jobs.append(Job(
+                            platform=self.platform_key,
+                            external_id=eid,
+                            title=title[:500],
+                            description=desc,
+                            budget_min=budget_min,
+                            budget_max=budget_max,
+                            budget_type=budget_type,
+                            category="content",
+                        ))
+
+                if len(jobs) >= 500:
                     break
 
-        return jobs[:200]
+        return jobs[:500]
 
     async def submit_proposal(self, job: Job, text: str) -> bool:
         return False
