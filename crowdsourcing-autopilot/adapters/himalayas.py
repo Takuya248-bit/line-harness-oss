@@ -13,7 +13,6 @@ from db.models import Job
 API_URL = "https://himalayas.app/jobs/api"
 
 _FULLTIME_SIGNALS = frozenset(["full time", "full-time", "fulltime", "permanent"])
-_FULLTIME_TITLE_SIGNALS = ("manager", "director", "head of", "vp ", "cto", "ceo")
 
 
 class HimalayasAdapter(BaseAdapter):
@@ -32,8 +31,6 @@ class HimalayasAdapter(BaseAdapter):
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
         }
         params = {"limit": 100}
-        if keywords:
-            params["q"] = " ".join(keywords)
 
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             r = await client.get(API_URL, headers=headers, params=params)
@@ -51,11 +48,8 @@ class HimalayasAdapter(BaseAdapter):
             desc = str(item.get("description") or item.get("excerpt") or "")
             employment_type = str(item.get("employmentType") or "").lower()
 
-            # フルタイム求人を除外
+            # フルタイム求人を除外（employmentTypeのみで判定）
             if any(sig in employment_type for sig in _FULLTIME_SIGNALS):
-                continue
-            title_l = title.lower()
-            if any(sig in title_l for sig in _FULLTIME_TITLE_SIGNALS):
                 continue
 
             # キーワードフィルタ

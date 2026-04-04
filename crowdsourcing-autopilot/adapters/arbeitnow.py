@@ -12,7 +12,6 @@ from db.models import Job
 API_URL = "https://www.arbeitnow.com/api/job-board-api"
 
 _FULLTIME_SIGNALS = frozenset(["full-time", "fulltime", "permanent"])
-_FULLTIME_TITLE_SIGNALS = ("manager", "director", "head of", "vp ", "cto", "ceo")
 
 
 class ArbeitnowAdapter(BaseAdapter):
@@ -49,11 +48,13 @@ class ArbeitnowAdapter(BaseAdapter):
             tags = [str(t).lower() for t in (item.get("tags") or [])]
             job_types = [str(t).lower() for t in (item.get("job_types") or [])]
 
-            # フルタイム求人を除外
+            # フルタイム求人を除外（tags/job_typesのみで判定）
             if _FULLTIME_SIGNALS.intersection(set(tags + job_types)):
                 continue
-            title_l = title.lower()
-            if any(sig in title_l for sig in _FULLTIME_TITLE_SIGNALS):
+
+            # ドイツ語案件を除外（ASCII比率が低い = ドイツ語）
+            ascii_ratio = sum(1 for c in title if ord(c) < 128) / max(len(title), 1)
+            if ascii_ratio < 0.7:
                 continue
 
             # キーワードフィルタ

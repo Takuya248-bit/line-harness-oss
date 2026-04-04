@@ -54,3 +54,18 @@ platforms:
     type: scrape
     auth: cookie
     layer: L2
+  himalayas:
+    enabled: false
+    type: api
+    auth: none
+    layer: L1
+  remotive:
+    enabled: true
+    type: api
+    auth: none
+    layer: L1
+  arbeitnow:
+    enabled: false
+    type: api
+    auth: none
+    layer: L1

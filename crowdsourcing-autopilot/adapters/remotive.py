@@ -12,7 +12,6 @@ from db.models import Job
 API_URL = "https://remotive.com/api/remote-jobs"
 
 _FULLTIME_JOB_TYPES = frozenset(["full_time", "full-time"])
-_FULLTIME_TITLE_SIGNALS = ("manager", "director", "head of", "vp ", "cto", "ceo")
 
 
 class RemotiveAdapter(BaseAdapter):
@@ -31,8 +30,6 @@ class RemotiveAdapter(BaseAdapter):
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
         }
         params: dict = {"limit": 100}
-        if keywords:
-            params["search"] = " ".join(keywords)
 
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             r = await client.get(API_URL, headers=headers, params=params)
@@ -51,20 +48,17 @@ class RemotiveAdapter(BaseAdapter):
             job_type = str(item.get("job_type") or "").lower()
             tags = [str(t).lower() for t in (item.get("tags") or [])]
 
-            # フルタイム求人を除外
+            # フルタイム求人を除外（job_typeのみで判定）
             if job_type in _FULLTIME_JOB_TYPES:
                 continue
-            title_l = title.lower()
-            if any(sig in title_l for sig in _FULLTIME_TITLE_SIGNALS):
-                continue
-            if any(sig in tags for sig in ["full-time", "permanent", "salary"]):
-                continue
 
-            # キーワードフィルタ
+            # キーワードフィルタ（緩め: いずれか1語でもヒットすれば通す）
             if kw_lower:
                 text = f"{title} {desc} {' '.join(tags)}".lower()
                 if not any(kw in text for kw in kw_lower):
-                    continue
+                    # キーワード完全不一致でも contract/part_time は通す
+                    if job_type not in ("contract", "part_time", "freelance"):
+                        continue
 
             eid = str(item.get("id") or "")
             if not eid:

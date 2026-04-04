@@ -12,7 +12,6 @@ API_URL = "https://remoteok.com/api"
 
 # フルタイム求人を除外するタグ・キーワード
 _FULLTIME_TAGS = frozenset(["full-time", "fulltime", "permanent"])
-_FULLTIME_TITLE_SIGNALS = ("manager", "director", "head of", "vp ", "cto", "ceo")
 
 
 class RemoteOKAdapter(BaseAdapter):
@@ -46,11 +45,8 @@ class RemoteOKAdapter(BaseAdapter):
             desc = str(item.get("description") or "")
             tags = [str(t).lower() for t in (item.get("tags") or [])]
 
-            # フルタイム求人を除外
+            # フルタイム求人を除外（tagsのみで判定）
             if _FULLTIME_TAGS.intersection(tags):
-                continue
-            title_l = title.lower()
-            if any(sig in title_l for sig in _FULLTIME_TITLE_SIGNALS):
                 continue
 
             # キーワードフィルタ（タイトル・説明・タグのいずれかに含まれる）
