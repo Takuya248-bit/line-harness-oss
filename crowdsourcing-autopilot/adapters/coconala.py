@@ -24,7 +24,11 @@ class CoconalaAdapter(BaseAdapter):
         headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
         if cookie:
             headers["Cookie"] = cookie
-        q = keywords[0] if keywords else "翻訳"
+        priority = ["翻訳", "ローカライゼーション", "ライティング", "SEO"]
+        q_kw = next((k for k in priority if k in keywords), None)
+        if not q_kw:
+            q_kw = next((k for k in keywords if any(ord(c) > 0x3000 for c in k)), keywords[0] if keywords else "翻訳")
+        q = q_kw
         url = f"{self.BASE}/requests?keyword={q}"
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             r = await client.get(url, headers=headers)

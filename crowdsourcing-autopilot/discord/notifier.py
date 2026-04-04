@@ -39,10 +39,12 @@ async def notify_job(
         body_lines.insert(0, f"[案件リンク]({link})")
     if proposal_draft:
         body_lines.extend(["", "--- Proposal draft ---", proposal_draft[:1500]])
+    badge = _PLATFORM_BADGE.get(job.platform, "")
     embed = {
-        "title": f"{job.title[:250]}",
+        "title": f"{badge} {job.title[:248]}".strip(),
         "url": link or "",
         "description": "\n".join(body_lines)[:4000],
+        "color": _score_color(score),
         "footer": {"text": f"job_id:{job_db_id}"},
     }
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -68,6 +70,23 @@ async def notify_cookie_expired(platform: str) -> None:
 
 
 JA_PLATFORMS = {"crowdworks", "lancers", "coconala"}
+
+_PLATFORM_BADGE = {
+    "crowdworks": "🇯🇵",
+    "lancers": "🇯🇵",
+    "coconala": "🇯🇵",
+    "remoteok": "🌍",
+    "upwork": "🌍",
+}
+
+
+def _score_color(score: int) -> int:
+    if score >= 70:
+        return 0x00AA00
+    if score >= 50:
+        return 0xFFAA00
+    return 0xFF4444
+
 
 _PLATFORM_URLS = {
     "crowdworks": "https://crowdworks.jp/public/jobs/{eid}",
