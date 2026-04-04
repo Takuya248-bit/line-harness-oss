@@ -69,3 +69,8 @@ platforms:
     type: api
     auth: none
     layer: L1
+  reddit:
+    enabled: true
+    type: api
+    auth: none
+    layer: L1

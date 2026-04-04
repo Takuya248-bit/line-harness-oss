@@ -20,6 +20,7 @@ from adapters.remoteok import RemoteOKAdapter
 from adapters.himalayas import HimalayasAdapter
 from adapters.remotive import RemotiveAdapter
 from adapters.arbeitnow import ArbeitnowAdapter
+from adapters.reddit import RedditAdapter
 from db.migrate import default_db_path
 from db.models import Job
 from db.queries import (
@@ -49,6 +50,7 @@ ADAPTER_FACTORIES: Dict[str, Callable[[], Any]] = {
     "himalayas": HimalayasAdapter,
     "remotive": RemotiveAdapter,
     "arbeitnow": ArbeitnowAdapter,
+    "reddit": RedditAdapter,
 }
 
 

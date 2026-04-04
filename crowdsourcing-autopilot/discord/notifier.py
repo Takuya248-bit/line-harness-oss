@@ -82,6 +82,7 @@ _PLATFORM_BADGE = {
     "himalayas": "🌍",
     "remotive": "🌍",
     "arbeitnow": "🌍",
+    "reddit": "🟠",
 }
 
 
@@ -102,6 +103,7 @@ _PLATFORM_URLS = {
     "himalayas": "https://himalayas.app/jobs/{eid}",
     "remotive": "https://remotive.com/remote-jobs/{eid}",
     "arbeitnow": "https://www.arbeitnow.com/job/{eid}",
+    "reddit": "https://www.reddit.com/comments/{eid}",
 }
 
 
