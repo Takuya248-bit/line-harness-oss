@@ -62,8 +62,8 @@ class RemoteOKAdapter(BaseAdapter):
                     external_id=str(item["id"]),
                     title=title[:500],
                     description=_strip_html(desc)[:1000],
-                    budget_min=_f(item.get("salary_min")),
-                    budget_max=_f(item.get("salary_max")),
+                    budget_min=_f_or_none(item.get("salary_min")),
+                    budget_max=_f_or_none(item.get("salary_max")),
                     budget_type="fixed",
                     category=tags[0] if tags else "tech",
                     posted_at=posted_at,
@@ -97,3 +97,11 @@ def _f(v) -> float | None:
         return float(v)
     except (TypeError, ValueError):
         return None
+
+
+def _f_or_none(v) -> float | None:
+    """0や空文字はNoneとして返す（budget不明扱い）。"""
+    result = _f(v)
+    if result == 0.0:
+        return None
+    return result

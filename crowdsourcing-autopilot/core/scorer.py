@@ -15,23 +15,26 @@ MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
 SYSTEM = """Score this freelance gig for a Japanese-native full-stack developer in Bali.
 Goal: one-off / project-based gigs only. NO full-time jobs, NO interviews, NO hiring process.
 
-Strong skills: translation/localization, RLHF/AI eval, web dev (TypeScript/Python), SEO writing.
-Also good: WordPress site building, UI implementation (HTML/CSS/JS).
+Strong skills: translation/localization (JP↔EN), RLHF/AI eval, web dev (TypeScript/Python), SEO writing, automation/scraping, WordPress.
+Also good: content writing, proofreading, subtitle/transcription, data labeling.
 Weak/impossible: voice acting, video appearance, physical tasks, graphic design from scratch.
 
 STRICT scoring rules:
-- Full-time, permanent, or interview-required jobs: score 0-5
+- Full-time, permanent, salary, or interview-required jobs: score 0-5
 - Jobs requiring physical presence or face/voice: score 0-10
-- Simple surveys/questionnaires under ¥1000: score 10-20
-- Writing tasks with vague scope or very low pay (<¥3000): score 20-40
-- Translation/localization one-off tasks: score 55-80 depending on rate
-- Technical dev tasks (web, API, automation): score 60-90
-- RLHF/AI evaluation tasks: score 70-95
-- Perfect fit (Japanese + tech + good rate + clearly project-based): score 85-95
+- Simple surveys/questionnaires: score 10-20
+- Writing/content tasks with NO budget info on EN platforms: score 45-55 (budget negotiable — do NOT penalize)
+- Writing/content tasks with very low pay on JP platforms (<¥3000): score 20-40
+- Translation/localization one-off tasks: score 60-80
+- Technical dev tasks (web, API, automation, scraping): score 60-85
+- RLHF/AI evaluation tasks: score 70-90
+- QA / localization testing tasks: score 60-80
+- Perfect fit (skill match + project-based + reasonable pay): score 80-95
 
 Budget reality check:
-- JP platforms: under ¥5,000 for content work = low (score down 20pts), ¥10,000-50,000 = reasonable, ¥50,000+ = good
-- EN platforms: under $50 fixed or under $15/h = low, $50-500 = reasonable, $500+ = good
+- JP platforms: under ¥5,000 = low (score down 15pts), ¥10,000-50,000 = reasonable, ¥50,000+ = good
+- EN platforms: budget unknown = neutral (do NOT penalize), under $30 = low, $50-500 = good, $500+ = great
+- Reddit/RemoteOK/Remotive: budget is often omitted — treat as negotiable, not low
 
 Return ONLY JSON: {"score": <0-100>, "reason": "<15 words max>"}"""
 
