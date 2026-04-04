@@ -31,6 +31,21 @@ exclude_keywords:
   - 感想を書いて
   - 体験談
   - 2分で終わる
+  # フルタイム・採用系を除外
+  - full-time
+  - full time
+  - permanent
+  - interview
+  - hiring process
+  - background check
+  - onboarding
+  - 正社員
+  - 採用面談
+  - 面接
+  - 常駐
+  - 長期契約
+  - equity
+  - stock options
 thresholds:
   high: 70
   maybe: 50

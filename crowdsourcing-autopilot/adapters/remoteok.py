@@ -10,6 +10,10 @@ from db.models import Job
 
 API_URL = "https://remoteok.com/api"
 
+# フルタイム求人を除外するタグ・キーワード
+_FULLTIME_TAGS = frozenset(["full-time", "fulltime", "permanent", "salary", "senior"])
+_FULLTIME_TITLE_SIGNALS = ("engineer", "manager", "director", "lead", "head of", "vp ", "cto", "ceo")
+
 
 class RemoteOKAdapter(BaseAdapter):
     """RemoteOK public JSON API. No auth required."""
@@ -41,6 +45,13 @@ class RemoteOKAdapter(BaseAdapter):
             title = str(item.get("position") or "")
             desc = str(item.get("description") or "")
             tags = [str(t).lower() for t in (item.get("tags") or [])]
+
+            # フルタイム求人を除外
+            if _FULLTIME_TAGS.intersection(tags):
+                continue
+            title_l = title.lower()
+            if any(sig in title_l for sig in _FULLTIME_TITLE_SIGNALS):
+                continue
 
             # キーワードフィルタ（タイトル・説明・タグのいずれかに含まれる）
             if kw_lower:

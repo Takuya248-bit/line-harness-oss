@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 import click
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).parent / ".env")
 
 
 @click.group()
