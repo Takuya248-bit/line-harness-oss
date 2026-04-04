@@ -7,7 +7,7 @@ from typing import List
 import httpx
 from bs4 import BeautifulSoup
 
-from adapters.base import BaseAdapter
+from adapters.base import BaseAdapter, CookieExpiredError
 from browser.lightpanda import maybe_fetch_json_via_browser
 from db.models import Job
 
@@ -20,18 +20,21 @@ class CoconalaAdapter(BaseAdapter):
         self._cookie = os.environ.get("COCONALA_COOKIE", "")
 
     async def fetch_jobs(self, keywords: List[str], **filters) -> List[Job]:
+        cookie = os.environ.get("COCONALA_COOKIE", "")
         headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"}
-        if self._cookie:
-            headers["Cookie"] = self._cookie
+        if cookie:
+            headers["Cookie"] = cookie
         q = keywords[0] if keywords else "翻訳"
         url = f"{self.BASE}/requests?keyword={q}"
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             r = await client.get(url, headers=headers)
-            if r.status_code < 400:
-                soup = BeautifulSoup(r.text, "html.parser")
-                cards = soup.find_all("div", class_="c-searchItem")
-                if cards:
-                    return _parse_cards(cards, self.platform_key)[:20]
+        if r.status_code in (403, 405) or "/login" in str(r.url):
+            raise CookieExpiredError(self.platform_key)
+        if r.status_code < 400:
+            soup = BeautifulSoup(r.text, "html.parser")
+            cards = soup.find_all("div", class_="c-searchItem")
+            if cards:
+                return _parse_cards(cards, self.platform_key)[:20]
         data = await maybe_fetch_json_via_browser(url)
         if isinstance(data, dict):
             return _parse_dict_jobs(data, self.platform_key)
