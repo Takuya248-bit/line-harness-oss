@@ -17,6 +17,9 @@ from adapters.remotasks import RemotasksAdapter
 from adapters.scale_ai import ScaleAIAdapter
 from adapters.upwork import UpworkAdapter
 from adapters.remoteok import RemoteOKAdapter
+from adapters.himalayas import HimalayasAdapter
+from adapters.remotive import RemotiveAdapter
+from adapters.arbeitnow import ArbeitnowAdapter
 from db.migrate import default_db_path
 from db.models import Job
 from db.queries import (
@@ -29,6 +32,7 @@ from adapters.base import CookieExpiredError
 from discord.notifier import notify_job, notify_cookie_expired
 from core.proposer import generate_proposal
 from core.scorer import score_job
+from core.translator import translate_job
 
 ADAPTER_FACTORIES: Dict[str, Callable[[], Any]] = {
     "upwork": UpworkAdapter,
@@ -42,6 +46,9 @@ ADAPTER_FACTORIES: Dict[str, Callable[[], Any]] = {
     "dataannotation": DataAnnotationAdapter,
     "remotasks": RemotasksAdapter,
     "appen": AppenAdapter,
+    "himalayas": HimalayasAdapter,
+    "remotive": RemotiveAdapter,
+    "arbeitnow": ArbeitnowAdapter,
 }
 
 
@@ -112,6 +119,7 @@ async def run_scan() -> None:
             continue
         if await job_exists(db_path, job.platform, job.external_id):
             continue
+        job = await translate_job(job)
         job_id = await insert_job(db_path, job)
         job.id = job_id
         try:
