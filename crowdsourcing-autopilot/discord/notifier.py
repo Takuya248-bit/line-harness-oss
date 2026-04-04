@@ -77,6 +77,9 @@ _PLATFORM_BADGE = {
     "coconala": "🇯🇵",
     "remoteok": "🌍",
     "upwork": "🌍",
+    "himalayas": "🌍",
+    "remotive": "🌍",
+    "arbeitnow": "🌍",
 }
 
 
@@ -94,6 +97,9 @@ _PLATFORM_URLS = {
     "lancers": "https://www.lancers.jp/work/detail/{eid}",
     "upwork": "https://www.upwork.com/jobs/~{eid}",
     "remoteok": "https://remoteok.com/remote-jobs/{eid}",
+    "himalayas": "https://himalayas.app/jobs/{eid}",
+    "remotive": "https://remotive.com/remote-jobs/{eid}",
+    "arbeitnow": "https://www.arbeitnow.com/job/{eid}",
 }
 
 
