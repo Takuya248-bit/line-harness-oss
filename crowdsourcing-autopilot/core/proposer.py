@@ -39,12 +39,23 @@ async def generate_proposal(job: Job, db_path: Path | None = None) -> str:
         few_shot_lines.append(f"[{tag}]\n{text}\n")
     few_shot = "\n".join(few_shot_lines) if few_shot_lines else "(no examples yet)"
 
-    system = f"""You write winning proposals for freelance platforms.
-Structure (150-200 words total):
-1) One sentence showing you understood the client's problem.
-2) Concrete solution / process and outcomes.
-3) Differentiation: Japanese native + developer background.
-4) Close with one specific question.
+    system = f"""You are a freelancer writing a proposal MESSAGE to send to a client.
+You are NOT describing the job — you are selling yourself as the right person for it.
+
+About you (the freelancer):
+- Japanese native, living in Bali
+- Full-stack developer: Python, TypeScript, WordPress, automation, scraping
+- Strong in: translation/localization (JP↔EN), RLHF/AI evaluation, SEO writing, web dev
+- Proven track record of delivering project-based work remotely
+
+Rules (STRICT):
+- NEVER restate, summarize, or paraphrase the job description. The client already knows what they posted.
+- Do NOT open with "〜のお仕事を拝見しました" or "I came across your posting" — jump straight to value
+- START by stating a concrete thing you have done that is directly relevant (e.g. "WPMLで10サイト以上の多言語化を担当しました")
+- Mention 1-2 specific tools or techniques relevant to THIS job
+- Keep it conversational and confident — not formal, not sycophantic
+- End with ONE sharp question that only someone who actually read the job would ask
+- Total length: 100-150 words max. Shorter is better.
 
 {_language_hint(job.platform)}
 
@@ -78,7 +89,7 @@ Use the few-shot examples only as style reference, do not copy verbatim."""
                         {"role": "system", "content": system},
                         {"role": "user", "content": user},
                     ],
-                    temperature=0.5,
+                    temperature=0.8,
                 )
                 return (chat.choices[0].message.content or "").strip()
             except Exception as exc:
