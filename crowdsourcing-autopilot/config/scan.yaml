@@ -15,6 +15,16 @@ keywords:
   - ローカライゼーション
   - SEO
   - ライティング
+  - AI annotation
+  - data labeling
+  - Japanese native
+  - subtitle
+  - transcription
+  - copywriting
+  - proofreading
+  - content writing
+  - web scraping
+  - automation
 budget_min:
   hourly: 1000    # ¥1,000/h (JP) or $20/h (EN)
   fixed: 5000     # ¥5,000 (JP) or $50 (EN)
@@ -31,21 +41,11 @@ exclude_keywords:
   - 感想を書いて
   - 体験談
   - 2分で終わる
-  # フルタイム・採用系を除外
-  - full-time
-  - full time
-  - permanent
-  - interview
-  - hiring process
-  - background check
-  - onboarding
+  # フルタイム・採用系を除外（タイトルレベルで除外済みなのでdesc誤爆を防ぐため絞る）
   - 正社員
   - 採用面談
   - 面接
   - 常駐
-  - 長期契約
-  - equity
-  - stock options
 thresholds:
   high: 70
   maybe: 50
