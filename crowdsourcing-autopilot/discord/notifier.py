@@ -19,7 +19,6 @@ async def notify_job(
     job_db_id: int,
     proposal_draft: Optional[str] = None,
     proposal_count: int = 0,
-    gift_url: Optional[str] = None,
 ) -> None:
     url = webhook_url("DISCORD_WEBHOOK_UPWORK")
     if not url:
@@ -40,8 +39,6 @@ async def notify_job(
     ]
     if link:
         body_lines.insert(0, f"[案件リンク]({link})")
-    if gift_url:
-        body_lines.extend(["", f"🎁 手土産資料: {gift_url}"])
     if proposal_draft:
         body_lines.extend(["", "--- Proposal draft ---", proposal_draft[:1500]])
     badge = _PLATFORM_BADGE.get(job.platform, "")

@@ -31,7 +31,6 @@ from db.queries import (
 )
 from adapters.base import CookieExpiredError
 from discord.notifier import notify_job, notify_cookie_expired
-from core.gift import generate_gift
 from core.proposer import generate_proposal
 from core.scorer import score_job
 from core.translator import translate_job
@@ -137,18 +136,12 @@ async def run_scan() -> None:
             continue
 
         proposal_text = None
-        gift_url = None
         if score >= high:
             try:
                 proposal_text = await generate_proposal(job, db_path)
                 await insert_proposal_draft(db_path, job_id, proposal_text)
             except Exception as exc:
                 print(f"generate_proposal failed: {exc}")
-            try:
-                gift = await generate_gift(job)
-                gift_url = gift.get("url") or None
-            except Exception as exc:
-                print(f"generate_gift failed: {exc}")
 
         await update_job_score_and_status(db_path, job_id, score, "notified")
         await notify_job(
@@ -157,7 +150,6 @@ async def run_scan() -> None:
             job_db_id=job_id,
             proposal_draft=proposal_text,
             proposal_count=0,
-            gift_url=gift_url,
         )
         processed += 1
 

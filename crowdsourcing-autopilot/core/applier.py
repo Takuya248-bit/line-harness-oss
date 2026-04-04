@@ -13,6 +13,7 @@ from db.queries import (
     mark_proposal_sent,
     update_job_score_and_status,
 )
+from core.gift import generate_gift
 from core.proposer import generate_proposal
 
 # 自動送信に対応しているプラットフォーム
@@ -65,19 +66,30 @@ async def apply_to_job(job_id: int, auto_confirm: bool = False) -> Dict[str, Any
         proposal_text = await generate_proposal(job, db_path)
         proposal_id = await insert_proposal_draft(db_path, job_id, proposal_text)
 
+    # 手土産コンテンツを生成
+    print("手土産コンテンツを生成中...")
+    try:
+        gift = await generate_gift(job)
+        gift_url = gift.get("url") or ""
+    except Exception:
+        gift_url = ""
+
     # 提案文を表示
     print("\n" + "=" * 60)
     print(f"案件: [{job.platform}] {job.title}")
     print(f"job_id: {job_id}")
     print("=" * 60)
     print(proposal_text)
+    if gift_url:
+        print(f"\n🎁 手土産資料: {gift_url}")
     print("=" * 60)
 
     # 外部サイトの場合はURLを表示して終了
     if job.platform not in _AUTO_SUBMIT_PLATFORMS:
         url_tpl = _EXTERNAL_URLS.get(job.platform, "")
         url = url_tpl.format(eid=job.external_id) if url_tpl else ""
-        msg = f"このプラットフォームは自動送信非対応です。\n上記の提案文をコピーして手動で応募してください。\n{url}"
+        gift_line = f"\n🎁 手土産資料: {gift_url}" if gift_url else ""
+        msg = f"このプラットフォームは自動送信非対応です。\n上記の提案文をコピーして手動で応募してください。\n{url}{gift_line}"
         print(f"\n{msg}")
         return {"ok": False, "message": msg, "proposal": proposal_text}
 
