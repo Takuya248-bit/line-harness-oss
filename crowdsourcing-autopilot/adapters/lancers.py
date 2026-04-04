@@ -8,7 +8,7 @@ from urllib.parse import quote_plus
 import httpx
 from bs4 import BeautifulSoup
 
-from adapters.base import BaseAdapter
+from adapters.base import BaseAdapter, CookieExpiredError
 from db.models import Job
 
 
@@ -27,8 +27,10 @@ class LancersAdapter(BaseAdapter):
             self._headers["Cookie"] = cookie
 
     async def fetch_jobs(self, keywords: List[str], **filters) -> List[Job]:
-        if not self._headers.get("Cookie"):
+        cookie = os.environ.get("LANCERS_SESSION", "")
+        if not cookie:
             return []
+        self._headers["Cookie"] = cookie
         # 翻訳・ローカライゼーション系キーワードを優先（なければ最初の日本語キーワード）
         priority = ["翻訳", "ローカライゼーション", "ライティング", "SEO"]
         q_kw = next((k for k in priority if k in keywords), None)
@@ -37,8 +39,11 @@ class LancersAdapter(BaseAdapter):
         url = f"{self.BASE}/work/search?open=1&keyword={quote_plus(q_kw)}&order=new"
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             r = await client.get(url, headers=self._headers)
-            if r.status_code >= 400:
-                return []
+        # cookie切れ検知: ログインページへのリダイレクト or 403/405
+        if r.status_code in (403, 405) or "/user/login" in str(r.url):
+            raise CookieExpiredError(self.platform_key)
+        if r.status_code >= 400:
+            return []
 
         soup = BeautifulSoup(r.text, "html.parser")
         jobs: List[Job] = []

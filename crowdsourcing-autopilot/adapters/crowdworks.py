@@ -9,7 +9,7 @@ from urllib.parse import quote_plus
 
 import httpx
 
-from adapters.base import BaseAdapter
+from adapters.base import BaseAdapter, CookieExpiredError
 from db.models import Job
 
 
@@ -30,8 +30,10 @@ class CrowdWorksAdapter(BaseAdapter):
         url = f"{self.BASE}/public/jobs/search?keyword={q}&order=new"
         async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
             r = await client.get(url, headers=self._headers)
-            if r.status_code >= 400:
-                return []
+        if r.status_code in (403, 405) or "/login" in str(r.url):
+            raise CookieExpiredError(self.platform_key)
+        if r.status_code >= 400:
+            return []
         m = re.search(r'<div[^>]+id="vue-container"[^>]+data="([^"]+)"', r.text)
         if not m:
             return []

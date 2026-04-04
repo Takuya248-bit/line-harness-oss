@@ -49,6 +49,24 @@ async def notify_job(
         await client.post(url, json={"embeds": [embed]})
 
 
+async def notify_cookie_expired(platform: str) -> None:
+    url = webhook_url("DISCORD_WEBHOOK_UPWORK")
+    if not url:
+        return
+    embed = {
+        "title": f"Cookie切れ: {platform}",
+        "description": (
+            f"{platform} のセッションが切れました。\n\n"
+            f"1. ブラウザで {platform} にログイン\n"
+            f"2. F12 → Console → `copy(document.cookie)` を実行\n"
+            f"3. `.env` の `{platform.upper()}_SESSION` を更新して再起動"
+        ),
+        "color": 0xFF4444,
+    }
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        await client.post(url, json={"embeds": [embed]})
+
+
 JA_PLATFORMS = {"crowdworks", "lancers", "coconala"}
 
 _PLATFORM_URLS = {

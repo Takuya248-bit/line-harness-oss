@@ -25,7 +25,8 @@ from db.queries import (
     job_exists,
     update_job_score_and_status,
 )
-from discord.notifier import notify_job
+from adapters.base import CookieExpiredError
+from discord.notifier import notify_job, notify_cookie_expired
 from core.proposer import generate_proposal
 from core.scorer import score_job
 
@@ -92,6 +93,10 @@ async def run_scan() -> None:
     results = await asyncio.gather(*tasks, return_exceptions=True)
     jobs: List[Job] = []
     for label, res in zip(labels, results):
+        if isinstance(res, CookieExpiredError):
+            print(f"[{label}] cookie expired — sending Discord alert")
+            await notify_cookie_expired(res.platform)
+            continue
         if isinstance(res, Exception):
             print(f"[{label}] fetch error: {res}")
             continue
