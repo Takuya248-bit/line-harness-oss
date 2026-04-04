@@ -64,10 +64,8 @@ async def translate_job(job: Job) -> Job:
     if not result:
         return job
 
-    import dataclasses
-    translated = dataclasses.replace(
-        job,
-        title=result.get("title") or job.title,
-        description=result.get("description") or job.description,
-    )
+    translated = job.model_copy(update={
+        "title": result.get("title") or job.title,
+        "description": result.get("description") or job.description,
+    })
     return translated
