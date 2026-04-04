@@ -1,0 +1,54 @@
+# フリーランサープロフィール
+# proposerが提案文生成時にここから情報を引いて差し込む
+
+bio:
+  name: Takuya
+  location: Bali, Indonesia
+  languages:
+    - Japanese (native)
+    - English (business)
+  tagline: "バリ在住のフルスタック開発者・翻訳者。日英バイリンガルで技術×言語の案件を得意とする。"
+
+skills:
+  - name: 翻訳・ローカライゼーション
+    detail: "日英/英日翻訳。技術文書・UI文言・SEO記事に対応。WPML等の多言語化設定も可。"
+  - name: RLHF / AI評価
+    detail: "LLM出力の品質評価・ランキング・プロンプト改善。日本語データセット対応。"
+  - name: Webスクレイピング・自動化
+    detail: "Python (httpx/BeautifulSoup/Playwright) によるデータ収集・RPA構築。"
+  - name: WordPress / WooCommerce
+    detail: "サイト制作・多言語化 (WPML)・プラグインカスタマイズ。ECサイト構築実績あり。"
+  - name: フルスタック開発
+    detail: "TypeScript / Python / Node.js。API設計・Cloudflare Workers・SQLite。"
+  - name: SEOライティング
+    detail: "キーワード設計から記事執筆まで。WordPress入稿・構成案作成対応。"
+
+# 過去の納品実績（新しいものを上に追加）
+achievements:
+  - title: "ECサイト日英多言語化（WPML）"
+    platform: coconala
+    category: web_dev
+    description: "WooCommerce + WPMLを用いたECサイトの英語化。テーマ・CF7・商品ページの多言語対応を1週間で完了。"
+    result: "クライアント満足・リピート受注"
+    budget: "¥30,000"
+
+  - title: "AIチャットボット応答品質評価（RLHF）"
+    platform: crowdworks
+    category: ai_eval
+    description: "日本語LLMの出力を100件/日ペースで評価・ランキング。評価基準の策定から担当。"
+    result: "継続契約3ヶ月"
+    budget: "¥50,000/月"
+
+  - title: "SaaSプロダクトUI文言の日本語ローカライゼーション"
+    platform: lancers
+    category: translation
+    description: "英語SaaSの管理画面・ヘルプドキュメント約8,000語を翻訳。用語集管理・QAまで対応。"
+    result: "納期前完了・5つ星評価"
+    budget: "¥40,000"
+
+  - title: "不動産サイトのスクレイピング自動化"
+    platform: crowdworks
+    category: automation
+    description: "Python + httpxで物件情報を定期収集・CSV出力。cron設定・サーバー設置まで対応。"
+    result: "完全自動化・運用中"
+    budget: "¥25,000"
