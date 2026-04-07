@@ -8,7 +8,7 @@
 import { Hono } from 'hono';
 import { classify } from '../../../../os/core/classifier.js';
 import { tryQuickAnswer, handleInquiry } from '../../../../os/modules/inquiry/handler.js';
-import { notifyDiscord } from '../services/discord-notify.js';
+import { notifyTelegram } from '../services/telegram-notify.js';
 import { generateDraftWithGroq } from '../services/groq-draft.js';
 import type { Env } from '../index.js';
 
@@ -168,38 +168,20 @@ ${message}
     }
   }
 
-  // 5. Discord通知
-  if (c.env.DISCORD_BOT_TOKEN && c.env.DISCORD_CHANNEL_ID) {
+  // 5. Telegram通知
+  if (c.env.TELEGRAM_BOT_TOKEN && c.env.TELEGRAM_CHAT_ID && draft && uid && inquiryQueueId) {
     try {
-      const discordMsgId = await notifyDiscord(c.env.DISCORD_BOT_TOKEN, c.env.DISCORD_CHANNEL_ID, {
-        username: name,
+      await notifyTelegram({
+        botToken: c.env.TELEGRAM_BOT_TOKEN,
+        chatId: c.env.TELEGRAM_CHAT_ID,
+        lineUserId: uid,
+        userName: name,
         message,
-        module: classResult.module,
-        confidence: classResult.confidence,
-        phase: phase || undefined,
         draft,
-        inquiryId: inquiryQueueId ? String(inquiryQueueId) : undefined,
-        draftSource,
-      });
-      if (discordMsgId && inquiryQueueId) {
-        await db.prepare('UPDATE inquiry_queue SET discord_message_id = ? WHERE id = ?').bind(discordMsgId, inquiryQueueId).run();
-      }
-    } catch (err) {
-      console.error('Discord notify error:', err);
-    }
-  } else if (c.env.DISCORD_WEBHOOK_URL) {
-    // フォールバック（旧Webhook、ボタンなし）
-    try {
-      await fetch(c.env.DISCORD_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          embeds: [{ title: '📩 INQUIRY', description: message.slice(0, 200), color: 0x3b82f6,
-            fields: [{ name: 'ユーザー', value: name, inline: true }, ...(draft ? [{ name: '💬 ドラフト', value: draft.slice(0, 1000), inline: false }] : [])] }],
-        }),
+        inquiryLogId: String(inquiryQueueId),
       });
     } catch (err) {
-      console.error('Discord webhook fallback error:', err);
+      console.error('Telegram notify error:', err);
     }
   }
 
