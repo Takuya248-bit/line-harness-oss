@@ -34,7 +34,7 @@ import {
 import type { SurveyChoice } from '@line-crm/db';
 import { classify } from '../../../../os/core/classifier.js';
 import { handleInquiry, tryQuickAnswer } from '../../../../os/modules/inquiry/handler.js';
-import { generateGeminiDraft } from '../services/gemini-draft.js';
+import { generateDraftWithGroq } from '../services/groq-draft.js';
 import { notifyTelegram } from '../services/telegram-notify.js';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
@@ -97,7 +97,9 @@ webhook.post('/webhook', async (c) => {
   // バリリンガル（Lステップ管理下）: handleEvent をスキップし、OS処理のみ実行
   // handleEvent はリッチメニュー操作・シナリオ登録等を行うため、Lステップと競合する
   const OS_BARILINGUAL_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
-  const isLstepManaged = matchedAccountId === null || matchedAccountId === OS_BARILINGUAL_ID;
+  const isLstepManaged =
+    matchedAccountId === OS_BARILINGUAL_ID ||
+    (matchedAccountId === null && Boolean(c.env.LSTEP_WEBHOOK_URL));
 
   if (isLstepManaged) {
     // OS処理のみ（Lステップと競合する handleEvent は実行しない）
@@ -149,20 +151,20 @@ webhook.post('/webhook', async (c) => {
               if (quickDraft) {
                 draft = quickDraft;
                 draftSource = 'テンプレート';
-              } else if (c.env.GEMINI_API_KEY) {
+              } else if (c.env.GROQ_API_KEY) {
                 try {
                   const friendRow = await db
                     .prepare('SELECT id, display_name FROM friends WHERE line_user_id = ? LIMIT 1')
                     .bind(userId)
                     .first<{ id: string; display_name: string | null }>();
-                  const geminiDraft = await buildGeminiInquiryDraft(db, {
+                  const groqDraft = await buildGroqInquiryDraft(db, {
                     message: text,
-                    geminiApiKey: c.env.GEMINI_API_KEY,
+                    groqApiKey: c.env.GROQ_API_KEY,
                     friendId: friendRow?.id,
                   });
-                  if (geminiDraft) {
-                    draft = geminiDraft;
-                    draftSource = 'Gemini';
+                  if (groqDraft) {
+                    draft = groqDraft;
+                    draftSource = 'Groq';
                   }
                 } catch (err) {
                   console.error('Draft generation error:', err);
@@ -173,14 +175,13 @@ webhook.post('/webhook', async (c) => {
             // Telegram通知（inquiry のみ）
             if (
               classResult.module === 'inquiry' &&
-              draft &&
               c.env.TELEGRAM_BOT_TOKEN &&
               c.env.TELEGRAM_CHAT_ID
             ) {
               await sendInquiryTelegramNotification(db, c.env, {
                 lineUserId: userId,
                 message: text,
-                draft,
+                draft: draft ?? '（ドラフト生成中）',
               });
             }
           } catch (err) {
@@ -332,6 +333,10 @@ async function handleEvent(
                 }
               } catch (err) {
                 console.error('Failed immediate delivery for scenario', scenario.id, err);
+                // replyToken 期限切れ等で失敗した場合、next_delivery_at=NULL のまま cron に
+                // 拾われなくなる。5分後の pushMessage にフォールバックさせる。
+                const fallbackDate = new Date(Date.now() + 9 * 60 * 60_000 + 5 * 60_000);
+                await advanceFriendScenario(db, friendScenario.id, 0, fallbackDate.toISOString().slice(0, -1) + '+09:00');
               }
             }
           }
@@ -706,21 +711,33 @@ async function handleEvent(
                   )
                   .bind(outLogId, friend.id, action.messageType || 'text', action.content, jstNow())
                   .run();
-              } else if (action.type === 'add_tag' && action.tagId && action.tagId !== 'UNKNOWN') {
-                // phase_*タグの排他制御: 新フェーズ付与時に旧フェーズを自動除去
-                const tagRow = await db.prepare('SELECT name FROM tags WHERE id = ?').bind(action.tagId).first<{name: string}>();
-                if (tagRow?.name?.startsWith('phase_')) {
-                  await db
-                    .prepare(`DELETE FROM friend_tags WHERE friend_id = ? AND tag_id IN (
-                      SELECT id FROM tags WHERE name LIKE 'phase_%' AND id != ?
-                    )`)
-                    .bind(friend.id, action.tagId)
-                    .run();
+              } else if (action.type === 'add_tag') {
+                const tagId = action.tagId ?? action.params?.tagId;
+                if (!tagId || tagId === 'UNKNOWN') continue;
+
+                await addTagToFriend(db, friend.id, tagId);
+
+                const allScenarios = await getScenarios(db);
+                for (const scenario of allScenarios) {
+                  if (scenario.trigger_type !== 'tag_added' || !scenario.is_active || scenario.trigger_tag_id !== tagId) {
+                    continue;
+                  }
+                  const existing = await db
+                    .prepare(`SELECT id FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ?`)
+                    .bind(friend.id, scenario.id)
+                    .first();
+                  if (!existing) {
+                    await enrollFriendInScenario(db, friend.id, scenario.id);
+                  }
                 }
-                await db
-                  .prepare(`INSERT OR IGNORE INTO friend_tags (id, friend_id, tag_id, created_at) VALUES (?, ?, ?, ?)`)
-                  .bind(crypto.randomUUID(), friend.id, action.tagId, jstNow())
-                  .run();
+
+                await fireEvent(
+                  db,
+                  'tag_change',
+                  { friendId: friend.id, eventData: { tagId, action: 'add' } },
+                  lineAccessToken,
+                  lineAccountId,
+                );
               }
             }
             matched = true;
@@ -762,16 +779,16 @@ async function handleEvent(
         if (quickDraft) {
           draft = quickDraft;
           draftSource = 'テンプレート';
-        } else if (env?.GEMINI_API_KEY) {
+        } else if (env?.GROQ_API_KEY) {
           try {
-            const geminiDraft = await buildGeminiInquiryDraft(db, {
+            const groqDraft = await buildGroqInquiryDraft(db, {
               message: incomingText,
-              geminiApiKey: env.GEMINI_API_KEY,
+              groqApiKey: env.GROQ_API_KEY,
               friendId: friend?.id,
             });
-            if (geminiDraft) {
-              draft = geminiDraft;
-              draftSource = 'Gemini';
+            if (groqDraft) {
+              draft = groqDraft;
+              draftSource = 'Groq';
             }
           } catch (err) {
             console.error('Draft generation error:', err);
@@ -1235,9 +1252,9 @@ async function forwardToLstep(url: string, rawBody: string, signature: string): 
   }
 }
 
-async function buildGeminiInquiryDraft(
+async function buildGroqInquiryDraft(
   db: D1Database,
-  params: { message: string; geminiApiKey: string; friendId: string | undefined },
+  params: { message: string; groqApiKey: string; friendId: string | undefined },
 ): Promise<string | null> {
   const fewShotRows = await db
     .prepare(
@@ -1267,11 +1284,50 @@ async function buildGeminiInquiryDraft(
     (r) => `${r.direction === 'incoming' ? 'ユーザー' : '返信'}: ${r.content}`,
   );
 
-  return generateGeminiDraft({
-    message: params.message,
-    geminiApiKey: params.geminiApiKey,
-    history,
-    fewShots,
+  const fewShotSection = fewShots.length > 0
+    ? '\n## 過去の良い返信例\n' + fewShots.map((fs, i) =>
+        `### 例${i + 1}\n質問: ${fs.message}\n返信: ${fs.finalDraft}`
+      ).join('\n\n')
+    : '';
+
+  const historySection = history.length > 0
+    ? '\n## 過去のやり取り\n' + history.join('\n')
+    : '';
+
+  const systemPrompt = `あなたはバリリンガル（バリ島の語学学校）のCSスタッフです。
+LINEで問い合わせが来た際の返信ドラフトを作成してください。
+
+## バリリンガル事業情報
+入学金: 30,000円（別途必須）
+1人部屋: 1週間119,800円 / 2週間219,800円 / 4週間349,800円
+ペア留学: 1週間98,000円 / 2週間189,000円 / 4週間320,000円
+外泊（自己手配）: 1週間85,000円 / 2週間163,000円 / 4週間246,000円
+含まれるもの: 授業料・食事(朝/昼)・空港送迎・卒業証書
+コース: 英語・ビジネス英語・TOEIC対策・ワーホリ準備・サーフィン英語・ヨガ英語など全9種
+${fewShotSection}
+
+## 返信ルール
+- 親しみやすいが信頼感あり。「!」はOK、絵文字は最小限
+- 質問には即答。不明な場合は「確認してお伝えします」
+- CTAは1つに絞る。200文字以内で簡潔に
+- 返信文のみを出力。前置きや説明は不要
+
+## 禁止事項
+- 「スタッフ常駐」と書かない
+- 不確かな料金を書かない
+- 入学金30,000円は必ず「別途」と書く`;
+
+  const userPrompt = `${historySection}
+
+## お客様のメッセージ
+${params.message}
+
+上記に対する返信ドラフトを書いてください。`;
+
+  return generateDraftWithGroq({
+    systemPrompt,
+    userPrompt,
+    groqApiKey: params.groqApiKey,
   });
 }
 

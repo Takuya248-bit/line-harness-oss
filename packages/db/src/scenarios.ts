@@ -375,21 +375,26 @@ export async function enrollFriendInScenario(
       .first<FriendScenario>())!;
   }
 
-  const rawDate = new Date(Date.now() + 9 * 60 * 60_000 + firstStep.delay_minutes * 60_000);
+  // delay_minutes=0 の Step1 は webhook 側で replyMessage として即時送信される。
+  // enroll 時点で next_delivery_at を現在時刻にすると、送信→advance が完了する前に
+  // cron (5分ごと) が同じステップを重複送信するレースコンディションが発生する。
+  // delay=0 の場合は NULL にして cron に拾わせず、webhook 側の advance に委ねる。
+  let nextDeliveryAt: string | null = null;
 
-  if (firstStep.delivery_hour !== null && firstStep.delivery_hour !== undefined) {
-    // delivery_hour specified: use the date from delay_minutes calculation, but set time to delivery_hour JST
-    // rawDate is already in JST epoch (UTC+9 offset applied), so getUTCHours() = JST hours
-    rawDate.setUTCHours(firstStep.delivery_hour, 0, 0, 0);
-  } else {
-    // No delivery_hour: enforce 9:00-21:00 JST delivery window (legacy behavior)
-    const hours = rawDate.getUTCHours();
-    if (hours < 9 || hours >= 21) {
-      if (hours >= 21) rawDate.setUTCDate(rawDate.getUTCDate() + 1);
-      rawDate.setUTCHours(9, 0, 0, 0);
+  if (firstStep.delay_minutes > 0) {
+    const rawDate = new Date(Date.now() + 9 * 60 * 60_000 + firstStep.delay_minutes * 60_000);
+
+    if (firstStep.delivery_hour !== null && firstStep.delivery_hour !== undefined) {
+      rawDate.setUTCHours(firstStep.delivery_hour, 0, 0, 0);
+    } else {
+      const hours = rawDate.getUTCHours();
+      if (hours < 9 || hours >= 21) {
+        if (hours >= 21) rawDate.setUTCDate(rawDate.getUTCDate() + 1);
+        rawDate.setUTCHours(9, 0, 0, 0);
+      }
     }
+    nextDeliveryAt = rawDate.toISOString().slice(0, -1) + '+09:00';
   }
-  const nextDeliveryAt = rawDate.toISOString().slice(0, -1) + '+09:00';
 
   await db
     .prepare(
