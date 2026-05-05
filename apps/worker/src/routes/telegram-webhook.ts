@@ -7,7 +7,7 @@
 import { Hono } from 'hono';
 import { LineClient } from '@line-crm/line-sdk';
 import type { Env } from '../index.js';
-import { generateGeminiDraft } from '../services/gemini-draft.js';
+import { generateDraftWithGroq } from '../services/groq-draft.js';
 import { notifyTelegram, sendRevisePrompt } from '../services/telegram-notify.js';
 
 export const telegramWebhook = new Hono<Env>();
@@ -83,17 +83,25 @@ telegramWebhook.post('/telegram/webhook', async (c) => {
       .bind(pending.id)
       .first<{ message: string }>();
 
-    const geminiKey = c.env.GEMINI_API_KEY ?? '';
-    if (!geminiKey) {
-      await sendTelegramMessage(botToken, chatId, '⚠️ GEMINI_API_KEY が設定されていません');
+    const groqKey = c.env.GROQ_API_KEY ?? '';
+    if (!groqKey) {
+      await sendTelegramMessage(botToken, chatId, '⚠️ GROQ_API_KEY が設定されていません');
       return c.json({ ok: true });
     }
 
-    const newDraft = await generateGeminiDraft({
-      message: oilRow?.message ?? '',
-      geminiApiKey: geminiKey,
-      instruction,
-      previousDraft: pending.telegram_draft,
+    const newDraft = await generateDraftWithGroq({
+      systemPrompt: `あなたはバリリンガル（バリ島の語学学校）のCSスタッフです。
+LINEで問い合わせが来た際の返信ドラフトを修正してください。
+
+## 修正指示
+${instruction}
+
+## 前回のドラフト
+${pending.telegram_draft}
+
+返信文のみを出力してください。前置きや説明は不要です。`,
+      userPrompt: `お客様のメッセージ:\n${oilRow?.message ?? ''}\n\n上記の修正指示に従い、新しい返信ドラフトを作成してください。`,
+      groqApiKey: groqKey,
     });
 
     if (!newDraft) {
