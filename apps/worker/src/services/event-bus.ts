@@ -303,16 +303,30 @@ async function executeAction(
       if (!friend) break;
       const lineClient = new LineClient(lineAccessToken);
       const msgType = action.params.messageType || 'text';
+      const content = action.params.content;
       if (msgType === 'flex') {
-        const contents = JSON.parse(action.params.content);
+        const contents = JSON.parse(content);
         await lineClient.pushMessage(friend.line_user_id, [
           { type: 'flex', altText: action.params.altText || 'Message', contents },
         ]);
       } else {
         // Default: text message
         await lineClient.pushMessage(friend.line_user_id, [
-          { type: 'text', text: action.params.content },
+          { type: 'text', text: content },
         ]);
+      }
+      // messages_log への記録 (履歴集計・売上検知・放置検出に必要)
+      try {
+        const logId = crypto.randomUUID();
+        await db
+          .prepare(
+            `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, delivery_type, created_at)
+             VALUES (?, ?, 'outgoing', ?, ?, NULL, NULL, 'automation', ?)`,
+          )
+          .bind(logId, friendId, msgType, content, jstNow())
+          .run();
+      } catch (e) {
+        console.error('messages_log insert failed in send_message:', e);
       }
       break;
     }
