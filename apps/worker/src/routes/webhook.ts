@@ -706,8 +706,8 @@ async function handleEvent(
     // ここで自前ループしない (二重発火防止)。
 
     // 購入意思キーワード検出 → Telegram即時通知 (取り逃し防止)。
-    // 「申込」「購入」「振込」「支払」「買いたい」「欲しい」を含むメッセージ、または
-    // 既知の購入トリガーキーワードに完全一致するメッセージで発火。
+    // 自由文 (自動応答ルールにマッチしない通常メッセージ) → Telegram通知。
+    // この2つだけ通知が飛ぶことで「LINE公式アプリ通知うっとうしい」問題を解決。
     try {
       const purchaseKeywords = [
         '自己PRテンプレ申込',
@@ -719,13 +719,21 @@ async function handleEvent(
       const intentRe = /(申込|購入したい|購入します|振込|お支払|支払い|買いたい|欲しいです|注文)/;
       const isPurchaseIntent =
         purchaseKeywords.includes(incomingText.trim()) || intentRe.test(incomingText);
-      if (isPurchaseIntent && env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
+
+      // 自由文判定: 自動応答ルールに無い (= matchesAutomationRule=false) かつ
+      // ハードコードキーワードでもない かつ 配信時間コマンドでもない、ある程度の長さがあるテキスト。
+      // 単発「はい」等のノイズを抑えるため最低3文字。500文字でtruncate。
+      const isFreeText =
+        !matchesAutomationRule && !isAutoKeyword && !isTimeCommand && incomingText.trim().length >= 3;
+
+      if ((isPurchaseIntent || isFreeText) && env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
         const { notifyTelegramSimple } = await import('../services/telegram-notify.js');
         const accountLabel = lineAccountId
           ? (await db.prepare('SELECT name FROM line_accounts WHERE id = ?').bind(lineAccountId).first<{ name: string }>())?.name || lineAccountId
           : 'default';
+        const header = isPurchaseIntent ? '🛒 購入意思キーワードを検出' : '💬 自由文メッセージ受信';
         const text = [
-          '🛒 購入意思キーワードを検出',
+          header,
           `アカウント: ${accountLabel}`,
           `送信者: ${friend.display_name ?? '(名前未取得)'}`,
           `friendId: ${friend.id}`,
@@ -736,11 +744,11 @@ async function handleEvent(
         ].join('\n');
         // fire-and-forget
         notifyTelegramSimple(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, text).catch((e) =>
-          console.error('purchase intent telegram notify failed:', e),
+          console.error('telegram notify failed:', e),
         );
       }
     } catch (e) {
-      console.error('purchase intent detect error:', e);
+      console.error('telegram notify detect error:', e);
     }
 
     // OS: classify, log, and notify (バリリンガルのみ)
