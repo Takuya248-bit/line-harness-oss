@@ -474,11 +474,56 @@ async function handleEvent(
       .run();
 
     // チャットを作成/更新（ユーザーの自発的メッセージのみ unread にする）
-    // ボタンタップ等の自動応答キーワードは除外
+    // ボタンタップ等の自動応答キーワードは除外。
+    // - hardcoded autoKeywords: バリリンガル等のレガシー
+    // - automations/auto_replies にマッチするキーワード: 自動応答が走るので通知不要
+    //   (このアカウントの自動応答ルールの keyword と incomingText が一致 or 含まれる場合)
     const autoKeywords = ['料金', '機能', 'API', 'フォーム', 'ヘルプ', 'UUID', 'UUID連携について教えて', 'UUID連携を確認', '配信時間', '導入支援を希望します', 'アカウント連携を見る', '体験を完了する', 'BAN対策を見る', '連携確認'];
     const isAutoKeyword = autoKeywords.some(k => incomingText === k);
     const isTimeCommand = /(?:配信時間|配信|届けて|通知)[はを]?\s*\d{1,2}\s*時/.test(incomingText);
-    if (!isAutoKeyword && !isTimeCommand) {
+
+    // 自動応答ルール (automations/auto_replies) でマッチするキーワード判定
+    // → 自動応答が走るメッセージは「自動的にchatをunread化しない」(通知抑制)。
+    let matchesAutomationRule = false;
+    try {
+      const accountFilter = lineAccountId
+        ? { sql: ' AND (line_account_id = ? OR line_account_id IS NULL)', bind: [lineAccountId] }
+        : { sql: ' AND line_account_id IS NULL', bind: [] as string[] };
+
+      // 1. auto_replies に exact / contains で一致するか
+      const autoReplyHit = await db
+        .prepare(
+          `SELECT 1 FROM auto_replies
+           WHERE is_active = 1
+             AND ((match_type='exact' AND keyword = ?) OR (match_type='contains' AND ? LIKE '%' || keyword || '%'))${accountFilter.sql}
+           LIMIT 1`,
+        )
+        .bind(incomingText, incomingText, ...accountFilter.bind)
+        .first();
+      if (autoReplyHit) {
+        matchesAutomationRule = true;
+      } else {
+        // 2. automations(message_received) で keyword/matchType マッチするか
+        const automationHit = await db
+          .prepare(
+            `SELECT 1 FROM automations
+             WHERE is_active = 1 AND event_type = 'message_received'
+               AND (
+                 (json_extract(conditions,'$.matchType')='exact' AND json_extract(conditions,'$.keyword') = ?)
+                 OR
+                 (COALESCE(json_extract(conditions,'$.matchType'),'contains')='contains' AND ? LIKE '%' || json_extract(conditions,'$.keyword') || '%')
+               )${accountFilter.sql}
+             LIMIT 1`,
+          )
+          .bind(incomingText, incomingText, ...accountFilter.bind)
+          .first();
+        if (automationHit) matchesAutomationRule = true;
+      }
+    } catch (e) {
+      console.error('auto-rule match check failed:', e);
+    }
+
+    if (!isAutoKeyword && !isTimeCommand && !matchesAutomationRule) {
       await upsertChatOnMessage(db, friend.id);
     }
 
