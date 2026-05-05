@@ -19,6 +19,16 @@ export async function processBroadcastSend(
   broadcastId: string,
   workerUrl?: string,
 ): Promise<Broadcast> {
+  // 二重送信防止: status='draft' or 'scheduled' のときだけ送信を許可。
+  // 'sending'/'sent' は既に処理中/処理済みなのでスキップ。
+  const before = await getBroadcastById(db, broadcastId);
+  if (!before) {
+    throw new Error(`Broadcast ${broadcastId} not found`);
+  }
+  if (before.status !== 'draft' && before.status !== 'scheduled') {
+    return before;
+  }
+
   // Mark as sending
   await updateBroadcastStatus(db, broadcastId, 'sending');
 

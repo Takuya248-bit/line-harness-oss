@@ -222,9 +222,43 @@ async function executeAction(
   }
 
   switch (action.type) {
-    case 'add_tag':
-      await addTagToFriend(db, friendId!, action.params.tagId);
+    case 'add_tag': {
+      const tagId = action.params.tagId;
+      if (!tagId || tagId === 'UNKNOWN') break;
+
+      // 重複付与判定: 既に持っているタグなら tag_added 連鎖を起こさない (無限ループ防止)。
+      const had = await db
+        .prepare('SELECT 1 FROM friend_tags WHERE friend_id = ? AND tag_id = ?')
+        .bind(friendId!, tagId)
+        .first();
+
+      await addTagToFriend(db, friendId!, tagId);
+
+      if (!had) {
+        // 新規付与のときだけ tag_added トリガーの scenarios/automations を起動。
+        // tag_added scenarios の enroll
+        const allScenarios = await import('@line-crm/db').then((m) => m.getScenarios(db));
+        for (const scenario of allScenarios) {
+          if (scenario.trigger_type !== 'tag_added' || !scenario.is_active || scenario.trigger_tag_id !== tagId) {
+            continue;
+          }
+          try {
+            await enrollFriendInScenario(db, friendId!, scenario.id);
+          } catch (e) {
+            console.error('add_tag scenario enroll failed', e);
+          }
+        }
+
+        // tag_added イベントを発火 (automations側のtag_addedトリガー連鎖)
+        await fireEvent(
+          db,
+          'tag_added',
+          { friendId: friendId!, eventData: { tagId, action: 'add' } },
+          lineAccessToken,
+        );
+      }
       break;
+    }
 
     case 'remove_tag':
       await removeTagFromFriend(db, friendId!, action.params.tagId);

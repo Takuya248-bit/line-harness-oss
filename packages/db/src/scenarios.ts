@@ -396,13 +396,28 @@ export async function enrollFriendInScenario(
     nextDeliveryAt = rawDate.toISOString().slice(0, -1) + '+09:00';
   }
 
-  await db
-    .prepare(
-      `INSERT INTO friend_scenarios (id, friend_id, scenario_id, current_step_order, status, started_at, next_delivery_at, updated_at)
-       VALUES (?, ?, ?, 0, 'active', ?, ?, ?)`,
-    )
-    .bind(id, friendId, scenarioId, now, nextDeliveryAt, now)
-    .run();
+  try {
+    await db
+      .prepare(
+        `INSERT INTO friend_scenarios (id, friend_id, scenario_id, current_step_order, status, started_at, next_delivery_at, updated_at)
+         VALUES (?, ?, ?, 0, 'active', ?, ?, ?)`,
+      )
+      .bind(id, friendId, scenarioId, now, nextDeliveryAt, now)
+      .run();
+  } catch (err) {
+    // UNIQUE 制約違反: 並列リクエストで他のリクエストが先に enroll した。
+    // SELECT で既存レコードを取り直して返す。
+    const concurrent = await db
+      .prepare(
+        `SELECT * FROM friend_scenarios
+         WHERE friend_id = ? AND scenario_id = ? AND status = 'active'
+         LIMIT 1`,
+      )
+      .bind(friendId, scenarioId)
+      .first<FriendScenario>();
+    if (concurrent) return concurrent;
+    throw err;
+  }
 
   return (await db
     .prepare(`SELECT * FROM friend_scenarios WHERE id = ?`)

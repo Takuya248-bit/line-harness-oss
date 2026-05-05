@@ -172,6 +172,25 @@ async function processSingleDelivery(
   },
   workerUrl?: string,
 ): Promise<void> {
+  // Atomic claim: next_delivery_at を一時的に NULL にして他の worker/cron に拾わせない。
+  // current_step_order と next_delivery_at の両方を WHERE に入れて、
+  // 他のリクエストが既に進めていた場合は UPDATE が 0 件になり、ここで早期 return する。
+  // これにより同一レコードに対する並列処理を防ぎ、step 重複送信を防ぐ。
+  if (fs.next_delivery_at !== null) {
+    const claim = await db
+      .prepare(
+        `UPDATE friend_scenarios
+         SET next_delivery_at = NULL, updated_at = ?
+         WHERE id = ? AND current_step_order = ? AND next_delivery_at = ? AND status = 'active'`,
+      )
+      .bind(jstNow(), fs.id, fs.current_step_order, fs.next_delivery_at)
+      .run();
+    if (!claim.meta || claim.meta.changes === 0) {
+      // 他の処理が既にこのレコードを進めた → スキップ
+      return;
+    }
+  }
+
   // Get friend first to read preferred delivery hour from metadata
   const friend = await getFriendById(db, fs.friend_id);
   if (!friend || !friend.is_following) {
