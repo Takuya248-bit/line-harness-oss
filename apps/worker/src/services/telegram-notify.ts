@@ -11,28 +11,42 @@ const TELEGRAM_API = 'https://api.telegram.org';
 /**
  * 汎用Telegram通知 (ボタン無し、プレーンテキスト)。
  * 購入意思キーワード受信時など、即時に運営へ知らせたい用途。
+ *
+ * chatId はカンマ区切りで複数指定可能 (例: "111,222,333")。
+ * 複数指定された場合は全てのチャットに並列送信する。
+ * いずれかが失敗しても他は継続。
  */
 export async function notifyTelegramSimple(
   botToken: string,
   chatId: string,
   text: string,
 ): Promise<void> {
-  try {
-    const res = await fetch(`${TELEGRAM_API}/bot${botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        disable_web_page_preview: true,
-      }),
-    });
-    if (!res.ok) {
-      console.error('notifyTelegramSimple failed:', res.status, await res.text());
-    }
-  } catch (err) {
-    console.error('notifyTelegramSimple error:', err);
-  }
+  const ids = chatId
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (ids.length === 0) return;
+
+  await Promise.allSettled(
+    ids.map(async (id) => {
+      try {
+        const res = await fetch(`${TELEGRAM_API}/bot${botToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: id,
+            text,
+            disable_web_page_preview: true,
+          }),
+        });
+        if (!res.ok) {
+          console.error(`notifyTelegramSimple chat=${id} failed:`, res.status, await res.text());
+        }
+      } catch (err) {
+        console.error(`notifyTelegramSimple chat=${id} error:`, err);
+      }
+    }),
+  );
 }
 
 export interface TelegramNotifyOptions {
