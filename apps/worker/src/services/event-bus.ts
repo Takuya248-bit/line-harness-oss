@@ -125,6 +125,15 @@ async function processAutomations(
       (a) => !a.line_account_id || !lineAccountId || a.line_account_id === lineAccountId,
     );
 
+    // message_received は最初にmatchした1件のみ実行 (キーワード包含による多重発火防止)。
+    // それ以外のイベント (friend_add, tag_change等) は従来通り全件実行。
+    const exclusiveMatch = eventType === 'message_received';
+
+    // auto_replies で既に応答済みの場合 automations はスキップ
+    if (eventType === 'message_received' && payload.eventData?.skipAutomations) {
+      return;
+    }
+
     for (const automation of automations) {
       const conditions = JSON.parse(automation.conditions) as Record<string, unknown>;
       const actions = JSON.parse(automation.actions) as Array<{ type: string; params: Record<string, string> }>;
@@ -154,6 +163,8 @@ async function processAutomations(
         actionsResult: JSON.stringify(results),
         status: allSuccess ? 'success' : anySuccess ? 'partial' : 'failed',
       });
+
+      if (exclusiveMatch) break;
     }
   } catch (err) {
     console.error('processAutomations error:', err);
@@ -182,9 +193,17 @@ function matchConditions(
   }
 
   // keyword チェック（message_received イベント用）
+  // matchType を尊重する: 'exact' なら完全一致、それ以外は包含
   if (conditions.keyword !== undefined && payload.eventData) {
     const text = payload.eventData.text as string | undefined;
-    if (!text || !text.includes(conditions.keyword as string)) return false;
+    if (!text) return false;
+    const keyword = conditions.keyword as string;
+    const matchType = (conditions.matchType as string | undefined) ?? 'contains';
+    if (matchType === 'exact') {
+      if (text !== keyword) return false;
+    } else {
+      if (!text.includes(keyword)) return false;
+    }
   }
 
   return true;

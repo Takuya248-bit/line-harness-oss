@@ -570,13 +570,19 @@ async function handleEvent(
       }
     }
 
-    // 自動返信チェック: auto_replies テーブル + automations テーブル両方を参照
+    // 自動返信チェック: auto_replies テーブルのみここで処理
+    // automations テーブル (event_type='message_received') は L817 の fireEvent →
+    // event-bus.ts:processAutomations で一本化処理する。ここで二重処理しない。
     // NOTE: Auto-replies use replyMessage (free, no quota) instead of pushMessage
     // The replyToken is only valid for ~1 minute after the message event
 
-    // 1. auto_replies テーブル（レガシー）
-    const autoReplyQuery = `SELECT * FROM auto_replies WHERE is_active = 1 ORDER BY created_at ASC`;
-    const autoReplies = await db.prepare(autoReplyQuery)
+    // auto_replies テーブル（レガシー）: アカウント別にフィルタ
+    const autoReplyQuery = lineAccountId
+      ? `SELECT * FROM auto_replies WHERE is_active = 1 AND (line_account_id = ? OR line_account_id IS NULL) ORDER BY created_at ASC`
+      : `SELECT * FROM auto_replies WHERE is_active = 1 AND line_account_id IS NULL ORDER BY created_at ASC`;
+    const autoReplies = await (lineAccountId
+      ? db.prepare(autoReplyQuery).bind(lineAccountId)
+      : db.prepare(autoReplyQuery))
       .all<{
         id: string;
         keyword: string;
@@ -586,19 +592,6 @@ async function handleEvent(
         range_min: string | null;
         range_max: string | null;
         is_active: number;
-        created_at: string;
-      }>();
-
-    // 2. automations テーブル（新: /api/automations で作成されたルール）
-    const automationsQuery = `SELECT * FROM automations WHERE is_active = 1 AND event_type = 'message_received' ORDER BY priority DESC, created_at ASC`;
-    const automationsResult = await db.prepare(automationsQuery)
-      .all<{
-        id: string;
-        name: string;
-        conditions: string;
-        actions: string;
-        is_active: number;
-        priority: number;
         created_at: string;
       }>();
 
@@ -664,90 +657,8 @@ async function handleEvent(
       }
     }
 
-    // Check automations table if no match in auto_replies
-    if (!matched) {
-      for (const automation of automationsResult.results) {
-        try {
-          const conditions = JSON.parse(automation.conditions);
-          const actions = JSON.parse(automation.actions);
-
-          if (!conditions.keyword) continue;
-
-          const isMatch =
-            conditions.matchType === 'exact'
-              ? incomingText === conditions.keyword
-              : incomingText.includes(conditions.keyword);
-
-          if (isMatch) {
-            for (const action of actions) {
-              if (action.type === 'reply') {
-                const expandedContent = expandVariables(action.content, friend as { id: string; display_name: string | null; user_id: string | null }, workerUrl);
-                const replyMsg = buildMessage(action.messageType || 'text', expandedContent);
-                // Try replyMessage first, fall back to pushMessage if replyToken expired
-                try {
-                  await lineClient.replyMessage(event.replyToken, [replyMsg]);
-                } catch (replyErr) {
-                  console.error('replyMessage failed, trying pushMessage:', replyErr);
-                  await lineClient.pushMessage(event.source.userId!, [replyMsg]);
-                }
-
-                // CS→ナレッジ自動投入 (fire-and-forget)
-                if (env?.NOTION_API_KEY && env?.NOTION_KNOWLEDGE_DB_ID) {
-                  try {
-                    extractCSKnowledge(incomingText, action.content, {
-                      apiKey: env.NOTION_API_KEY,
-                      dbId: env.NOTION_KNOWLEDGE_DB_ID,
-                    }).catch((e) => console.error('extractCSKnowledge error:', e));
-                  } catch (e) {
-                    console.error('extractCSKnowledge setup error:', e);
-                  }
-                }
-
-                const outLogId = crypto.randomUUID();
-                await db
-                  .prepare(
-                    `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, delivery_type, created_at)
-                     VALUES (?, ?, 'outgoing', ?, ?, NULL, NULL, 'reply', ?)`,
-                  )
-                  .bind(outLogId, friend.id, action.messageType || 'text', action.content, jstNow())
-                  .run();
-              } else if (action.type === 'add_tag') {
-                const tagId = action.tagId ?? action.params?.tagId;
-                if (!tagId || tagId === 'UNKNOWN') continue;
-
-                await addTagToFriend(db, friend.id, tagId);
-
-                const allScenarios = await getScenarios(db);
-                for (const scenario of allScenarios) {
-                  if (scenario.trigger_type !== 'tag_added' || !scenario.is_active || scenario.trigger_tag_id !== tagId) {
-                    continue;
-                  }
-                  const existing = await db
-                    .prepare(`SELECT id FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ?`)
-                    .bind(friend.id, scenario.id)
-                    .first();
-                  if (!existing) {
-                    await enrollFriendInScenario(db, friend.id, scenario.id);
-                  }
-                }
-
-                await fireEvent(
-                  db,
-                  'tag_change',
-                  { friendId: friend.id, eventData: { tagId, action: 'add' } },
-                  lineAccessToken,
-                  lineAccountId,
-                );
-              }
-            }
-            matched = true;
-            break;
-          }
-        } catch (err) {
-          console.error('Failed to process automation rule', err);
-        }
-      }
-    }
+    // automations テーブル (event_type='message_received') は L817 fireEvent → event-bus.ts に一本化。
+    // ここで自前ループしない (二重発火防止)。
 
     // OS: classify, log, and notify (バリリンガルのみ)
     // matchedAccountId=null はデフォルトアカウント（=バリリンガル）を意味する
@@ -814,9 +725,12 @@ async function handleEvent(
     }
 
     // イベントバス発火: message_received
+    // auto_replies で既にmatchしている場合は automations をスキップ (二重応答防止)。
+    // ただし他のリスナー (Webhook転送/スコアリング/通知) は呼ぶ必要があるので、
+    // payload に skipAutomations フラグを付けて伝達。
     await fireEvent(db, 'message_received', {
       friendId: friend.id,
-      eventData: { text: incomingText, matched },
+      eventData: { text: incomingText, matched, skipAutomations: matched },
     }, lineAccessToken, lineAccountId);
 
     return;
