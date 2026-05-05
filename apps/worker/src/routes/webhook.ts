@@ -734,6 +734,7 @@ async function handleEvent(
     // 購入意思キーワード検出 → Telegram即時通知 (取り逃し防止)。
     // 自由文 (自動応答ルールにマッチしない通常メッセージ) → Telegram通知。
     // この2つだけ通知が飛ぶことで「LINE公式アプリ通知うっとうしい」問題を解決。
+    // 加えて: 事後報告 (振込完了/購入しました等) を検出して購入者タグ付与+通知。
     try {
       const purchaseKeywords = [
         '自己PRテンプレ申込',
@@ -742,9 +743,73 @@ async function handleEvent(
         'オーディション対策レポート',
         'コンサルレポート制作',
       ];
-      const intentRe = /(申込|購入したい|購入します|振込|お支払|支払い|買いたい|欲しいです|注文)/;
+      const intentRe = /(申込|購入したい|購入します|買いたい|欲しいです|注文)/;
       const isPurchaseIntent =
         purchaseKeywords.includes(incomingText.trim()) || intentRe.test(incomingText);
+
+      // 事後報告 (購入完了/振込完了系) 検出。
+      // 「振込完了」「振り込みました」「お支払いしました」「購入しました」「購入完了」等を含む。
+      const completionRe = /(振込完了|振り込みました|振込みました|お支払いしました|支払いました|入金しました|購入しました|購入完了|お振込しました|お振込みしました)/;
+      const isPurchaseCompletion = completionRe.test(incomingText);
+
+      // どの商品に対する事後報告かを推測 (直近14日の発言+タグから)
+      let inferredProduct: 'front' | 'brain' | 'consul' | null = null;
+      let inferredTagId: string | null = null;
+      if (isPurchaseCompletion) {
+        // 直近14日の incoming で 商品キーワードを送っているか
+        const recent = await db
+          .prepare(
+            `SELECT content FROM messages_log
+             WHERE friend_id = ? AND direction = 'incoming'
+               AND created_at >= datetime('now','-14 days','+9 hours')
+             ORDER BY created_at DESC LIMIT 50`,
+          )
+          .bind(friend.id)
+          .all<{ content: string }>();
+        const recentText = (recent.results || []).map((r) => r.content).join('\n');
+        // タグも見る
+        const friendTagsRows = await db
+          .prepare(
+            `SELECT t.name FROM friend_tags ft JOIN tags t ON t.id = ft.tag_id WHERE ft.friend_id = ?`,
+          )
+          .bind(friend.id)
+          .all<{ name: string }>();
+        const tagNames = new Set((friendTagsRows.results || []).map((r) => r.name));
+
+        if (/(自己PRテンプレ申込|自己PRテンプレ|自己PR診断書|テンプレート)/.test(recentText) || tagNames.has('自己PR興味')) {
+          inferredProduct = 'front';
+          inferredTagId = '93326d5f-3949-4564-817a-4d2bee9c6bf1'; // フロント商品購入者
+        } else if (
+          /(コンサルレポート|コンサルレポート申込|30分スポットコンサル|YouTubeアカウント開設|オーディション対策レポート)/.test(recentText) ||
+          tagNames.has('コンサル興味')
+        ) {
+          inferredProduct = 'consul';
+          // コンサル系専用タグは無いので Brain購入者ではなくフロント扱いでなく汎用ログのみ
+          inferredTagId = null;
+        } else if (
+          tagNames.has('Brainクリック') ||
+          /(Brain|オーディション完全攻略)/.test(recentText)
+        ) {
+          inferredProduct = 'brain';
+          inferredTagId = '8a691214-a04a-4ed9-b72f-e59a83f338a8'; // Brain購入者
+        }
+
+        if (inferredTagId) {
+          try {
+            await addTagToFriend(db, friend.id, inferredTagId);
+            // tag_added イベント発火 (Brain購入者upsell シナリオ等の連鎖)
+            await fireEvent(
+              db,
+              'tag_added',
+              { friendId: friend.id, eventData: { tagId: inferredTagId, action: 'add' } },
+              lineAccessToken,
+              lineAccountId,
+            );
+          } catch (e) {
+            console.error('purchase completion tag add failed:', e);
+          }
+        }
+      }
 
       // 自由文判定: 自動応答ルールに無い (= matchesAutomationRule=false) かつ
       // ハードコードキーワードでもない かつ 配信時間コマンドでもない、ある程度の長さがあるテキスト。
@@ -752,7 +817,7 @@ async function handleEvent(
       const isFreeText =
         !matchesAutomationRule && !isAutoKeyword && !isTimeCommand && incomingText.trim().length >= 3;
 
-      if ((isPurchaseIntent || isFreeText) && env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
+      if ((isPurchaseIntent || isPurchaseCompletion || isFreeText) && env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
         const { notifyTelegramSimple } = await import('../services/telegram-notify.js');
         // line_accounts.name と channel_id を取得 (channel_id は LINE Official Account の数値ID)
         const account = lineAccountId
@@ -771,7 +836,21 @@ async function handleEvent(
             ? `https://chat.line.biz/${account.channel_id}/chat/${lineUserId}`
             : null;
 
-        const header = isPurchaseIntent ? '🛒 購入意思キーワードを検出' : '💬 自由文メッセージ受信';
+        let header: string;
+        if (isPurchaseCompletion) {
+          const label = inferredProduct === 'front'
+            ? '(フロント商品購入者タグ付与済)'
+            : inferredProduct === 'brain'
+              ? '(Brain購入者タグ付与済)'
+              : inferredProduct === 'consul'
+                ? '(コンサル系・タグ未付与)'
+                : '(商品判別不能)';
+          header = `💰 購入完了報告 ${label}`;
+        } else if (isPurchaseIntent) {
+          header = '🛒 購入意思キーワードを検出';
+        } else {
+          header = '💬 自由文メッセージ受信';
+        }
         const lines = [
           header,
           `アカウント: ${accountLabel}`,
