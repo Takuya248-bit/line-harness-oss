@@ -141,6 +141,24 @@ async function processAutomations(
       // 条件チェック（簡易版: 条件が空なら常にマッチ）
       if (!matchConditions(conditions, payload)) continue;
 
+      // 連打抑制 (rate limit): message_received で同じ friend × 同じ automation が
+      // 30秒以内に成功実行されていたら今回はスキップ。リッチメニュー連打対策。
+      if (eventType === 'message_received' && payload.friendId) {
+        const recent = await db
+          .prepare(
+            `SELECT 1 FROM automation_logs
+             WHERE automation_id = ? AND friend_id = ? AND status = 'success'
+               AND created_at >= datetime('now', '-30 seconds', '+9 hours')
+             LIMIT 1`,
+          )
+          .bind(automation.id, payload.friendId)
+          .first();
+        if (recent) {
+          if (exclusiveMatch) break;
+          continue;
+        }
+      }
+
       const results: Array<{ action: string; success: boolean; error?: string }> = [];
 
       for (const action of actions) {

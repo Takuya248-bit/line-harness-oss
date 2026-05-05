@@ -660,6 +660,44 @@ async function handleEvent(
     // automations テーブル (event_type='message_received') は L817 fireEvent → event-bus.ts に一本化。
     // ここで自前ループしない (二重発火防止)。
 
+    // 購入意思キーワード検出 → Telegram即時通知 (取り逃し防止)。
+    // 「申込」「購入」「振込」「支払」「買いたい」「欲しい」を含むメッセージ、または
+    // 既知の購入トリガーキーワードに完全一致するメッセージで発火。
+    try {
+      const purchaseKeywords = [
+        '自己PRテンプレ申込',
+        '30分スポットコンサル',
+        'YouTubeアカウント開設',
+        'オーディション対策レポート',
+        'コンサルレポート制作',
+      ];
+      const intentRe = /(申込|購入したい|購入します|振込|お支払|支払い|買いたい|欲しいです|注文)/;
+      const isPurchaseIntent =
+        purchaseKeywords.includes(incomingText.trim()) || intentRe.test(incomingText);
+      if (isPurchaseIntent && env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
+        const { notifyTelegramSimple } = await import('../services/telegram-notify.js');
+        const accountLabel = lineAccountId
+          ? (await db.prepare('SELECT name FROM line_accounts WHERE id = ?').bind(lineAccountId).first<{ name: string }>())?.name || lineAccountId
+          : 'default';
+        const text = [
+          '🛒 購入意思キーワードを検出',
+          `アカウント: ${accountLabel}`,
+          `送信者: ${friend.display_name ?? '(名前未取得)'}`,
+          `friendId: ${friend.id}`,
+          `LINE userId: ${event.source.userId ?? '(不明)'}`,
+          '',
+          'メッセージ:',
+          incomingText.length > 500 ? incomingText.slice(0, 500) + '…' : incomingText,
+        ].join('\n');
+        // fire-and-forget
+        notifyTelegramSimple(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, text).catch((e) =>
+          console.error('purchase intent telegram notify failed:', e),
+        );
+      }
+    } catch (e) {
+      console.error('purchase intent detect error:', e);
+    }
+
     // OS: classify, log, and notify (バリリンガルのみ)
     // matchedAccountId=null はデフォルトアカウント（=バリリンガル）を意味する
     const OS_ACCOUNT_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';

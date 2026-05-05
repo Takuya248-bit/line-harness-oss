@@ -8,6 +8,33 @@
 
 const TELEGRAM_API = 'https://api.telegram.org';
 
+/**
+ * 汎用Telegram通知 (ボタン無し、プレーンテキスト)。
+ * 購入意思キーワード受信時など、即時に運営へ知らせたい用途。
+ */
+export async function notifyTelegramSimple(
+  botToken: string,
+  chatId: string,
+  text: string,
+): Promise<void> {
+  try {
+    const res = await fetch(`${TELEGRAM_API}/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        disable_web_page_preview: true,
+      }),
+    });
+    if (!res.ok) {
+      console.error('notifyTelegramSimple failed:', res.status, await res.text());
+    }
+  } catch (err) {
+    console.error('notifyTelegramSimple error:', err);
+  }
+}
+
 export interface TelegramNotifyOptions {
   botToken: string;
   chatId: string;
