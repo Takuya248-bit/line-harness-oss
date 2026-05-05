@@ -388,6 +388,32 @@ async function handleEvent(
       console.log(`Auto-registered friend on message: ${userId} → ${friend.id}`);
     }
 
+    // 救済: follow event を取りこぼしていた友達向け。
+    // friend_add トリガーの active シナリオに未登録なら enroll する (1回だけ)。
+    // これで「LINE webhook 過負荷で follow event ロスト → シナリオ未起動」の被害を後追いで救う。
+    try {
+      const allScenarios = await getScenarios(db);
+      for (const scenario of allScenarios) {
+        if (scenario.trigger_type !== 'friend_add' || !scenario.is_active) continue;
+        const accountMatch = !scenario.line_account_id || !lineAccountId || scenario.line_account_id === lineAccountId;
+        if (!accountMatch) continue;
+        const exists = await db
+          .prepare(`SELECT id FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ?`)
+          .bind(friend.id, scenario.id)
+          .first();
+        if (!exists) {
+          try {
+            await enrollFriendInScenario(db, friend.id, scenario.id);
+            console.log(`friend_add scenario rescue enroll: friend=${friend.id} scenario=${scenario.id}`);
+          } catch (e) {
+            console.error('rescue enroll failed:', e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('rescue check error:', e);
+    }
+
     const incomingText = textMessage.text;
     const now = jstNow();
     const logId = crypto.randomUUID();
