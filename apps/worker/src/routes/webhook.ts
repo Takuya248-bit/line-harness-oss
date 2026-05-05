@@ -728,20 +728,36 @@ async function handleEvent(
 
       if ((isPurchaseIntent || isFreeText) && env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
         const { notifyTelegramSimple } = await import('../services/telegram-notify.js');
-        const accountLabel = lineAccountId
-          ? (await db.prepare('SELECT name FROM line_accounts WHERE id = ?').bind(lineAccountId).first<{ name: string }>())?.name || lineAccountId
-          : 'default';
+        // line_accounts.name と channel_id を取得 (channel_id は LINE Official Account の数値ID)
+        const account = lineAccountId
+          ? await db
+              .prepare('SELECT name, channel_id FROM line_accounts WHERE id = ?')
+              .bind(lineAccountId)
+              .first<{ name: string; channel_id: string }>()
+          : null;
+        const accountLabel = account?.name || lineAccountId || 'default';
+        // LINE Official Account Manager のチャット直リンク。
+        // 形式: https://chat.line.biz/{channelId}/chat/{lineUserId}
+        // 開くと該当友達のトーク画面に直行できる。
+        const lineUserId = event.source.userId ?? '';
+        const chatLink =
+          account?.channel_id && lineUserId
+            ? `https://chat.line.biz/${account.channel_id}/chat/${lineUserId}`
+            : null;
+
         const header = isPurchaseIntent ? '🛒 購入意思キーワードを検出' : '💬 自由文メッセージ受信';
-        const text = [
+        const lines = [
           header,
           `アカウント: ${accountLabel}`,
           `送信者: ${friend.display_name ?? '(名前未取得)'}`,
-          `friendId: ${friend.id}`,
-          `LINE userId: ${event.source.userId ?? '(不明)'}`,
           '',
           'メッセージ:',
           incomingText.length > 500 ? incomingText.slice(0, 500) + '…' : incomingText,
-        ].join('\n');
+        ];
+        if (chatLink) {
+          lines.push('', `🔗 LINEで返信: ${chatLink}`);
+        }
+        const text = lines.join('\n');
         // fire-and-forget
         notifyTelegramSimple(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, text).catch((e) =>
           console.error('telegram notify failed:', e),
