@@ -120,10 +120,12 @@ async function processAutomations(
 ): Promise<void> {
   try {
     const allAutomations = await getActiveAutomationsByEvent(db, eventType);
-    // Filter by account: match this account's automations + unassigned (backward compat)
-    const automations = allAutomations.filter(
-      (a) => !a.line_account_id || !lineAccountId || a.line_account_id === lineAccountId,
-    );
+    // アカウント間競合の絶対防止: lineAccountId が解決済みなら厳密一致のみ。
+    // 未割当 (line_account_id NULL) のautomationは「全アカウント発火」を意味しない。
+    // 過去の backward-compat 挙動 (NULL = 全許可) は事故の温床なので廃止。
+    const automations = lineAccountId
+      ? allAutomations.filter((a) => a.line_account_id === lineAccountId)
+      : allAutomations.filter((a) => !a.line_account_id);
 
     // message_received は最初にmatchした1件のみ実行 (キーワード包含による多重発火防止)。
     // それ以外のイベント (friend_add, tag_change等) は従来通り全件実行。
@@ -446,9 +448,10 @@ async function processNotifications(
 ): Promise<void> {
   try {
     const allRules = await getActiveNotificationRulesByEvent(db, eventType);
-    const rules = allRules.filter(
-      (r) => !r.line_account_id || !lineAccountId || r.line_account_id === lineAccountId,
-    );
+    // アカウント厳密一致のみ。NULL = 全アカウント発火 は廃止。
+    const rules = lineAccountId
+      ? allRules.filter((r) => r.line_account_id === lineAccountId)
+      : allRules.filter((r) => !r.line_account_id);
 
     for (const rule of rules) {
       let channels: string[] = JSON.parse(rule.channels);

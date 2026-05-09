@@ -282,11 +282,13 @@ async function handleEvent(
       console.error('Failed to record follow action:', err);
     }
 
-    // friend_add シナリオに登録（このアカウントのシナリオのみ）
+    // friend_add シナリオに登録（このアカウントのシナリオのみ・厳密一致）
     const scenarios = await getScenarios(db);
     for (const scenario of scenarios) {
-      // Only trigger scenarios belonging to this account (or unassigned for backward compat)
-      const scenarioAccountMatch = !scenario.line_account_id || !lineAccountId || scenario.line_account_id === lineAccountId;
+      // アカウント厳密一致のみ。NULL = 全アカウント発火 は廃止 (事故防止)。
+      const scenarioAccountMatch = lineAccountId
+        ? scenario.line_account_id === lineAccountId
+        : !scenario.line_account_id;
       if (scenario.trigger_type === 'friend_add' && scenario.is_active && scenarioAccountMatch) {
         try {
           const existing = await db
@@ -395,7 +397,10 @@ async function handleEvent(
       const allScenarios = await getScenarios(db);
       for (const scenario of allScenarios) {
         if (scenario.trigger_type !== 'friend_add' || !scenario.is_active) continue;
-        const accountMatch = !scenario.line_account_id || !lineAccountId || scenario.line_account_id === lineAccountId;
+        // アカウント厳密一致のみ
+        const accountMatch = lineAccountId
+          ? scenario.line_account_id === lineAccountId
+          : !scenario.line_account_id;
         if (!accountMatch) continue;
         const exists = await db
           .prepare(`SELECT id FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ?`)
@@ -512,8 +517,9 @@ async function handleEvent(
     // → 自動応答が走るメッセージは「自動的にchatをunread化しない」(通知抑制)。
     let matchesAutomationRule = false;
     try {
+      // アカウント厳密一致 (NULL = 全許可 は廃止)
       const accountFilter = lineAccountId
-        ? { sql: ' AND (line_account_id = ? OR line_account_id IS NULL)', bind: [lineAccountId] }
+        ? { sql: ' AND line_account_id = ?', bind: [lineAccountId] }
         : { sql: ' AND line_account_id IS NULL', bind: [] as string[] };
 
       // 1. auto_replies に exact / contains で一致するか
@@ -647,9 +653,9 @@ async function handleEvent(
     // NOTE: Auto-replies use replyMessage (free, no quota) instead of pushMessage
     // The replyToken is only valid for ~1 minute after the message event
 
-    // auto_replies テーブル（レガシー）: アカウント別にフィルタ
+    // auto_replies テーブル（レガシー）: アカウント厳密一致 (NULL = 全許可 は廃止)
     const autoReplyQuery = lineAccountId
-      ? `SELECT * FROM auto_replies WHERE is_active = 1 AND (line_account_id = ? OR line_account_id IS NULL) ORDER BY created_at ASC`
+      ? `SELECT * FROM auto_replies WHERE is_active = 1 AND line_account_id = ? ORDER BY created_at ASC`
       : `SELECT * FROM auto_replies WHERE is_active = 1 AND line_account_id IS NULL ORDER BY created_at ASC`;
     const autoReplies = await (lineAccountId
       ? db.prepare(autoReplyQuery).bind(lineAccountId)
@@ -1313,6 +1319,182 @@ async function handleEvent(
         }
       } catch (err) {
         console.error('Failed to cancel booking', err);
+      }
+    }
+
+    // CTA choice postback: cta_choice:{trackedLinkId}
+    // ボタン押下→tag付与+scenario enroll+reply(redirect URL or 受付完了)
+    // tracked_links テーブルの tag_id, scenario_id, original_url を引いて自動処理
+    if (postbackData.startsWith('cta_choice:')) {
+      const userId = event.source.type === 'user' ? event.source.userId : undefined;
+      if (!userId) { console.log('cta_choice: no userId'); return; }
+
+      const linkId = postbackData.substring('cta_choice:'.length);
+      if (!linkId) { console.log('cta_choice: no linkId'); return; }
+
+      try {
+        // friend identification (auto-register if missing, like survey postback)
+        let friend = await getFriendByLineUserId(db, userId);
+        if (!friend) {
+          let profile;
+          try { profile = await lineClient.getProfile(userId); } catch {}
+          friend = await upsertFriend(db, {
+            lineUserId: userId,
+            displayName: profile?.displayName ?? null,
+            pictureUrl: profile?.pictureUrl ?? null,
+            statusMessage: profile?.statusMessage ?? null,
+          });
+          if (lineAccountId) {
+            await db.prepare('UPDATE friends SET line_account_id = ? WHERE id = ?')
+              .bind(lineAccountId, friend.id).run();
+          }
+        }
+
+        // Look up tracked_link
+        const link = await db
+          .prepare('SELECT id, name, original_url, tag_id, scenario_id FROM tracked_links WHERE id = ? AND is_active = 1')
+          .bind(linkId)
+          .first<{ id: string; name: string; original_url: string; tag_id: string | null; scenario_id: string | null }>();
+        if (!link) {
+          console.log('cta_choice: tracked_link not found:', linkId);
+          return;
+        }
+
+        // Record click (anonymized to friend)
+        const clickId = crypto.randomUUID();
+        await db
+          .prepare('INSERT INTO link_clicks (id, tracked_link_id, friend_id, clicked_at) VALUES (?, ?, ?, ?)')
+          .bind(clickId, link.id, friend.id, jstNow())
+          .run();
+        await db
+          .prepare('UPDATE tracked_links SET click_count = click_count + 1, updated_at = ? WHERE id = ?')
+          .bind(jstNow(), link.id)
+          .run();
+
+        // Tag assignment
+        if (link.tag_id) {
+          await addTagToFriend(db, friend.id, link.tag_id);
+          // Fire tag_added event so trigger-based scenarios can react
+          await fireEvent(
+            db,
+            'tag_added',
+            { friendId: friend.id, tagId: link.tag_id },
+            lineAccessToken,
+            lineAccountId,
+          );
+        }
+
+        // Scenario enrollment + immediate Step1 delivery (delay=0 step is replied here)
+        // Time-window restriction in enrollFriendInScenario only applies to delay>0 steps.
+        // For delay=0, we deliver Step1 inline as the reply, and step-delivery cron will
+        // pick up subsequent steps based on their delay.
+        let stepReplyMessage: ReturnType<typeof buildMessage> | null = null;
+        if (link.scenario_id) {
+          const existing = await db
+            .prepare('SELECT id FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ?')
+            .bind(friend.id, link.scenario_id)
+            .first<{ id: string }>();
+          if (!existing) {
+            await enrollFriendInScenario(db, friend.id, link.scenario_id);
+          }
+
+          // Get Step1 to deliver inline
+          const step1 = await db
+            .prepare(
+              `SELECT id, message_type, message_content
+               FROM scenario_steps
+               WHERE scenario_id = ? AND step_order = 1
+               LIMIT 1`,
+            )
+            .bind(link.scenario_id)
+            .first<{ id: string; message_type: string; message_content: string }>();
+          if (step1) {
+            const expandedContent = expandVariables(
+              step1.message_content,
+              friend as { id: string; display_name: string | null; user_id: string | null },
+              workerUrl,
+            );
+            stepReplyMessage = buildMessage(step1.message_type, expandedContent);
+
+            // Mark Step1 as delivered: advance current_step_order to 1 and compute next_delivery_at for Step2
+            const step2 = await db
+              .prepare(
+                `SELECT id, delay_minutes, delivery_hour
+                 FROM scenario_steps
+                 WHERE scenario_id = ? AND step_order = 2
+                 LIMIT 1`,
+              )
+              .bind(link.scenario_id)
+              .first<{ id: string; delay_minutes: number; delivery_hour: number | null }>();
+
+            let nextDeliveryAt: string | null = null;
+            if (step2 && step2.delay_minutes > 0) {
+              const rawDate = new Date(Date.now() + 9 * 60 * 60_000 + step2.delay_minutes * 60_000);
+              if (step2.delivery_hour !== null && step2.delivery_hour !== undefined) {
+                rawDate.setUTCHours(step2.delivery_hour, 0, 0, 0);
+              } else {
+                const hours = rawDate.getUTCHours();
+                if (hours < 9 || hours >= 21) {
+                  if (hours >= 21) rawDate.setUTCDate(rawDate.getUTCDate() + 1);
+                  rawDate.setUTCHours(9, 0, 0, 0);
+                }
+              }
+              nextDeliveryAt = rawDate.toISOString().slice(0, -1) + '+09:00';
+            }
+
+            await db
+              .prepare(
+                `UPDATE friend_scenarios
+                 SET current_step_order = 1, next_delivery_at = ?, updated_at = ?
+                 WHERE friend_id = ? AND scenario_id = ?`,
+              )
+              .bind(nextDeliveryAt, jstNow(), friend.id, link.scenario_id)
+              .run();
+
+            // Log Step1 delivery
+            const logId = crypto.randomUUID();
+            await db
+              .prepare(
+                `INSERT INTO messages_log (id, friend_id, direction, message_type, content, scenario_step_id, created_at)
+                 VALUES (?, ?, 'outgoing', ?, ?, ?, ?)`,
+              )
+              .bind(logId, friend.id, step1.message_type, step1.message_content, step1.id, jstNow())
+              .run();
+          }
+        }
+
+        // Reply with Step1 content (or fallback ack if no scenario)
+        const replyMsg = stepReplyMessage ?? buildMessage('text', '受付しました🌸');
+        try {
+          await lineClient.replyMessage(postbackEvent.replyToken, [replyMsg]);
+        } catch {
+          await lineClient.pushMessage(userId, [replyMsg]);
+        }
+
+        // Telegram notification: who pressed which CTA button (await to ensure fetch completes before isolate ends)
+        if (env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
+          try {
+            const { notifyTelegramSimple } = await import('../services/telegram-notify.js');
+            const userName = friend.display_name || 'unknown';
+            const text = [
+              `🌸 CTAボタン押下`,
+              `👤 ${userName}`,
+              `🔘 ${link.name}`,
+              `🏷️ tag: ${link.tag_id ? 'attached' : '-'}`,
+              `📋 scenario: ${link.scenario_id ? 'enrolled+Step1 sent' : '-'}`,
+              `🔗 ${link.original_url}`,
+            ].join('\n');
+            console.log('cta_choice: about to send Telegram notification');
+            await notifyTelegramSimple(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, text);
+            console.log('cta_choice: Telegram notification sent');
+          } catch (e) {
+            console.error('cta_choice telegram notify failed:', e);
+          }
+        } else {
+          console.log('cta_choice: Telegram env missing', { tokenPresent: !!env?.TELEGRAM_BOT_TOKEN, chatIdPresent: !!env?.TELEGRAM_CHAT_ID });
+        }
+      } catch (err) {
+        console.error('Failed to process cta_choice postback', err);
       }
     }
 

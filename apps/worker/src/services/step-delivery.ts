@@ -136,6 +136,7 @@ export async function processStepDeliveries(
   db: D1Database,
   lineClient: LineClient,
   workerUrl?: string,
+  lineAccountId?: string | null,
 ): Promise<void> {
   // Skip delivery outside 9:00-23:00 JST window
   const jstHour = new Date(Date.now() + 9 * 60 * 60_000).getUTCHours();
@@ -146,6 +147,24 @@ export async function processStepDeliveries(
 
   for (let i = 0; i < dueFriendScenarios.length; i++) {
     const fs = dueFriendScenarios[i];
+
+    // アカウント分離: lineAccountId 指定がある場合、friend が同じアカウントか確認。
+    // 他アカウントのfriend は別cronループで処理されるのでスキップ。これで重複送信と
+    // 「他アカウントのtokenで送ってしまう」事故を防ぐ。
+    if (lineAccountId !== undefined) {
+      const friendRow = await db
+        .prepare('SELECT line_account_id FROM friends WHERE id = ?')
+        .bind(fs.friend_id)
+        .first<{ line_account_id: string | null }>();
+      const friendAccountId = friendRow?.line_account_id ?? null;
+      if (lineAccountId === null) {
+        // デフォルトアカウント担当 cron: friend.line_account_id が NULL のものだけ処理
+        if (friendAccountId !== null) continue;
+      } else {
+        if (friendAccountId !== lineAccountId) continue;
+      }
+    }
+
     try {
       // Stealth: add small random delay between deliveries to avoid burst patterns
       if (i > 0) {
