@@ -759,9 +759,13 @@ async function handleEvent(
       const isPurchaseCompletion = completionRe.test(incomingText);
 
       // どの商品に対する事後報告かを推測 (直近14日の発言+タグから)
-      let inferredProduct: 'front' | 'brain' | 'consul' | null = null;
+      // note明示語 ('note買った/note購入しました/noteありがとう' 等) は最優先で note判定。
+      let inferredProduct: 'front' | 'note' | 'brain' | 'consul' | null = null;
       let inferredTagId: string | null = null;
-      if (isPurchaseCompletion) {
+      const noteExplicitRe = /(note買いました|note買った|note購入しました|note購入完了|noteありがとう|noteお願い|note読みました|note記事買)/;
+      const isNotePurchase = noteExplicitRe.test(incomingText);
+
+      if (isPurchaseCompletion || isNotePurchase) {
         // 直近14日の incoming で 商品キーワードを送っているか
         const recent = await db
           .prepare(
@@ -782,22 +786,23 @@ async function handleEvent(
           .all<{ name: string }>();
         const tagNames = new Set((friendTagsRows.results || []).map((r) => r.name));
 
-        if (/(自己PRテンプレ申込|自己PRテンプレ|自己PR診断書|テンプレート)/.test(recentText) || tagNames.has('自己PR興味')) {
+        // 推測順序: noteの明示報告 > フロント商品 > Brain > note > コンサル
+        if (isNotePurchase) {
+          inferredProduct = 'note';
+          inferredTagId = '2ab8814a-f00b-4121-92d8-5f4e8c4b52ee'; // note購入者
+        } else if (/(自己PRテンプレ申込|自己PRテンプレ|自己PR診断書|テンプレート)/.test(recentText) || tagNames.has('自己PR興味')) {
           inferredProduct = 'front';
           inferredTagId = '93326d5f-3949-4564-817a-4d2bee9c6bf1'; // フロント商品購入者
+        } else if (tagNames.has('Brainクリック') || /(Brain|オーディション完全攻略|教材買|教材購入)/.test(recentText)) {
+          inferredProduct = 'brain';
+          inferredTagId = '8a691214-a04a-4ed9-b72f-e59a83f338a8'; // Brain購入者
         } else if (
           /(コンサルレポート|コンサルレポート申込|30分スポットコンサル|YouTubeアカウント開設|オーディション対策レポート)/.test(recentText) ||
           tagNames.has('コンサル興味')
         ) {
           inferredProduct = 'consul';
-          // コンサル系専用タグは無いので Brain購入者ではなくフロント扱いでなく汎用ログのみ
+          // コンサル系専用タグは無いので汎用ログのみ
           inferredTagId = null;
-        } else if (
-          tagNames.has('Brainクリック') ||
-          /(Brain|オーディション完全攻略)/.test(recentText)
-        ) {
-          inferredProduct = 'brain';
-          inferredTagId = '8a691214-a04a-4ed9-b72f-e59a83f338a8'; // Brain購入者
         }
 
         if (inferredTagId) {
@@ -823,7 +828,7 @@ async function handleEvent(
       const isFreeText =
         !matchesAutomationRule && !isAutoKeyword && !isTimeCommand && incomingText.trim().length >= 3;
 
-      if ((isPurchaseIntent || isPurchaseCompletion || isFreeText) && env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
+      if ((isPurchaseIntent || isPurchaseCompletion || isNotePurchase || isFreeText) && env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
         const { notifyTelegramSimple } = await import('../services/telegram-notify.js');
         // line_accounts.name と channel_id を取得 (channel_id は LINE Official Account の数値ID)
         const account = lineAccountId
@@ -843,14 +848,16 @@ async function handleEvent(
             : null;
 
         let header: string;
-        if (isPurchaseCompletion) {
+        if (isPurchaseCompletion || isNotePurchase) {
           const label = inferredProduct === 'front'
             ? '(フロント商品購入者タグ付与済)'
-            : inferredProduct === 'brain'
-              ? '(Brain購入者タグ付与済)'
-              : inferredProduct === 'consul'
-                ? '(コンサル系・タグ未付与)'
-                : '(商品判別不能)';
+            : inferredProduct === 'note'
+              ? '(note購入者タグ付与済)'
+              : inferredProduct === 'brain'
+                ? '(Brain購入者タグ付与済)'
+                : inferredProduct === 'consul'
+                  ? '(コンサル系・タグ未付与)'
+                  : '(商品判別不能)';
           header = `💰 購入完了報告 ${label}`;
         } else if (isPurchaseIntent) {
           header = '🛒 購入意思キーワードを検出';
