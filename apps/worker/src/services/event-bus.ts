@@ -163,7 +163,7 @@ async function processAutomations(
 
       for (const action of actions) {
         try {
-          await executeAction(db, action, payload, lineAccessToken);
+          await executeAction(db, action, payload, lineAccessToken, lineAccountId);
           results.push({ action: action.type, success: true });
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
@@ -205,9 +205,10 @@ function matchConditions(
     }
   }
 
-  // tag_id チェック
-  if (conditions.tag_id !== undefined && payload.eventData) {
-    if (payload.eventData.tagId !== conditions.tag_id) return false;
+  // tag_id / tagId チェック (DB上はcamelCase 'tagId' で保存されているケースもあるので両対応)
+  const condTagId = conditions.tag_id ?? conditions.tagId;
+  if (condTagId !== undefined && payload.eventData) {
+    if (payload.eventData.tagId !== condTagId) return false;
   }
 
   // keyword チェック（message_received イベント用）
@@ -233,6 +234,7 @@ async function executeAction(
   action: { type: string; params: Record<string, string> },
   payload: EventPayload,
   lineAccessToken?: string,
+  lineAccountId?: string | null,
 ): Promise<void> {
   const friendId = payload.friendId;
   if (!friendId && action.type !== 'send_webhook') {
@@ -273,6 +275,7 @@ async function executeAction(
           'tag_added',
           { friendId: friendId!, eventData: { tagId, action: 'add' } },
           lineAccessToken,
+          lineAccountId,
         );
       }
       break;
