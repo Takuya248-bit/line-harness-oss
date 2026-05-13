@@ -45,6 +45,20 @@ import { extractCSKnowledge } from '../services/cs-knowledge-extractor.js';
 import type { Env } from '../index.js';
 
 const webhook = new Hono<Env>();
+const BALI_RYUGAKU_CENTER_ACCOUNT_ID = '3e005b38-0adf-492f-9648-ee09d7c78424';
+const BALI_RYUGAKU_CENTER_SURVEY_ID = 'c7b163e7-5ed9-4fc3-ab1c-7678cb9b3273';
+const BALI_DIAGNOSIS_COMPLETION_TEXT = `診断が完了しました！
+
+ご回答ありがとうございます！😊
+あなたのご希望に合わせた最適な留学プランをカウンセラーが選定中です💡
+
+診断結果は、後ほど担当カウンセラーからお送りしますので、お待ちください！
+
+そのほか気になる点などがあれば、メッセージをお送りください。`;
+
+function isBaliRyugakuCenterDiagnosis(lineAccountId: string | null | undefined, surveyId: string): boolean {
+  return lineAccountId === BALI_RYUGAKU_CENTER_ACCOUNT_ID && surveyId === BALI_RYUGAKU_CENTER_SURVEY_ID;
+}
 
 webhook.post('/webhook', async (c) => {
   const rawBody = await c.req.text();
@@ -94,12 +108,14 @@ webhook.post('/webhook', async (c) => {
     c.executionCtx.waitUntil(forwardPromise);
   }
 
-  // バリリンガル（Lステップ管理下）: handleEvent をスキップし、OS処理のみ実行
+  // バリリンガル/バリ島留学センター（Lステップ管理下）: handleEvent をスキップし、OS処理のみ実行
   // handleEvent はリッチメニュー操作・シナリオ登録等を行うため、Lステップと競合する
+  // 注意: matchedAccountId=null（destinationなし or アカウント不一致）は櫻子等の通常運用なので
+  // 必ず通常 handleEvent 経路を通すこと (旧ロジックで null も Lstep扱いになっていてTelegram通知漏れ)
   const OS_BARILINGUAL_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
-  const isLstepManaged =
-    matchedAccountId === OS_BARILINGUAL_ID ||
-    (matchedAccountId === null && Boolean(c.env.LSTEP_WEBHOOK_URL));
+  const BALI_RYUGAKU_CENTER_ID = '3e005b38-0adf-492f-9648-ee09d7c78424';
+  const LSTEP_MANAGED_ACCOUNTS = new Set([OS_BARILINGUAL_ID, BALI_RYUGAKU_CENTER_ID]);
+  const isLstepManaged = matchedAccountId !== null && LSTEP_MANAGED_ACCOUNTS.has(matchedAccountId);
 
   if (isLstepManaged) {
     // OS処理のみ（Lステップと競合する handleEvent は実行しない）
@@ -281,6 +297,13 @@ async function handleEvent(
     } catch (err) {
       console.error('Failed to record follow action:', err);
     }
+
+    await syncBaliLineRegistrationFromFollow(db, {
+      lineAccountId,
+      lineUserId: userId,
+      friendId: friend.id,
+      metadataSource: 'line_official_webhook',
+    });
 
     // friend_add シナリオに登録（このアカウントのシナリオのみ・厳密一致）
     const scenarios = await getScenarios(db);
@@ -470,6 +493,13 @@ async function handleEvent(
                 if (survey?.on_complete_tag_id) {
                   await addTagToFriend(db, friend.id, survey.on_complete_tag_id);
                 }
+                await syncBaliDiagnosisCompleteFromSurvey(db, env, {
+                  lineAccountId,
+                  lineUserId: userId,
+                  friendId: friend.id,
+                  surveyId,
+                  answers,
+                });
                 if (survey?.on_complete_scenario_id) {
                   await enrollFriendInScenario(db, friend.id, survey.on_complete_scenario_id);
                 }
@@ -477,14 +507,18 @@ async function handleEvent(
                 if (survey?.on_complete_tag_id) {
                   await fireEvent(db, 'tag_added', { friendId: friend.id, tagId: survey.on_complete_tag_id }, lineAccessToken, lineAccountId);
                 }
-                const completionFlex = {
-                  type: 'bubble',
-                  body: { type: 'box', layout: 'vertical', contents: [
-                    { type: 'text', text: 'ありがとうございました!', weight: 'bold', size: 'lg', color: '#F59E0B', align: 'center' },
-                    { type: 'text', text: '回答を受け付けました。', size: 'sm', color: '#64748b', align: 'center', margin: 'md', wrap: true },
-                  ], paddingAll: '20px' },
-                };
-                await lineClient.pushMessage(userId, [buildMessage('flex', JSON.stringify(completionFlex))]);
+                if (isBaliRyugakuCenterDiagnosis(lineAccountId, surveyId)) {
+                  await lineClient.pushMessage(userId, [buildMessage('text', BALI_DIAGNOSIS_COMPLETION_TEXT)]);
+                } else {
+                  const completionFlex = {
+                    type: 'bubble',
+                    body: { type: 'box', layout: 'vertical', contents: [
+                      { type: 'text', text: 'ありがとうございました!', weight: 'bold', size: 'lg', color: '#F59E0B', align: 'center' },
+                      { type: 'text', text: '回答を受け付けました。', size: 'sm', color: '#64748b', align: 'center', margin: 'md', wrap: true },
+                    ], paddingAll: '20px' },
+                  };
+                  await lineClient.pushMessage(userId, [buildMessage('flex', JSON.stringify(completionFlex))]);
+                }
               }
             }
           }
@@ -1078,6 +1112,13 @@ async function handleEvent(
           if (survey?.on_complete_tag_id) {
             await addTagToFriend(db, friend.id, survey.on_complete_tag_id);
           }
+          await syncBaliDiagnosisCompleteFromSurvey(db, env, {
+            lineAccountId,
+            lineUserId: userId,
+            friendId: friend.id,
+            surveyId,
+            answers,
+          });
 
           // Score-based tag assignment
           if (survey?.score_tag_rules) {
@@ -1114,6 +1155,12 @@ async function handleEvent(
 
           // Send completion message (with score if available)
           try {
+            if (isBaliRyugakuCenterDiagnosis(lineAccountId, surveyId)) {
+              await lineClient.replyMessage(postbackEvent.replyToken, [
+                buildMessage('text', BALI_DIAGNOSIS_COMPLETION_TEXT),
+              ]);
+              return;
+            }
             let completionFlex;
             if (survey?.score_tag_rules) {
               const totalScore = await calculateSurveyScore(db, surveyId, answers);
@@ -1143,6 +1190,43 @@ async function handleEvent(
       } catch (err) {
         console.error('Failed to process survey postback', err);
       }
+    }
+
+    const richMenuText = extractRichMenuDisplayText(postbackData);
+    if (richMenuText) {
+      const userId = event.source.type === 'user' ? event.source.userId : undefined;
+      if (!userId) return;
+
+      let friend = await getFriendByLineUserId(db, userId);
+      if (!friend) {
+        let profile;
+        try { profile = await lineClient.getProfile(userId); } catch {}
+        friend = await upsertFriend(db, {
+          lineUserId: userId,
+          displayName: profile?.displayName ?? null,
+          pictureUrl: profile?.pictureUrl ?? null,
+          statusMessage: profile?.statusMessage ?? null,
+        });
+        if (lineAccountId) {
+          await db.prepare('UPDATE friends SET line_account_id = ? WHERE id = ?')
+            .bind(lineAccountId, friend.id).run();
+        }
+      }
+
+      await db
+        .prepare(
+          `INSERT OR IGNORE INTO messages_log (id, friend_id, direction, message_type, content, created_at)
+           VALUES (?, ?, 'incoming', 'text', ?, ?)`,
+        )
+        .bind(crypto.randomUUID(), friend.id, richMenuText, jstNow())
+        .run();
+      await upsertChatOnMessage(db, friend.id);
+
+      await fireEvent(db, 'message_received', {
+        friendId: friend.id,
+        eventData: { text: richMenuText, source: 'rich_menu_postback' },
+      }, lineAccessToken, lineAccountId);
+      return;
     }
 
     // Booking postback: booking_start
@@ -1509,6 +1593,18 @@ async function handleEvent(
   }
 }
 
+function extractRichMenuDisplayText(postbackData: string): string | null {
+  try {
+    const parsed = JSON.parse(postbackData) as { provider?: string; text?: unknown };
+    if (parsed.provider === 'lml' && typeof parsed.text === 'string' && parsed.text.trim()) {
+      return parsed.text.trim();
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 // スコア診断結果のFlexメッセージ
 function buildScoreResultFlex(score: number, maxScore: number) {
   let level: string;
@@ -1564,6 +1660,198 @@ async function forwardToLstep(url: string, rawBody: string, signature: string): 
     }
   } catch (err) {
     console.error('Lstep forward error:', err);
+  }
+}
+
+async function syncBaliLineRegistrationFromFollow(
+  db: D1Database,
+  input: {
+    lineAccountId: string | null;
+    lineUserId: string;
+    friendId: string;
+    metadataSource: string;
+  },
+): Promise<void> {
+  const baliLineAccountId = '3e005b38-0adf-492f-9648-ee09d7c78424';
+  const baliAccountKey = 'bali_ryugaku_center';
+  if (input.lineAccountId !== baliLineAccountId) return;
+
+  try {
+    await db
+      .prepare(
+        `CREATE TABLE IF NOT EXISTS bali_line_registrations (
+          id TEXT PRIMARY KEY,
+          account_id TEXT NOT NULL,
+          line_user_id TEXT NOT NULL,
+          friend_id TEXT,
+          click_id TEXT,
+          device_id TEXT,
+          source TEXT,
+          cta_position TEXT,
+          lp_variant TEXT,
+          registered_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
+          created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+        )`,
+      )
+      .run();
+
+    const existing = await db
+      .prepare('SELECT id FROM bali_line_registrations WHERE account_id = ? AND line_user_id = ? LIMIT 1')
+      .bind(baliAccountKey, input.lineUserId)
+      .first<{ id: string }>();
+    if (existing) return;
+
+    await db
+      .prepare(
+        `INSERT INTO bali_line_registrations (
+          id, account_id, line_user_id, friend_id, source, registered_at
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(crypto.randomUUID(), baliAccountKey, input.lineUserId, input.friendId, input.metadataSource, jstNow())
+      .run();
+  } catch (err) {
+    console.error('Bali line registration sync failed:', err);
+  }
+}
+
+async function syncBaliDiagnosisCompleteFromSurvey(
+  db: D1Database,
+  env: Env['Bindings'] | undefined,
+  input: {
+    lineAccountId: string | null;
+    lineUserId: string;
+    friendId: string;
+    surveyId: string;
+    answers: Record<string, string>;
+  },
+): Promise<void> {
+  const baliLineAccountId = '3e005b38-0adf-492f-9648-ee09d7c78424';
+  const baliAccountKey = 'bali_ryugaku_center';
+  if (input.lineAccountId !== baliLineAccountId) return;
+
+  const completedAt = jstNow();
+  try {
+    const existing = await db.prepare('SELECT metadata FROM friends WHERE id = ? LIMIT 1').bind(input.friendId).first<{ metadata: string | null }>();
+    let metadata: Record<string, unknown> = {};
+    try {
+      metadata = JSON.parse(existing?.metadata || '{}') as Record<string, unknown>;
+    } catch {
+      metadata = {};
+    }
+
+    const merged = {
+      ...metadata,
+      account_key: baliAccountKey,
+      line_account_id: baliLineAccountId,
+      official_line_id: '@391irgle',
+      line_channel_id: '2004191362',
+      diagnosis_completed_at: completedAt,
+      scenario_status: '診断済',
+      diagnosis_source: 'line_harness_survey',
+      diagnosis_survey_id: input.surveyId,
+      diagnosis_answers: input.answers,
+    };
+    await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+      .bind(JSON.stringify(merged), completedAt, input.friendId)
+      .run();
+
+    await db.prepare(
+      `CREATE TABLE IF NOT EXISTS conversion_points (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        value REAL,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+      )`,
+    ).run();
+    await db.prepare(
+      `CREATE TABLE IF NOT EXISTS conversion_events (
+        id TEXT PRIMARY KEY,
+        conversion_point_id TEXT NOT NULL,
+        friend_id TEXT NOT NULL,
+        user_id TEXT,
+        affiliate_code TEXT,
+        metadata TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+      )`,
+    ).run();
+
+    let point = await db.prepare('SELECT id FROM conversion_points WHERE event_type = ? AND name = ? LIMIT 1')
+      .bind('diagnosis_complete', 'バリ島留学センター 診断完了')
+      .first<{ id: string }>();
+    if (!point) {
+      point = { id: crypto.randomUUID() };
+      await db.prepare('INSERT INTO conversion_points (id, name, event_type, value, created_at) VALUES (?, ?, ?, ?, ?)')
+        .bind(point.id, 'バリ島留学センター 診断完了', 'diagnosis_complete', null, completedAt)
+        .run();
+    }
+    await db.prepare(
+      `INSERT INTO conversion_events (id, conversion_point_id, friend_id, user_id, affiliate_code, metadata, created_at)
+       VALUES (?, ?, ?, ?, NULL, ?, ?)`,
+    )
+      .bind(crypto.randomUUID(), point.id, input.friendId, input.lineUserId, JSON.stringify({
+        ...merged,
+        conversion_source: baliAccountKey,
+        conversion_event: 'diagnosis_complete',
+      }), completedAt)
+      .run();
+
+    await sendBaliMetaLeadFromSurvey(env, {
+      lineUserId: input.lineUserId,
+      friendId: input.friendId,
+      completedAt,
+      metadata: merged,
+    });
+  } catch (err) {
+    console.error('Bali diagnosis complete sync failed:', err);
+  }
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const data = new TextEncoder().encode(value.trim().toLowerCase());
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function sendBaliMetaLeadFromSurvey(
+  env: Env['Bindings'] | undefined,
+  input: { lineUserId: string; friendId: string; completedAt: string; metadata: Record<string, unknown> },
+): Promise<void> {
+  const accessToken = env?.META_ACCESS_TOKEN || env?.META_CAPI_ACCESS_TOKEN;
+  if (!env?.META_PIXEL_ID || !accessToken) return;
+  const eventId =
+    typeof input.metadata.click_id === 'string' && input.metadata.click_id
+      ? `diagnosis_complete:${input.metadata.click_id}`
+      : `diagnosis_complete:${input.lineUserId}:${input.completedAt.slice(0, 10)}`;
+  const eventTime = Math.floor(Date.parse(input.completedAt) / 1000) || Math.floor(Date.now() / 1000);
+  const response = await fetch(`https://graph.facebook.com/v20.0/${env.META_PIXEL_ID}/events`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      access_token: accessToken,
+      data: [{
+        event_name: 'Lead',
+        event_time: eventTime,
+        event_id: eventId,
+        action_source: 'system_generated',
+        user_data: {
+          external_id: [await sha256Hex(input.lineUserId || input.friendId)],
+        },
+        custom_data: {
+          account_key: 'bali_ryugaku_center',
+          lead_source: 'diagnosis_complete',
+          status: 'diagnosis_complete',
+          campaign_id: input.metadata.campaign_id ?? null,
+          adset_id: input.metadata.adset_id ?? null,
+          ad_id: input.metadata.ad_id ?? null,
+          utm_campaign: input.metadata.utm_campaign ?? input.metadata.campaign ?? null,
+          utm_content: input.metadata.utm_content ?? input.metadata.content ?? null,
+        },
+      }],
+    }),
+  });
+  if (!response.ok) {
+    console.error(`Bali Meta Lead from survey failed: ${response.status} ${await response.text().catch(() => '')}`);
   }
 }
 
