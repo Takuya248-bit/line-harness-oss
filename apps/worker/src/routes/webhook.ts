@@ -39,9 +39,11 @@ import { notifyTelegram } from '../services/telegram-notify.js';
 import { fireEvent } from '../services/event-bus.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import { buildSurveyQuestionFlex } from '../services/survey-flex.js';
+import { handleBalilingualEstimatePostback } from '../services/balilingual-postback-handler.js';
 import { getAccessToken, getAvailableSlots, createCalendarEvent, deleteCalendarEvent } from '../services/google-calendar-sa.js';
 import { buildDateSelectionFlex, buildAvailableSlotsFlex, buildBookingConfirmFlex, buildBookingCancelledFlex } from '../services/booking-flex.js';
 import { extractCSKnowledge } from '../services/cs-knowledge-extractor.js';
+import { isBalilingualSurveyCompleteTag, sendBalilingualEstimate } from '../services/balilingual-send-estimate.js';
 import type { Env } from '../index.js';
 
 const webhook = new Hono<Env>();
@@ -492,6 +494,16 @@ async function handleEvent(
                 const survey = await getSurveyById(db, surveyId);
                 if (survey?.on_complete_tag_id) {
                   await addTagToFriend(db, friend.id, survey.on_complete_tag_id);
+                }
+                if (await isBalilingualSurveyCompleteTag(db, lineAccountId, survey?.on_complete_tag_id)) {
+                  await sendBalilingualEstimate({
+                    db,
+                    lineClient,
+                    lineAccountId,
+                    friendId: friend.id,
+                    lineUserId: userId,
+                    env,
+                  });
                 }
                 await syncBaliDiagnosisCompleteFromSurvey(db, env, {
                   lineAccountId,
@@ -1001,6 +1013,19 @@ async function handleEvent(
     const postbackData = postbackEvent.postback.data;
     console.log('Postback received:', postbackData);
 
+    const userId = event.source.type === 'user' ? event.source.userId : undefined;
+    if (userId) {
+      const balilingualResult = await handleBalilingualEstimatePostback({
+        db,
+        lineClient,
+        replyToken: postbackEvent.replyToken,
+        userId,
+        lineAccountId,
+        postbackData,
+      });
+      if (balilingualResult.handled) return;
+    }
+
     // Survey postback: survey:{surveyId}:{questionId}:{choiceId}
     if (postbackData.startsWith('survey:')) {
       const userId = event.source.type === 'user' ? event.source.userId : undefined;
@@ -1111,6 +1136,16 @@ async function handleEvent(
           const survey = await getSurveyById(db, surveyId);
           if (survey?.on_complete_tag_id) {
             await addTagToFriend(db, friend.id, survey.on_complete_tag_id);
+          }
+          if (await isBalilingualSurveyCompleteTag(db, lineAccountId, survey?.on_complete_tag_id)) {
+            await sendBalilingualEstimate({
+              db,
+              lineClient,
+              lineAccountId,
+              friendId: friend.id,
+              lineUserId: userId,
+              env,
+            });
           }
           await syncBaliDiagnosisCompleteFromSurvey(db, env, {
             lineAccountId,

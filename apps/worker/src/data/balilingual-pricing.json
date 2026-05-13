@@ -1,0 +1,73 @@
+{
+  "schema_version": "1.0",
+  "effective_from": "2026-05-01",
+  "currency": "JPY",
+  "tax_included": true,
+  "plans": [
+    {
+      "id": "single",
+      "label": "1人部屋",
+      "description": "個室. 食事(平日)・宿舎・空港送迎・卒業後コミュニティ・学習相談・移住/キャリア相談・ツアー/イベント紹介を含む",
+      "per_person": true
+    },
+    {
+      "id": "pair",
+      "label": "ペア留学(2人部屋)",
+      "description": "2人部屋. 表示金額は1人あたり. 食事(平日)・宿舎・空港送迎・卒業後コミュニティ・学習相談を含む",
+      "per_person": true
+    },
+    {
+      "id": "hotel",
+      "label": "外泊",
+      "description": "ホテル滞在. 食事なし. 授業・宿舎以外のサービスは含む",
+      "per_person": true
+    }
+  ],
+  "weekly_pricing": [
+    { "weeks": 1, "single": 119800, "pair": 98000, "hotel": 85000 },
+    { "weeks": 2, "single": 219800, "pair": 189000, "hotel": 163000 },
+    { "weeks": 3, "single": 289000, "pair": 249000, "hotel": 210000 },
+    { "weeks": 4, "single": 349800, "pair": 298000, "hotel": 246000, "highlight": true },
+    { "weeks": 5, "single": 429800, "pair": 369800, "hotel": 304800 },
+    { "weeks": 6, "single": 499800, "pair": 468000, "hotel": 390000 },
+    { "weeks": 7, "single": 559000, "pair": 475000, "hotel": 384000 },
+    { "weeks": 8, "single": 629000, "pair": 539000, "hotel": 435000, "highlight": true },
+    { "weeks": 9, "single": 698000, "pair": 590000, "hotel": 473000 },
+    { "weeks": 10, "single": 764900, "pair": 644900, "hotel": 514900 },
+    { "weeks": 11, "single": 829000, "pair": 697000, "hotel": 554000 },
+    { "weeks": 12, "single": 899000, "pair": 768000, "hotel": 612000, "highlight": true },
+    { "weeks": 13, "single": 959000, "pair": 803000, "hotel": 634000 },
+    { "weeks": 14, "single": 1019000, "pair": 851000, "hotel": 669000 },
+    { "weeks": 15, "single": 1084000, "pair": 904000, "hotel": 709000 },
+    { "weeks": 16, "single": 1149000, "pair": 980000, "hotel": 772000, "highlight": true },
+    { "weeks": 17, "single": 1215000, "pair": 1011000, "hotel": 790000 },
+    { "weeks": 18, "single": 1278000, "pair": 1062000, "hotel": 828000 },
+    { "weeks": 19, "single": 1335000, "pair": 1107000, "hotel": 860000 },
+    { "weeks": 20, "single": 1390000, "pair": 1150000, "hotel": 890000, "highlight": true },
+    { "weeks": 21, "single": 1445000, "pair": 1193000, "hotel": 920000 },
+    { "weeks": 22, "single": 1498000, "pair": 1234000, "hotel": 948000 },
+    { "weeks": 23, "single": 1559000, "pair": 1283000, "hotel": 984000 },
+    { "weeks": 24, "single": 1620000, "pair": 1370000, "hotel": 1058000, "highlight": true }
+  ],
+  "included": [
+    "授業料",
+    "食事(平日のみ、外泊プランは食事なし)",
+    "宿舎",
+    "空港送迎",
+    "卒業後コミュニティ",
+    "学習・カリキュラム相談",
+    "移住・キャリア相談",
+    "ツアー・イベント紹介"
+  ],
+  "not_included": [
+    { "label": "入学金", "amount": 30000 },
+    { "label": "航空券", "amount": null },
+    { "label": "ビザ料金", "amount": null },
+    { "label": "現地でのお小遣い", "amount": null }
+  ],
+  "notes": [
+    "ペア留学は1人あたりの料金です",
+    "外泊プランは食事がつきません",
+    "25週以上の長期留学は別途お問い合わせください"
+  ]
+}

@@ -1,0 +1,425 @@
+{
+  "line_account_id": "1e7f64a9-50f5-4356-8fcb-228204e167c8",
+  "line_oa": "@409ankpf",
+  "scenario_set": "balilingual-v4",
+  "is_active": false,
+  "scenarios": [
+    {
+      "id": "balilingual_s_01_v4",
+      "name": "S_01_v4",
+      "description": "診断完了後の見積り送付と相談予約促進。A_48h/B_5daysのAB分岐。",
+      "trigger_type": "tag_added",
+      "trigger_tag_id": "アンケート_回答済",
+      "steps": [
+        {
+          "id": "balilingual_s_01_v4_step_001",
+          "step_order": 1,
+          "delay_minutes": 0,
+          "delivery_hour": null,
+          "message_type": "flex",
+          "message_content": "診断ありがとうございます✅\n\nあなたの回答をもとに、バリリンガルでの留学プランとお見積もりをまとめました。\n\nバリリンガルは、バリ島・チャングーにある日本人向けの英語専門校です🌴\n授業はマンツーマン＋少人数制、寮は学校と同じ敷地内、平日は食事付きなので、英語が久しぶりの方や海外生活が初めての方でも始めやすい環境です。\n\nまずは金額と期間のイメージだけ確認してみてください。\nそのうえで「自分の場合はどうなる？」と思ったところは、無料相談で一緒に整理できます👇\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": null,
+          "condition_value": null,
+          "next_step_on_false": null,
+          "on_reach_tag_id": "見積送付済"
+        },
+        {
+          "id": "balilingual_s_01_v4_a_step_002",
+          "step_order": 2,
+          "delay_minutes": 240,
+          "delivery_hour": null,
+          "message_type": "flex",
+          "message_content": "お見積もり、確認できましたか？😊\n\n金額を見ると「思ったより現実的かも」と感じる方もいれば、「航空券や生活費まで入れると結局いくら？」と不安になる方も多いです。\n\n実際に来た卒業生の方も、最初は費用と英語力が一番不安だったそうです。でも、授業・寮・平日の食事・空港送迎がまとまっているので、現地で迷うことが少なく「英語に集中できた」と話してくれました。\n\n申し込み前提でなくて大丈夫です。\n見積りの見方だけでも、無料相談で一緒に確認できます👇",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"A_48h\"}",
+          "next_step_on_false": 7,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_01_v4_a_step_003",
+          "step_order": 3,
+          "delay_minutes": 1440,
+          "delivery_hour": 12,
+          "message_type": "carousel",
+          "message_content": "バリ留学でよく聞かれる不安をまとめました🌴\n\n1. 費用\n授業・宿舎・平日の食事・空港送迎が含まれるプランなので、現地で追加費用が読めない不安を減らせます。\n\n2. 英語力\n初心者の方も多く参加されています。先生はゆっくり話し、マンツーマン中心なので「聞き返しても大丈夫」な環境です。\n\n3. 生活と安全\n学校と寮が同じ敷地内で、到着後の移動や生活相談もサポートします。一人参加の方も多いです。\n\n4. 相談の使い方\n無料相談は、申し込みを決める場ではありません。期間・予算・不安を整理する時間として使ってください😊\n\n気になるカードがあれば、そのまま相談で聞いてもらえます👇",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"A_48h\"}",
+          "next_step_on_false": 7,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_01_v4_a_step_004",
+          "step_order": 4,
+          "delay_minutes": 2880,
+          "delivery_hour": 19,
+          "message_type": "flex",
+          "message_content": "他の留学先とも迷っている方へ✈️\n\nセブ留学は費用を抑えやすく、ハワイ留学は観光やブランド感があります。オンライン英会話は手軽です。\n\nバリリンガルの良さは、英語学習と暮らしの変化が近いことです。\nチャングーの落ち着いた環境で、授業・寮・食事がまとまっているので、勉強だけでなく「海外で生活する感覚」まで体験できます。\n\n卒業生からは「英語を勉強しに来たというより、この環境に入ったら自然に続いた」という声が多いです。\n\nあなたの目的ならどこが合うか、無料相談で比較しながら整理できます👇",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"A_48h\"}",
+          "next_step_on_false": 7,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_01_v4_a_step_005",
+          "step_order": 5,
+          "delay_minutes": 4320,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "ここまで見てくださってありがとうございます😊\n\nバリ留学は、行くかどうかを一人で考え続けるほど不安が増えやすいです。\n費用、期間、英語力、仕事や学校との調整。どれも、話してみると意外と整理できます。\n\n無料相談では、あなたの見積りを見ながら\n・いつ行くと現実的か\n・何週間が合いそうか\n・追加で考える費用は何か\n・不安な点をどう準備するか\nを一緒に確認します。\n\n申し込み前提ではありません。\nまずは空いている時間を選んで、気軽に話しましょう🌴",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"A_48h\"}",
+          "next_step_on_false": 7,
+          "on_reach_tag_id": "S_01_v4_完了"
+        },
+        {
+          "id": "balilingual_s_01_v4_b_step_002",
+          "step_order": 7,
+          "delay_minutes": 1440,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "昨日は診断ありがとうございました！\n\nお見積もりは、まず「自分が行くならどのくらいか」を見るためのものです。\nすぐ申し込みを決める必要はありません😊\n\nバリリンガルは、チャングーで英語を学びながら、海外で暮らす感覚も体験できる学校です。授業・寮・平日の食事がまとまっているので、初めての海外生活でも準備しやすい形にしています。\n\n見積りの中で分かりにくいところがあれば、そのまま無料相談で聞いてください👇",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"B_5days\"}",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_01_v4_b_step_003",
+          "step_order": 8,
+          "delay_minutes": 2880,
+          "delivery_hour": 12,
+          "message_type": "carousel",
+          "message_content": "バリ留学前によくある不安です🌴\n\n「英語が全然話せない」\n大丈夫です。初心者の方も多く、マンツーマン中心なので自分のペースで進められます。\n\n「一人参加が不安」\n一人で来る方が多いです。寮と学校が近く、生活の相談もしやすい環境です。\n\n「費用が不安」\n授業・宿舎・平日の食事・空港送迎込みのプランなので、全体像を見ながら検討できます。\n\n「本当に自分に合う？」\nここは無料相談で一緒に確認できます。申し込み前提ではありません😊",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"B_5days\"}",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_01_v4_b_step_004",
+          "step_order": 9,
+          "delay_minutes": 4320,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "セブ、ハワイ、オンライン英会話と迷っている方へ。\n\nバリリンガルは、英語だけを詰め込むというより、海外で生活しながら自然に英語を使う時間を増やす留学です。\n\nチャングーの街で生活し、授業で学び、カフェや日常の中で少しずつ英語を使う。\nこの流れがあるので「勉強が続かない」と感じていた方にも合いやすいです。\n\nどの選択肢が合うかは、目的と期間で変わります。\n見積りを見ながら比較したい方は、無料相談で整理しましょう👇",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"B_5days\"}",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_01_v4_b_step_005",
+          "step_order": 10,
+          "delay_minutes": 7200,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "バリ留学、一番多い後悔は「もっと早く相談すればよかった」です。\n\n費用が不安でも、英語力が不安でも、日程がまだ決まっていなくても大丈夫です。\n無料相談では、見積りをもとに現実的な期間・予算・準備の順番を一緒に整理します。\n\n今すぐ申し込みではなく、「行ける可能性があるか」を確認する時間として使ってください😊\n\n空いている枠から、話しやすい時間を選べます👇",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"B_5days\"}",
+          "next_step_on_false": null,
+          "on_reach_tag_id": "S_01_v4_完了"
+        }
+      ]
+    },
+    {
+      "id": "balilingual_s_02_v4_after_booking",
+      "name": "S_02_v4_予約後",
+      "description": "相談予約後のshow率最大化リマインド。",
+      "trigger_type": "tag_added",
+      "trigger_tag_id": "相談予約済",
+      "steps": [
+        {
+          "id": "balilingual_s_02_v4_step_001",
+          "step_order": 1,
+          "delay_minutes": 0,
+          "delivery_hour": null,
+          "message_type": "flex",
+          "message_content": "無料相談のご予約ありがとうございます✅\n\n当日は、バリリンガルでの留学期間・費用・生活面の不安を一緒に整理します。\n\n準備していただくものは3つだけです。\n1. 気になっている留学時期\n2. だいたいの予算感\n3. 不安なことや聞きたいこと\n\n英語力や海外経験に自信がなくても大丈夫です。申し込みを決める場ではなく、まず現実的に行けるかを確認する時間として使ってください😊\n\nカレンダーにも予定を入れておいてくださいね。",
+          "condition_type": null,
+          "condition_value": null,
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_02_v4_step_002",
+          "step_order": 2,
+          "delay_minutes": 1440,
+          "delivery_hour": 18,
+          "message_type": "text",
+          "message_content": "明日はバリリンガルの無料相談です🌴\n\nZoom URLと予約時間をもう一度ご確認ください。\n\n当日は、見積りの内容を見ながら「いつ・何週間・どんな準備が必要か」を一緒に整理します。\n\nもし時間変更が必要な場合は、このLINEにそのまま返信してください😊",
+          "condition_type": "tag_not_exists",
+          "condition_value": "面談実施済",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_02_v4_step_003",
+          "step_order": 3,
+          "delay_minutes": 180,
+          "delivery_hour": null,
+          "message_type": "text",
+          "message_content": "本日の無料相談まで、あと3時間です✅\n\nバリ留学の費用・期間・英語力の不安など、気になることはそのまま聞いてください。\n\n完璧に準備していなくて大丈夫です。\nお話ししながら一緒に整理しましょう😊",
+          "condition_type": "tag_not_exists",
+          "condition_value": "面談実施済",
+          "next_step_on_false": null,
+          "on_reach_tag_id": "S_02_v4_完了"
+        }
+      ]
+    },
+    {
+      "id": "balilingual_s_03_v4_carousel_no_response",
+      "name": "S_03_v4_カルーセル無反応",
+      "description": "S_01_v4完了後、相談予約なしの軽いリカバリ。",
+      "trigger_type": "tag_added",
+      "trigger_tag_id": "S_01_v4_完了",
+      "steps": [
+        {
+          "id": "balilingual_s_03_v4_step_001",
+          "step_order": 1,
+          "delay_minutes": 1440,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "少しだけ確認です😊\n\nバリ留学、今いちばん迷っているポイントはどれですか？\n\nA. 費用\nB. 英語力\nC. 日程\nD. 海外生活や安全面\nE. まだ何となく気になる段階\n\nアルファベットだけでも大丈夫です。\n返信いただければ、そこに合わせて短くお答えします🌴",
+          "condition_type": "tag_not_exists",
+          "condition_value": "相談予約済",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_03_v4_step_002",
+          "step_order": 2,
+          "delay_minutes": 7200,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "いきなり長期留学で考えなくても大丈夫です🌴\n\nバリリンガルは、1週間からの短期プランも相談できます。\n\n「まず海外生活を試してみたい」\n「英語を続けるきっかけがほしい」\n「仕事や学校の休みに合わせたい」\n\nそんな方は、短期のお試し感覚から始める方が現実的なこともあります。\n\n見積りの期間を変えて考えたい場合は、無料相談で一緒に組み直せます👇",
+          "condition_type": "tag_not_exists",
+          "condition_value": "相談予約済",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_03_v4_step_003",
+          "step_order": 3,
+          "delay_minutes": 20160,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "バリ留学は、今すぐ日程を決められなくても大丈夫です😊\n\n将来の候補として、費用感や準備だけ先に確認しておく方も多いです。\n無料相談も、申し込み前提ではありません。\n\n「来月は無理だけど、半年以内なら気になる」\n「仕事を調整してから考えたい」\nそんな段階でも問題ありません。\n\n必要になったタイミングで、いつでもこのLINEから声をかけてください🌴",
+          "condition_type": "tag_not_exists",
+          "condition_value": "相談予約済",
+          "next_step_on_false": null,
+          "on_reach_tag_id": "phase_99"
+        }
+      ]
+    },
+    {
+      "id": "balilingual_s_04_v4_after_meeting",
+      "name": "S_04_v4_面談後",
+      "description": "面談実施後のクロージングフォロー。",
+      "trigger_type": "tag_added",
+      "trigger_tag_id": "面談実施済",
+      "steps": [
+        {
+          "id": "balilingual_s_04_v4_step_001",
+          "step_order": 1,
+          "delay_minutes": 1440,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "昨日は無料相談のお時間ありがとうございました😊\n\nお話しした内容をもとに、確定版のお見積りとおすすめの進め方をまとめました。\n\nバリリンガルでは、授業・宿舎・平日の食事・空港送迎まで含めて準備できるので、初めてのバリ留学でも動き出しやすい形になっています。\n\nご家族や職場に確認する場合は、この見積りをそのまま共有していただいて大丈夫です。\n気になる点があれば、遠慮なくこのLINEで聞いてください🌴",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_04_v4_step_002",
+          "step_order": 2,
+          "delay_minutes": 4320,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "その後、ご家族やスケジュールの確認はいかがですか？\n\nお申し込みに進む場合は、入金方法・必要情報・渡航までの流れを順番にご案内します。\n\nまだ迷っている場合も大丈夫です。\n「家族に何と説明すればいいか」\n「総額をもう一度整理したい」\n「日程を少し変えたい」\nなど、確認したい点をそのまま送ってください😊",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_04_v4_step_003",
+          "step_order": 3,
+          "delay_minutes": 10080,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "ご検討状況はいかがでしょうか？🌴\n\nバリ留学は、費用・時期・不安のどれか一つが残っているだけで止まりやすいです。\n\nまだ決めきれなくても問題ありません。\n迷っているポイントを1つだけ送っていただければ、そこに絞ってお答えします。\n\n例：\n「費用が不安」\n「何週間がいいか迷う」\n「英語力が心配」\n「家族に説明したい」",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_04_v4_step_004",
+          "step_order": 4,
+          "delay_minutes": 20160,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "ご相談から少し時間が経ちましたので、最後に一度だけご連絡です😊\n\nこのまま進める場合は、入金と渡航準備の流れをご案内します。\nもし今の時期が難しければ、別期間での再見積りもできます。\n\n「今回は見送り」でも大丈夫です。\nバリ留学はタイミングが大事なので、無理に急がず、現実的な時期で考えましょう。\n\n進めたい・時期を変えたい・保留したい、どれでもこのLINEに返信してください🌴",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": "phase_99"
+        }
+      ]
+    },
+    {
+      "id": "balilingual_s_05_v4_long_term",
+      "name": "S_05_v4_長期",
+      "description": "休眠/長期検討者向け56日以上のナーチャリング。",
+      "trigger_type": "tag_added",
+      "trigger_tag_id": "phase_99",
+      "steps": [
+        {
+          "id": "balilingual_s_05_v4_step_001",
+          "step_order": 1,
+          "delay_minutes": 10080,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "お久しぶりです、バリリンガルです🌴\n\nバリ留学は、すぐ決めるより「行ける時期が見えたら動く」方も多いです。\n\n今は情報収集だけでも大丈夫です。\nチャングーで英語を学びながら暮らすイメージを、少しずつお届けします😊",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_002",
+          "step_order": 2,
+          "delay_minutes": 20160,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "卒業生の方がよく話してくれるのは「英語より先に、海外生活への怖さが減った」ということです。\n\n最初は注文や移動も不安。でも授業と生活が近いので、毎日少しずつ英語を使う場面が増えていきます。\n\n英語を完璧にしてから行く必要はありません😊",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_003",
+          "step_order": 3,
+          "delay_minutes": 30240,
+          "delivery_hour": 12,
+          "message_type": "carousel",
+          "message_content": "バリリンガルの1日は、授業だけで終わりません🌴\n\n朝は寮から学校へ。授業で英語を学び、休憩時間に先生や仲間と話し、放課後はチャングーのカフェや海の近くで過ごす。\n\n英語を机の上だけでなく、生活の中で使う感覚を持てるのがバリ留学の良さです。",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_004",
+          "step_order": 4,
+          "delay_minutes": 50400,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "短期で考えている方へ。\n\n1週間でも、英語学習のきっかけや海外生活の感覚をつかむことはできます。\n\n長く行けないから無理、ではなく「まず試す」形もあります。\n仕事や学校の休みに合わせたプランも相談できます😊",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_005",
+          "step_order": 5,
+          "delay_minutes": 80640,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "費用を考えるときは、授業料だけで比べると分かりにくくなります。\n\nバリリンガルは、宿舎・平日の食事・空港送迎・学習相談などを含めて考えられるので、現地生活の見通しを立てやすいです。\n\n期間を変えた見積りもできます。気になったら「再見積り」と返信してください🌴",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_006",
+          "step_order": 6,
+          "delay_minutes": 100800,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "一人参加が不安な方へ。\n\nバリリンガルに来る方は、一人で参加される方も多いです。\n最初は緊張していても、授業や寮生活の中で自然に話すきっかけができます。\n\n無理に社交的でなくても大丈夫です。自分のペースで慣れていけます😊",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_007",
+          "step_order": 7,
+          "delay_minutes": 120960,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "親子留学や長期留学を検討している方は、早めの相談がおすすめです。\n\n人数・部屋タイプ・学校や仕事の予定によって、現実的な時期や費用が変わります。\n\nまだ決定前でも大丈夫です。候補時期だけでも送っていただければ、考え方をお伝えします🌴",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_008",
+          "step_order": 8,
+          "delay_minutes": 161280,
+          "delivery_hour": 12,
+          "message_type": "carousel",
+          "message_content": "チャングーは、英語を学ぶだけでなく、暮らし方を見直すきっかけにもなりやすい場所です。\n\nカフェで作業する人、海の近くで過ごす人、世界中から来た人と出会う環境。\n\n「英語を学ぶ」から一歩進んで、海外での選択肢を広げたい方に合いやすい留学です。",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_009",
+          "step_order": 9,
+          "delay_minutes": 201600,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "英語学習が続かなかった方ほど、環境を変える意味があります。\n\n日本で一人で続けるのが難しくても、授業・生活・人との会話が毎日の中にあると、英語に触れる時間が自然に増えます。\n\n「勉強しなきゃ」より「使う場面がある」ことが、続く理由になります😊",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_010",
+          "step_order": 10,
+          "delay_minutes": 241920,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "時期がまだ先でも、見積りだけ先に更新できます。\n\n為替や空き状況、希望期間によって費用感は変わることがあります。\n「今の条件ならどのくらい？」を知っておくと、予定を立てやすくなります。\n\n再見積り希望の方は、このLINEに「再見積り」と送ってください🌴",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_011",
+          "step_order": 11,
+          "delay_minutes": 322560,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "最近また、バリ留学の相談が増えています🌴\n\n多い相談は\n・仕事を辞めずに行ける期間\n・英語初心者でも大丈夫か\n・一人参加の生活面\n・総額の見方\nです。\n\n同じところで迷っている場合は、短く返信いただければそこだけお答えします😊",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_012",
+          "step_order": 12,
+          "delay_minutes": 403200,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "長くご案内を見てくださりありがとうございます😊\n\n今すぐの留学ではなさそうな場合も、必要なタイミングでまた声をかけてください。\nバリ留学は、行ける時期が来たときに一気に現実的になります。\n\n配信を止めたい場合は「配信停止」と送ってください。\n必要なときは、いつでも「相談」と送ってもらえれば再開できます🌴",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": "配信停止_v4"
+        }
+      ]
+    }
+  ]
+}

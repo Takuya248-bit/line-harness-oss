@@ -36,6 +36,7 @@ import { richMenus } from './routes/rich-menus.js';
 import { trackedLinks } from './routes/tracked-links.js';
 import { forms } from './routes/forms.js';
 import { analytics } from './routes/analytics.js';
+import { balilingualAnalytics } from './routes/balilingual-analytics.js';
 import { xPosts } from './routes/x-posts.js';
 import { surveys } from './routes/surveys.js';
 import { bookings } from './routes/bookings.js';
@@ -52,6 +53,10 @@ import { discordInteractions } from './routes/discord-interactions.js';
 import { baliRedirect } from './routes/bali-redirect.js';
 import { telegramWebhook } from './routes/telegram-webhook.js';
 import { checkDormantFriends, sendWeeklyReport } from './services/os-cron.js';
+import {
+  BALILINGUAL_LINE_ACCOUNT_ID,
+  processBalilingualEstimateReminders,
+} from './services/balilingual-estimate-reminder-cron.js';
 
 export type Env = {
   Bindings: {
@@ -87,6 +92,7 @@ export type Env = {
     GROQ_API_KEY?: string;
     TELEGRAM_BOT_TOKEN?: string;
     TELEGRAM_CHAT_ID?: string;
+    TELEGRAM_NOTIFY?: string;
     GEMINI_API_KEY?: string;
     META_PIXEL_ID?: string;
     META_ACCESS_TOKEN?: string;
@@ -176,6 +182,7 @@ app.route('/', richMenus);
 app.route('/', trackedLinks);
 app.route('/', forms);
 app.route('/', analytics);
+app.route('/', balilingualAnalytics);
 app.route('/', xPosts);
 app.route('/', surveys);
 app.route('/', bookings);
@@ -285,6 +292,9 @@ async function scheduled(
         processReminderDeliveries(env.DB, lineClient),
         processNotificationDeliveries(env.DB, lineClient),
       );
+      if (account.id === BALILINGUAL_LINE_ACCOUNT_ID) {
+        jobs.push(processBalilingualEstimateReminders(env.DB, lineClient));
+      }
     }
     await Promise.allSettled(jobs);
     return;
