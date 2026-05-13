@@ -108,13 +108,13 @@ webhook.post('/webhook', async (c) => {
     c.executionCtx.waitUntil(forwardPromise);
   }
 
-  // バリリンガル/バリ島留学センター（Lステップ管理下）: handleEvent をスキップし、OS処理のみ実行
-  // handleEvent はリッチメニュー操作・シナリオ登録等を行うため、Lステップと競合する
+  // Lステップ管理下のアカウント: handleEvent をスキップし、OS処理のみ実行
+  // 2026-05-14 cutover: バリリンガル本体(OS_BARILINGUAL_ID)はLステップから移行したためsetから除外.
+  // バリ島留学センター(BALI_RYUGAKU_CENTER_ID)はまだLステップ運用継続中.
   // 注意: matchedAccountId=null（destinationなし or アカウント不一致）は櫻子等の通常運用なので
   // 必ず通常 handleEvent 経路を通すこと (旧ロジックで null も Lstep扱いになっていてTelegram通知漏れ)
-  const OS_BARILINGUAL_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
   const BALI_RYUGAKU_CENTER_ID = '3e005b38-0adf-492f-9648-ee09d7c78424';
-  const LSTEP_MANAGED_ACCOUNTS = new Set([OS_BARILINGUAL_ID, BALI_RYUGAKU_CENTER_ID]);
+  const LSTEP_MANAGED_ACCOUNTS = new Set([BALI_RYUGAKU_CENTER_ID]);
   const isLstepManaged = matchedAccountId !== null && LSTEP_MANAGED_ACCOUNTS.has(matchedAccountId);
 
   if (isLstepManaged) {
