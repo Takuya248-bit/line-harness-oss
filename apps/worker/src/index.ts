@@ -18,6 +18,7 @@ import { users } from './routes/users.js';
 import { lineAccounts } from './routes/line-accounts.js';
 import { conversions } from './routes/conversions.js';
 import { affiliates } from './routes/affiliates.js';
+import { abTests } from './routes/ab-tests.js';
 import { openapi } from './routes/openapi.js';
 import { liffRoutes } from './routes/liff.js';
 // Round 3 ルート
@@ -87,6 +88,9 @@ export type Env = {
     TELEGRAM_BOT_TOKEN?: string;
     TELEGRAM_CHAT_ID?: string;
     GEMINI_API_KEY?: string;
+    META_PIXEL_ID?: string;
+    META_ACCESS_TOKEN?: string;
+    META_CAPI_ACCESS_TOKEN?: string;
     // Notion knowledge DB
     NOTION_API_KEY?: string;
     NOTION_KNOWLEDGE_DB_ID?: string;
@@ -153,6 +157,7 @@ app.route('/', users);
 app.route('/', lineAccounts);
 app.route('/', conversions);
 app.route('/', affiliates);
+app.route('/', abTests);
 app.route('/', openapi);
 app.route('/', liffRoutes);
 
