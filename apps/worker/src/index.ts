@@ -34,6 +34,7 @@ import { health } from './routes/health.js';
 import { automations } from './routes/automations.js';
 import { richMenus } from './routes/rich-menus.js';
 import { trackedLinks } from './routes/tracked-links.js';
+import { adminFollowersSync } from './routes/admin-followers-sync.js';
 import { forms } from './routes/forms.js';
 import { analytics } from './routes/analytics.js';
 import { balilingualAnalytics } from './routes/balilingual-analytics.js';
@@ -83,6 +84,7 @@ export type Env = {
     GOOGLE_SERVICE_ACCOUNT_EMAIL?: string;
     GOOGLE_SERVICE_ACCOUNT_KEY?: string;
     GOOGLE_CALENDAR_ID?: string;
+    BALILINGUAL_DRY_RUN_BOOKING?: string;
     // Lステップ proxy forwarding
     LSTEP_WEBHOOK_URL?: string;
     DISCORD_WEBHOOK_URL?: string;
@@ -93,6 +95,7 @@ export type Env = {
     TELEGRAM_BOT_TOKEN?: string;
     TELEGRAM_CHAT_ID?: string;
     TELEGRAM_NOTIFY?: string;
+    TELEGRAM_NOTIFY_DISABLE_HIGH_VALUE?: string;
     GEMINI_API_KEY?: string;
     META_PIXEL_ID?: string;
     META_ACCESS_TOKEN?: string;
@@ -180,6 +183,7 @@ app.route('/', health);
 app.route('/', automations);
 app.route('/', richMenus);
 app.route('/', trackedLinks);
+app.route('/', adminFollowersSync);
 app.route('/', forms);
 app.route('/', analytics);
 app.route('/', balilingualAnalytics);

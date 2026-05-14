@@ -63,6 +63,24 @@ export class LineClient {
     );
   }
 
+  /**
+   * Get follower IDs (paginated).
+   * 1 call returns up to 1000 userIds + a `next` token for the following page.
+   * https://developers.line.biz/en/reference/messaging-api/#get-follower-ids
+   */
+  async getFollowerIds(
+    start?: string,
+    limit = 1000,
+  ): Promise<{ userIds: string[]; next?: string }> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (start) params.set('start', start);
+    return this.request<{ userIds: string[]; next?: string }>(
+      `/followers/ids?${params.toString()}`,
+      {},
+      'GET',
+    );
+  }
+
   // ─── Messaging ───────────────────────────────────────────────────────────
 
   async pushMessage(to: string, messages: Message[]): Promise<void> {
