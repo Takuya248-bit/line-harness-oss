@@ -13,10 +13,12 @@ export async function authMiddleware(c: Context<Env>, next: Next): Promise<Respo
     path === '/api/affiliates/click' ||
     path.startsWith('/t/') ||
     path.startsWith('/r/') ||
+    path.startsWith('/go/') ||
     path.startsWith('/api/liff/') ||
     path.startsWith('/auth/') ||
     path === '/api/os/intake' ||
     path.startsWith('/api/os/') ||
+    path === '/api/bali-ryugaku-center/diagnosis-complete' ||
     path === '/discord/interactions' ||
     path === '/telegram/webhook' ||
     path === '/api/integrations/stripe/webhook' ||
@@ -33,7 +35,11 @@ export async function authMiddleware(c: Context<Env>, next: Next): Promise<Respo
   }
 
   const token = authHeader.slice('Bearer '.length);
-  if (token !== c.env.API_KEY) {
+  // バリリンガル本体専用API_KEY も受け付ける(他システムへの影響を避けつつ
+  // バリリンガル v4 スクリプト群が独立した認可キーで動けるようにする).
+  const balilingualKey = (c.env as { BALILINGUAL_HARNESS_API_KEY?: string }).BALILINGUAL_HARNESS_API_KEY;
+  const isValid = token === c.env.API_KEY || (balilingualKey && token === balilingualKey);
+  if (!isValid) {
     return c.json({ success: false, error: 'Unauthorized' }, 401);
   }
 
