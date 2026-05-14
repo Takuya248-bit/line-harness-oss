@@ -238,8 +238,8 @@ analytics.get('/api/analytics/scenarios', async (c) => {
 // アカウント別のフェーズタグ命名規約:
 //   - balilingual (1e7f64a9-...): 日本語タグ直接運用
 //   - default: phase_* prefix 運用
-const BALILINGUAL_ACCOUNT_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
-const ACCOUNT_PHASE_CONFIG: Record<string, { order: string[]; dormant: string; tagPattern: string }> = {
+export const BALILINGUAL_ACCOUNT_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
+export const ACCOUNT_PHASE_CONFIG: Record<string, { order: string[]; dormant: string; tagPattern: string }> = {
   [BALILINGUAL_ACCOUNT_ID]: {
     order: [
       'アンケート_回答済',

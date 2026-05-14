@@ -51,7 +51,7 @@ import { processPhaseTransitions } from './services/phase-cron.js';
 import { osDashboard } from './routes/os-dashboard.js';
 import { osIntake } from './routes/os-intake.js';
 import { discordInteractions } from './routes/discord-interactions.js';
-import { baliRedirect } from './routes/bali-redirect.js';
+// import { baliRedirect } from './routes/bali-redirect.js'; // 一時無効: ファイル未配置のため
 import { telegramWebhook } from './routes/telegram-webhook.js';
 import { checkDormantFriends, sendWeeklyReport } from './services/os-cron.js';
 import { collectInsightFollowers } from './services/insight-cron.js';
@@ -201,7 +201,7 @@ app.route('/', osDashboard);
 app.route('/', osIntake);
 app.route('/', discordInteractions);
 app.route('/', telegramWebhook);
-app.route('/', baliRedirect);
+// app.route('/', baliRedirect); // 一時無効
 
 // Short link: /r/:ref → landing page with LINE open button
 app.get('/r/:ref', (c) => {
