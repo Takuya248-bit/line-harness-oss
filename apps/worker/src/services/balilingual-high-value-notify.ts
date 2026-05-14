@@ -7,6 +7,7 @@ export interface HighValueEnv {
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_CHAT_ID?: string;
   TELEGRAM_NOTIFY?: string;
+  TELEGRAM_NOTIFY_DISABLE_HIGH_VALUE?: string;
 }
 
 export interface HighValueNotifyInput {
@@ -44,6 +45,11 @@ export async function notifyBalilingualHighValue(
   env: HighValueEnv | undefined,
   input: HighValueNotifyInput,
 ): Promise<boolean> {
+  if (env?.TELEGRAM_NOTIFY_DISABLE_HIGH_VALUE === 'true') {
+    console.info('balilingual_high_value_notify: skipped by TELEGRAM_NOTIFY_DISABLE_HIGH_VALUE');
+    return true;
+  }
+
   if (!isBalilingualHighValue({
     total: input.estimate.total,
     isParentChild: input.estimate.isParentChild,

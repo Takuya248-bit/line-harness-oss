@@ -1,0 +1,1 @@
+ALTER TABLE bookings ADD COLUMN is_test_booking INTEGER NOT NULL DEFAULT 0;

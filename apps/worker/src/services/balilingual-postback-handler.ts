@@ -1,11 +1,16 @@
 import type { LineClient } from '@line-crm/line-sdk';
 import {
+  createBooking,
   getSurveyChoices,
   getSurveyQuestions,
   jstNow,
+  recordActions,
   startFriendSurvey,
+  updateBookingGoogleEventId,
 } from '@line-crm/db';
 import { buildBalilingualSlotsFlex } from './balilingual-booking-flex.js';
+import { buildBookingConfirmFlex } from './booking-flex.js';
+import { createCalendarEvent, getAccessToken } from './google-calendar-sa.js';
 import { buildMessage } from './step-delivery.js';
 import { buildSurveyQuestionFlex } from './survey-flex.js';
 
@@ -26,6 +31,7 @@ type SurveyRow = {
 
 export type BalilingualEstimateAction =
   | 'book_consultation'
+  | 'confirm_booking'
   | 're_estimate'
   | 'ask_question'
   | 'request_mail_brochure';
@@ -41,6 +47,18 @@ type HandlerInput = {
   userId: string;
   lineAccountId: string | null | undefined;
   postbackData: string;
+  env?: {
+    BALILINGUAL_DRY_RUN_BOOKING?: string;
+    GOOGLE_SERVICE_ACCOUNT_EMAIL?: string;
+    GOOGLE_SERVICE_ACCOUNT_KEY?: string;
+    GOOGLE_CALENDAR_ID?: string;
+  };
+};
+
+type ConfirmBookingPostback = {
+  action: 'confirm_booking';
+  start: string;
+  end: string;
 };
 
 export function parseBalilingualEstimatePostback(data: string): {
@@ -64,9 +82,30 @@ export function parseBalilingualEstimatePostback(data: string): {
   return { action, friendId };
 }
 
+export function isDryRunBooking(env: { BALILINGUAL_DRY_RUN_BOOKING?: string } | null | undefined): boolean {
+  return env?.BALILINGUAL_DRY_RUN_BOOKING === 'true';
+}
+
+function parseConfirmBookingPostback(data: string): ConfirmBookingPostback | null {
+  const params = new URLSearchParams(data);
+  if (params.get('action') !== 'confirm_booking') return null;
+
+  const start = params.get('start');
+  const end = params.get('end');
+  if (!start || !end) return null;
+
+  return { action: 'confirm_booking', start, end };
+}
+
 export async function handleBalilingualEstimatePostback(input: HandlerInput): Promise<BalilingualPostbackResult> {
   if (input.lineAccountId !== BALILINGUAL_LINE_ACCOUNT_ID) {
     return { handled: false };
+  }
+
+  const confirmBooking = parseConfirmBookingPostback(input.postbackData);
+  if (confirmBooking) {
+    await confirmBalilingualBooking(input, confirmBooking);
+    return { handled: true, action: confirmBooking.action };
   }
 
   const parsed = parseBalilingualEstimatePostback(input.postbackData);
@@ -110,6 +149,73 @@ export async function handleBalilingualEstimatePostback(input: HandlerInput): Pr
   return { handled: true, action: parsed.action };
 }
 
+async function confirmBalilingualBooking(input: HandlerInput, postback: ConfirmBookingPostback): Promise<void> {
+  const friend = await getScopedFriendByLineUserId(input.db, input.userId);
+  if (!friend) {
+    console.warn('balilingual confirm booking: scoped friend not found', {
+      userId: input.userId,
+      lineAccountId: BALILINGUAL_LINE_ACCOUNT_ID,
+    });
+    return;
+  }
+
+  const dryRun = isDryRunBooking(input.env);
+  let googleEventId: string | undefined;
+
+  if (
+    !dryRun &&
+    input.env?.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
+    input.env.GOOGLE_SERVICE_ACCOUNT_KEY &&
+    input.env.GOOGLE_CALENDAR_ID
+  ) {
+    try {
+      const accessToken = await getAccessToken({
+        GOOGLE_SERVICE_ACCOUNT_EMAIL: input.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        GOOGLE_SERVICE_ACCOUNT_KEY: input.env.GOOGLE_SERVICE_ACCOUNT_KEY,
+        GOOGLE_CALENDAR_ID: input.env.GOOGLE_CALENDAR_ID,
+      });
+      const result = await createCalendarEvent(accessToken, input.env.GOOGLE_CALENDAR_ID, {
+        summary: `オンライン面談 - ${friend.display_name ?? 'LINE友だち'}`,
+        start: postback.start,
+        end: postback.end,
+        description: `LINE予約 (${friend.display_name ?? input.userId})`,
+      });
+      googleEventId = result.id;
+    } catch (err) {
+      console.warn('Google Calendar event creation failed (balilingual booking still saved):', err);
+    }
+  }
+
+  const booking = await createBooking(input.db, {
+    friendId: friend.id,
+    lineAccountId: BALILINGUAL_LINE_ACCOUNT_ID,
+    title: 'オンライン面談',
+    startTime: postback.start,
+    endTime: postback.end,
+    googleEventId,
+    isTestBooking: dryRun,
+  });
+
+  if (googleEventId) {
+    await updateBookingGoogleEventId(input.db, booking.id, googleEventId);
+  }
+
+  try {
+    await recordActions(input.db, friend.id, [
+      { type: 'date', key: 'カウンセリング予約完了日時' },
+      { type: 'count', key: 'カウンセリング予約' },
+    ]);
+  } catch (err) {
+    console.error('Failed to record balilingual booking action:', err);
+  }
+
+  const { date, startTime, endTime } = formatBookingFlexTimes(postback.start, postback.end);
+  const flex = buildBookingConfirmFlex(booking.id, date, startTime, endTime);
+  await sendReplyOrPush(input.lineClient, input.replyToken, input.userId, [
+    buildMessage('flex', JSON.stringify(flex)),
+  ]);
+}
+
 async function getScopedFriend(db: D1Database, friendId: string, lineUserId: string): Promise<FriendRow | null> {
   return db
     .prepare(
@@ -120,6 +226,53 @@ async function getScopedFriend(db: D1Database, friendId: string, lineUserId: str
     )
     .bind(friendId, lineUserId, BALILINGUAL_LINE_ACCOUNT_ID)
     .first<FriendRow>();
+}
+
+async function getScopedFriendByLineUserId(db: D1Database, lineUserId: string): Promise<FriendRow | null> {
+  return db
+    .prepare(
+      `SELECT id, line_user_id, display_name, line_account_id
+       FROM friends
+       WHERE line_user_id = ? AND line_account_id = ?
+       LIMIT 1`,
+    )
+    .bind(lineUserId, BALILINGUAL_LINE_ACCOUNT_ID)
+    .first<FriendRow>();
+}
+
+function formatBookingFlexTimes(start: string, end: string): { date: string; startTime: string; endTime: string } {
+  return {
+    date: formatJstDate(start),
+    startTime: formatJstTime(start),
+    endTime: formatJstTime(end),
+  };
+}
+
+function formatJstDate(value: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tokyo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(value));
+
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  const day = parts.find((part) => part.type === 'day')?.value;
+  return `${year}-${month}-${day}`;
+}
+
+function formatJstTime(value: string): string {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Tokyo',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(value));
+
+  const hour = parts.find((part) => part.type === 'hour')?.value;
+  const minute = parts.find((part) => part.type === 'minute')?.value;
+  return `${hour}:${minute}`;
 }
 
 async function restartEstimateSurvey(
