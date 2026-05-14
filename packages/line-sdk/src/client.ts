@@ -65,8 +65,7 @@ export class LineClient {
 
   /**
    * Get follower IDs (paginated).
-   * 1 call returns up to 1000 userIds + a `next` token for the following page.
-   * https://developers.line.biz/en/reference/messaging-api/#get-follower-ids
+   * NOTE: Premium ID + Verified Account 限定。通常はライトプランでも403返る.
    */
   async getFollowerIds(
     start?: string,
@@ -76,6 +75,24 @@ export class LineClient {
     if (start) params.set('start', start);
     return this.request<{ userIds: string[]; next?: string }>(
       `/followers/ids?${params.toString()}`,
+      {},
+      'GET',
+    );
+  }
+
+  /**
+   * Get insight followers (aggregate). ライトプラン以上で使える.
+   * date: YYYYMMDD (UTC). 指定日が新しすぎると status='unready'.
+   * https://developers.line.biz/en/reference/messaging-api/#get-number-of-followers
+   */
+  async getInsightFollowers(date: string): Promise<{
+    status: 'ready' | 'unready' | 'out_of_service';
+    followers?: number;
+    targetedReaches?: number;
+    blocks?: number;
+  }> {
+    return this.request(
+      `/insight/followers?date=${date}`,
       {},
       'GET',
     );

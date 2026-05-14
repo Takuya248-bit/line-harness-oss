@@ -54,6 +54,8 @@ import { discordInteractions } from './routes/discord-interactions.js';
 import { baliRedirect } from './routes/bali-redirect.js';
 import { telegramWebhook } from './routes/telegram-webhook.js';
 import { checkDormantFriends, sendWeeklyReport } from './services/os-cron.js';
+import { collectInsightFollowers } from './services/insight-cron.js';
+import { insightDashboard } from './routes/insight-dashboard.js';
 import {
   BALILINGUAL_LINE_ACCOUNT_ID,
   processBalilingualEstimateReminders,
@@ -184,6 +186,7 @@ app.route('/', automations);
 app.route('/', richMenus);
 app.route('/', trackedLinks);
 app.route('/', adminFollowersSync);
+app.route('/', insightDashboard);
 app.route('/', forms);
 app.route('/', analytics);
 app.route('/', balilingualAnalytics);
@@ -379,6 +382,13 @@ async function scheduled(
 
     // Business OS dormant alert (every day at 9:00 JST)
     jobs.push(checkDormantFriends(env.DB, env.DISCORD_WEBHOOK_URL).catch((e) => console.error('[dormant] error:', e)));
+
+    // LINE Insight followers (前日分の followers/blocks 推移を保存)
+    jobs.push(
+      collectInsightFollowers(env.DB)
+        .then((r) => console.log(`[insight-followers] attempted=${r.attempted} saved=${r.saved} failed=${r.failed}`))
+        .catch((e) => console.error('[insight-followers] error:', e)),
+    );
     // Weekly report (only on Monday JST)
     const now = new Date();
     const jstDay = new Date(now.getTime() + 9 * 60 * 60 * 1000).getUTCDay();

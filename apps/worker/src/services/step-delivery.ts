@@ -217,10 +217,11 @@ async function processSingleDelivery(
     return;
   }
 
-  // 配信停止タグチェック: タグ「配信停止」が付いている友だちはシナリオをスキップ
+  // 配信停止/配信頻度下げ希望 タグチェック: 該当者はシナリオをスキップ
   const stopTag = await db
     .prepare(
-      `SELECT 1 FROM friend_tags ft JOIN tags t ON ft.tag_id = t.id WHERE ft.friend_id = ? AND t.name = '配信停止'`,
+      `SELECT 1 FROM friend_tags ft JOIN tags t ON ft.tag_id = t.id
+       WHERE ft.friend_id = ? AND t.name IN ('配信停止', '配信頻度下げ希望')`,
     )
     .bind(fs.friend_id)
     .first();

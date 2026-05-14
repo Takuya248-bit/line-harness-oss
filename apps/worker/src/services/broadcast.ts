@@ -64,10 +64,11 @@ export async function processBroadcastSend(
 
       const friends = await getFriendsByTag(db, broadcast.target_tag_id);
 
-      // 配信停止タグチェック: 「配信停止」タグが付いた友だちを除外
+      // 配信停止/配信頻度下げ希望タグチェック: 除外対象
       const stopTagFriends = await db
         .prepare(
-          `SELECT ft.friend_id FROM friend_tags ft JOIN tags t ON ft.tag_id = t.id WHERE t.name = '配信停止'`,
+          `SELECT ft.friend_id FROM friend_tags ft JOIN tags t ON ft.tag_id = t.id
+           WHERE t.name IN ('配信停止', '配信頻度下げ希望')`,
         )
         .all<{ friend_id: string }>();
       const stopFriendIds = new Set((stopTagFriends.results || []).map((r) => r.friend_id));
