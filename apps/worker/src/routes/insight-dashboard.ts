@@ -56,6 +56,29 @@ insightDashboard.get('/api/insight/followers', async (c) => {
       ? ((latest.blocks / (latest.followers + latest.blocks)) * 100).toFixed(1)
       : null;
 
+  // ハーネスDB側のカウント (LINE側との乖離可視化)
+  const dbCounts = await c.env.DB
+    .prepare(
+      `SELECT
+         SUM(CASE WHEN is_following=1 THEN 1 ELSE 0 END) as following_db,
+         SUM(CASE WHEN is_following=0 THEN 1 ELSE 0 END) as blocked_db,
+         COUNT(*) as total_db
+       FROM friends WHERE line_account_id = ?`,
+    )
+    .bind(accountId)
+    .first<{ following_db: number; blocked_db: number; total_db: number }>();
+
+  const dbGap =
+    latest && dbCounts
+      ? {
+          following_only_in_line: (latest.targeted_reaches ?? 0) - (dbCounts.following_db ?? 0),
+          blocked_only_in_line: (latest.blocks ?? 0) - (dbCounts.blocked_db ?? 0),
+          coverage_pct: latest.targeted_reaches
+            ? (((dbCounts.following_db ?? 0) / latest.targeted_reaches) * 100).toFixed(1) + '%'
+            : null,
+        }
+      : null;
+
   return c.json({
     success: true,
     accountId,
@@ -63,6 +86,8 @@ insightDashboard.get('/api/insight/followers', async (c) => {
     latest,
     change,
     blockRate: blockRate ? `${blockRate}%` : null,
+    db: dbCounts,
+    gap: dbGap,
     series: data,
   });
 });
