@@ -111,12 +111,16 @@ webhook.post('/webhook', async (c) => {
   }
 
   // Lステップ管理下のアカウント: handleEvent をスキップし、OS処理のみ実行
-  // 2026-05-14 cutover: バリリンガル本体(OS_BARILINGUAL_ID)はLステップから移行したためsetから除外.
+  // 2026-05-15 並走mode: バリリンガル本体(OS_BARILINGUAL_ID)を再度setに戻し、
+  // 約2週間のlstep+harness並走期間中はharness側のhandleEventを完全mute.
+  // friends/messages_log保存とOS分類だけ動かしてDB蓄積する.
+  // 並走終了時に下記setからOS_BARILINGUAL_IDを除外+lstep停止+LSTEP_WEBHOOK_URL削除で完全切替.
   // バリ島留学センター(BALI_RYUGAKU_CENTER_ID)はまだLステップ運用継続中.
   // 注意: matchedAccountId=null（destinationなし or アカウント不一致）は櫻子等の通常運用なので
   // 必ず通常 handleEvent 経路を通すこと (旧ロジックで null も Lstep扱いになっていてTelegram通知漏れ)
+  const OS_BARILINGUAL_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
   const BALI_RYUGAKU_CENTER_ID = '3e005b38-0adf-492f-9648-ee09d7c78424';
-  const LSTEP_MANAGED_ACCOUNTS = new Set([BALI_RYUGAKU_CENTER_ID]);
+  const LSTEP_MANAGED_ACCOUNTS = new Set([OS_BARILINGUAL_ID, BALI_RYUGAKU_CENTER_ID]);
   const isLstepManaged = matchedAccountId !== null && LSTEP_MANAGED_ACCOUNTS.has(matchedAccountId);
 
   if (isLstepManaged) {
@@ -1022,6 +1026,7 @@ async function handleEvent(
         userId,
         lineAccountId,
         postbackData,
+        env,
       });
       if (balilingualResult.handled) return;
     }
@@ -1865,7 +1870,7 @@ async function sendBaliMetaLeadFromSurvey(
     body: JSON.stringify({
       access_token: accessToken,
       data: [{
-        event_name: 'Lead',
+	        event_name: 'DiagnosisComplete',
         event_time: eventTime,
         event_id: eventId,
         action_source: 'system_generated',
