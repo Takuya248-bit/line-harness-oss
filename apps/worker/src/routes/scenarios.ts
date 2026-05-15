@@ -8,7 +8,6 @@ import {
   createScenarioStep,
   updateScenarioStep,
   deleteScenarioStep,
-  enrollFriendInScenario,
   getFriendById,
 } from '@line-crm/db';
 import type {
@@ -20,6 +19,12 @@ import type {
   MessageType,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  assertTenantOwnership,
+  requireLineAccountId,
+  tenantErrorResponse,
+} from '../middleware/tenant-guard.js';
+import { enrollFriendInScenarioGuarded } from '../services/scenario-runner.js';
 
 const scenarios = new Hono<Env>();
 
@@ -138,6 +143,7 @@ scenarios.post('/api/scenarios', async (c) => {
       isActive?: boolean;
       lineAccountId?: string | null;
     }>();
+    const lineAccountId = requireLineAccountId(body.lineAccountId);
 
     if (!body.name || !body.triggerType) {
       return c.json({ success: false, error: 'name and triggerType are required' }, 400);
@@ -150,11 +156,8 @@ scenarios.post('/api/scenarios', async (c) => {
       triggerTagId: body.triggerTagId ?? null,
     });
 
-    // Save line_account_id if provided
-    if (body.lineAccountId) {
-      await c.env.DB.prepare(`UPDATE scenarios SET line_account_id = ? WHERE id = ?`)
-        .bind(body.lineAccountId, scenario.id).run();
-    }
+    await c.env.DB.prepare(`UPDATE scenarios SET line_account_id = ? WHERE id = ?`)
+      .bind(lineAccountId, scenario.id).run();
 
     // createScenario() always sets is_active=1; override if the caller requested inactive
     if (body.isActive === false) {
@@ -164,6 +167,8 @@ scenarios.post('/api/scenarios', async (c) => {
 
     return c.json({ success: true, data: serializeScenario(scenario) }, 201);
   } catch (err) {
+    const tenantError = tenantErrorResponse(err);
+    if (tenantError) return c.json(tenantError.body, tenantError.status);
     console.error('POST /api/scenarios error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -179,7 +184,10 @@ scenarios.put('/api/scenarios/:id', async (c) => {
       triggerType?: ScenarioTriggerType;
       triggerTagId?: string | null;
       isActive?: boolean;
+      lineAccountId?: string | null;
     }>();
+    const lineAccountId = requireLineAccountId(body.lineAccountId);
+    await assertTenantOwnership(c.env.DB, 'scenarios', id, lineAccountId);
 
     const updated = await updateScenario(c.env.DB, id, {
       name: body.name,
@@ -195,6 +203,8 @@ scenarios.put('/api/scenarios/:id', async (c) => {
 
     return c.json({ success: true, data: serializeScenario(updated) });
   } catch (err) {
+    const tenantError = tenantErrorResponse(err);
+    if (tenantError) return c.json(tenantError.body, tenantError.status);
     console.error('PUT /api/scenarios/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -227,7 +237,10 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
       conditionType?: string | null;
       conditionValue?: string | null;
       nextStepOnFalse?: number | null;
+      lineAccountId?: string | null;
     }>();
+    const lineAccountId = requireLineAccountId(body.lineAccountId);
+    await assertTenantOwnership(c.env.DB, 'scenarios', scenarioId, lineAccountId);
 
     if (body.stepOrder === undefined || !body.messageType || !body.messageContent) {
       return c.json(
@@ -287,6 +300,8 @@ scenarios.post('/api/scenarios/:id/steps', async (c) => {
 
     return c.json({ success: true, data: serializeStep(step) }, 201);
   } catch (err) {
+    const tenantError = tenantErrorResponse(err);
+    if (tenantError) return c.json(tenantError.body, tenantError.status);
     console.error('POST /api/scenarios/:id/steps error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -402,7 +417,10 @@ scenarios.post('/api/scenarios/:id/enroll/:friendId', async (c) => {
       return c.json({ success: false, error: 'Friend not found' }, 404);
     }
 
-    const enrollment = await enrollFriendInScenario(db, friendId, scenarioId);
+    const enrollment = await enrollFriendInScenarioGuarded(db, friendId, scenarioId);
+    if (!enrollment) {
+      return c.json({ success: false, error: 'Cross-tenant scenario enrollment blocked' }, 403);
+    }
     return c.json({ success: true, data: serializeFriendScenario(enrollment) }, 201);
   } catch (err) {
     console.error('POST /api/scenarios/:id/enroll/:friendId error:', err);

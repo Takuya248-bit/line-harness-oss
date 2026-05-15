@@ -8,6 +8,11 @@ import {
   getAutomationLogs,
 } from '@line-crm/db';
 import type { Env } from '../index.js';
+import {
+  assertTenantOwnership,
+  requireLineAccountId,
+  tenantErrorResponse,
+} from '../middleware/tenant-guard.js';
 
 const automations = new Hono<Env>();
 
@@ -95,15 +100,13 @@ automations.post('/api/automations', async (c) => {
       priority?: number;
       lineAccountId?: string | null;
     }>();
+    const lineAccountId = requireLineAccountId(body.lineAccountId);
     if (!body.name || !body.eventType || !body.actions) {
       return c.json({ success: false, error: 'name, eventType, actions are required' }, 400);
     }
     const item = await createAutomation(c.env.DB, body);
-    // Save line_account_id if provided
-    if (body.lineAccountId) {
-      await c.env.DB.prepare(`UPDATE automations SET line_account_id = ? WHERE id = ?`)
-        .bind(body.lineAccountId, item.id).run();
-    }
+    await c.env.DB.prepare(`UPDATE automations SET line_account_id = ? WHERE id = ?`)
+      .bind(lineAccountId, item.id).run();
     return c.json({
       success: true,
       data: {
@@ -117,6 +120,8 @@ automations.post('/api/automations', async (c) => {
       },
     }, 201);
   } catch (err) {
+    const tenantError = tenantErrorResponse(err);
+    if (tenantError) return c.json(tenantError.body, tenantError.status);
     console.error('POST /api/automations error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
@@ -125,8 +130,20 @@ automations.post('/api/automations', async (c) => {
 automations.put('/api/automations/:id', async (c) => {
   try {
     const id = c.req.param('id');
-    const body = await c.req.json();
-    await updateAutomation(c.env.DB, id, body);
+    const body = await c.req.json<{
+      name?: string;
+      description?: string;
+      eventType?: string;
+      conditions?: Record<string, unknown>;
+      actions?: unknown[];
+      isActive?: boolean;
+      priority?: number;
+      lineAccountId?: string | null;
+    }>();
+    const { lineAccountId: requestedLineAccountId, ...updates } = body;
+    const lineAccountId = requireLineAccountId(requestedLineAccountId);
+    await assertTenantOwnership(c.env.DB, 'automations', id, lineAccountId);
+    await updateAutomation(c.env.DB, id, updates);
     const updated = await getAutomationById(c.env.DB, id);
     if (!updated) return c.json({ success: false, error: 'Not found' }, 404);
     return c.json({
@@ -142,6 +159,8 @@ automations.put('/api/automations/:id', async (c) => {
       },
     });
   } catch (err) {
+    const tenantError = tenantErrorResponse(err);
+    if (tenantError) return c.json(tenantError.body, tenantError.status);
     console.error('PUT /api/automations/:id error:', err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
