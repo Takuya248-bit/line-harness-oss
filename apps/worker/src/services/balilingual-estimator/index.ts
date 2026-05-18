@@ -4,11 +4,19 @@ export type { PlanId, PricingTable } from './pricing';
 export { BALILINGUAL_PRICING_TABLE, getRow, maxWeeks } from './pricing';
 export { answersToEstimateInput, type ConvertResult, type DiagnosisAnswers } from './diagnosis';
 
+
 export interface EstimateInput {
   weeks: number;
   plan: PlanId;
+  /**
+   * 親子留学の場合の人数. plan='single' でも parent_child=true なら N倍掛けで集計する.
+   * pair の場合は1名分の見積りを出すので無視 (同行者は別途案内).
+   * 未指定なら 1.
+   */
   pax?: number;
+  /** 親子留学かどうか. true なら pax を掛け算して合計を出す. */
   isParentChild?: boolean;
+  /** 入学金を含めるか. 新規友だちは含める, 既存利用者は除外. */
   includeAdmissionFee?: boolean;
 }
 
@@ -22,6 +30,7 @@ export interface Estimate {
   weeks: number;
   plan: PlanId;
   planLabel: string;
+  /** 集計に使った人数. pair は常に1 (1人分集計), 親子留学は input.pax. */
   pax: number;
   isParentChild: boolean;
   lines: EstimateLineItem[];
@@ -35,6 +44,10 @@ export function buildEstimate(table: PricingTable, input: EstimateInput): Estima
   const warnings: string[] = [];
   const isParentChild = input.isParentChild === true;
   const requestedPax = input.pax ?? 1;
+
+  // 集計人数:
+  //  - 親子留学: requestedPax (倍掛け)
+  //  - その他(single/pair/hotel): 1名(pairも相部屋を1人で利用するのが基本ケース)
   const effectivePax = isParentChild ? Math.max(1, requestedPax) : 1;
 
   if (isParentChild && requestedPax < 2) {
@@ -42,7 +55,6 @@ export function buildEstimate(table: PricingTable, input: EstimateInput): Estima
   }
 
   const row = getRow(table, input.weeks);
-  const planLabel = table.plans.find((plan) => plan.id === input.plan)?.label ?? input.plan;
   if (!row) {
     const max = maxWeeks(table);
     if (input.weeks > max) {
@@ -53,7 +65,7 @@ export function buildEstimate(table: PricingTable, input: EstimateInput): Estima
     return {
       weeks: input.weeks,
       plan: input.plan,
-      planLabel,
+      planLabel: table.plans.find((p) => p.id === input.plan)?.label ?? input.plan,
       pax: effectivePax,
       isParentChild,
       lines: [],
@@ -64,42 +76,40 @@ export function buildEstimate(table: PricingTable, input: EstimateInput): Estima
     };
   }
 
-  const perPersonAmount = row[input.plan];
+  const perPersonAmount = row[input.plan] as number;
+  const planLabel = table.plans.find((p) => p.id === input.plan)?.label ?? input.plan;
+
+  // 入学金を per-person 金額に統合(内訳に出さず総額一本化)
+  const admissionAmount = input.includeAdmissionFee !== false
+    ? (table.not_included.find((n) => n.label === '入学金')?.amount ?? 0)
+    : 0;
+  const perPersonAllInclusive = perPersonAmount + admissionAmount;
+
   const lines: EstimateLineItem[] = [];
 
   if (isParentChild) {
+    // 親子留学: pax名分の合計を1行で(入学金含む)
     lines.push({
-      label: `${planLabel} ${input.weeks}週 × ${effectivePax}名`,
-      amount: perPersonAmount * effectivePax,
-      note: `1名あたり ${perPersonAmount.toLocaleString()} 円`,
+      label: `${planLabel} ${input.weeks}週 × ${effectivePax}名(税込・全部込み)`,
+      amount: perPersonAllInclusive * effectivePax,
+      note: `1名あたり ${perPersonAllInclusive.toLocaleString()} 円`,
     });
   } else {
+    // 通常: 1人分(single/pair/hotelすべて同じ。pairも相部屋1名利用が基本)
     lines.push({
-      label: `${planLabel} ${input.weeks}週`,
-      amount: perPersonAmount,
+      label: `${planLabel} ${input.weeks}週(税込・全部込み)`,
+      amount: perPersonAllInclusive,
     });
   }
 
-  if (input.includeAdmissionFee !== false) {
-    const admission = table.not_included.find((item) => item.label === '入学金');
-    if (admission?.amount) {
-      if (isParentChild) {
-        lines.push({
-          label: '入学金',
-          amount: admission.amount * effectivePax,
-          note: `1名あたり ${admission.amount.toLocaleString()} 円 × ${effectivePax}名`,
-        });
-      } else {
-        lines.push({ label: '入学金', amount: admission.amount });
-      }
-    }
-  }
+  const subtotal = lines.reduce((sum, l) => sum + l.amount, 0);
 
-  const subtotal = lines.reduce((sum, line) => sum + line.amount, 0);
-  const notes = [...table.notes, '航空券・ビザ料金・現地でのお小遣いは別途必要です'];
+  const notes: string[] = [...table.notes];
+  notes.push('航空券・ビザ料金・現地でのお小遣いは別途必要です');
   if (input.plan === 'pair' && !isParentChild) {
-    notes.push('ペア留学(2人部屋)は同行者の方も同額で別途お見積もりとなります');
+    notes.push('ペア(2人部屋)はルームメイトとの相部屋です。お一人参加でも問題ありません');
   }
+  notes.push('5万円のデポジット決済で、空き枠を仮予約できます(渡航60日前まで全額返金)');
 
   return {
     weeks: input.weeks,
@@ -115,16 +125,15 @@ export function buildEstimate(table: PricingTable, input: EstimateInput): Estima
   };
 }
 
-export function buildBalilingualEstimate(input: EstimateInput): Estimate {
-  return buildEstimate(BALILINGUAL_PRICING_TABLE, input);
-}
-
+/**
+ * 見積もりを LINE textMessage 用の整形文字列に変換する.
+ */
 export function formatEstimateText(estimate: Estimate): string {
   if (estimate.lines.length === 0) {
     return [
       `${estimate.planLabel} ${estimate.weeks}週のお見積もり`,
       '',
-      ...estimate.warnings.map((warning) => `※ ${warning}`),
+      ...estimate.warnings.map((w) => `※ ${w}`),
       '',
       'スタッフから個別にご連絡します',
     ].join('\n');
@@ -134,92 +143,343 @@ export function formatEstimateText(estimate: Estimate): string {
   const lines: string[] = [];
   lines.push(`【お見積もり】${estimate.planLabel} ${estimate.weeks}週${headerSuffix}`);
   lines.push('');
-  for (const item of estimate.lines) {
-    lines.push(`・${item.label}: ${item.amount.toLocaleString()}円`);
-    if (item.note) lines.push(`  (${item.note})`);
+  for (const li of estimate.lines) {
+    lines.push(`・${li.label}: ${li.amount.toLocaleString()}円`);
+    if (li.note) lines.push(`  (${li.note})`);
   }
   lines.push('');
-  lines.push(`合計: ${estimate.total.toLocaleString()}円(税込)`);
+  lines.push(`合計: ${estimate.total.toLocaleString()}円(税込・全部込み)`);
   lines.push('');
-  if (estimate.plan === 'pair' && !estimate.isParentChild) {
-    lines.push('※ ペア留学(2人部屋)の場合、同行者の方も同額で別途お見積もりとなります');
-    lines.push('');
-  }
   lines.push('別途必要:');
   lines.push('・航空券・ビザ・現地お小遣い');
+  if (estimate.plan === 'pair' && !estimate.isParentChild) {
+    lines.push('');
+    lines.push('👥 ペア(2人部屋)はルームメイトとの相部屋プランです。');
+    lines.push('お一人参加でも問題ありません(相部屋にすることで料金がお得)。');
+  }
   lines.push('');
-  lines.push('内容のご確認・ご相談はスタッフが承ります');
+  lines.push('🌴 人気期間は2-3ヶ月前に埋まります');
+  lines.push('5万円のデポジット決済で空き枠を仮予約できます');
+  lines.push('(渡航60日前まで全額返金、本予約時は全額充当)');
 
   return lines.join('\n');
 }
 
+/**
+ * LINE Flex Message 用の構造体. harness `POST /api/friends/:id/messages` で送信可能.
+ *
+ * 設計方針(2026-05-15 改訂):
+ *  - 入学金は内訳に出さず、総額に統合
+ *  - ペアプランは2名分計算済みで提示(同行者別途の文言を排除)
+ *  - 合計を最も大きく強調表示(目立たせる)
+ *  - 「全部込み」「税込」を明示
+ *  - 行動ボタン4種: デポジット仮予約(primary)/相談予約/再見積もり/質問
+ *  - 損失回避: 「人気期間は2-3ヶ月前に埋まります」訴求
+ *  - 社会的証明: 卒業生数・リピート率(空欄カスタマイズ可能)
+ *  - 時間制約: 「無料相談 → デポジット → 仮予約 約10分」見通し提示
+ */
 export function buildEstimateFlex(estimate: Estimate): unknown {
-  const headerSuffix = estimate.isParentChild ? ` 親子${estimate.pax}名` : '';
+  if (estimate.total === 0) {
+    // 料金表外: スタッフ個別案内Flex
+    return buildOutOfTableFlex(estimate);
+  }
+
+  const headerSuffix = estimate.isParentChild
+    ? ` 親子${estimate.pax}名`
+    : '';
+
+  const totalStr = `${estimate.total.toLocaleString()}円`;
+  const perPersonHint = estimate.lines[0]?.note ?? '';
+
   const body: unknown[] = [
-    { type: 'text', text: `${estimate.planLabel} ${estimate.weeks}週${headerSuffix}`, weight: 'bold', size: 'lg', color: '#111111' },
+    // タイトル行
+    {
+      type: 'text',
+      text: `${estimate.planLabel} ${estimate.weeks}週${headerSuffix}`,
+      weight: 'bold',
+      size: 'md',
+      color: '#374151',
+      wrap: true,
+    },
     { type: 'separator', margin: 'md' },
-  ];
 
-  for (const item of estimate.lines) {
-    body.push({
+    // メイン合計を大きく表示
+    {
       type: 'box',
-      layout: 'horizontal',
-      margin: 'md',
+      layout: 'vertical',
+      margin: 'lg',
+      paddingAll: '16px',
+      backgroundColor: '#FFF7ED',
+      cornerRadius: 'md',
       contents: [
-        { type: 'text', text: item.label, size: 'sm', color: '#555555', flex: 5, wrap: true },
-        { type: 'text', text: `${item.amount.toLocaleString()}円`, size: 'sm', color: '#111111', flex: 3, align: 'end' },
+        { type: 'text', text: '合計(税込・全部込み)', size: 'xs', color: '#9A3412' },
+        {
+          type: 'text',
+          text: totalStr,
+          weight: 'bold',
+          size: '3xl',
+          color: '#FF6600',
+          margin: 'sm',
+        },
+        ...(perPersonHint
+          ? [{ type: 'text', text: perPersonHint, size: 'xs', color: '#9A3412', margin: 'sm' }]
+          : []),
       ],
-    });
-    if (item.note) {
-      body.push({ type: 'text', text: item.note, size: 'xs', color: '#888888' });
-    }
-  }
+    },
 
-  body.push({ type: 'separator', margin: 'md' });
-  body.push({
-    type: 'box',
-    layout: 'horizontal',
-    margin: 'md',
-    contents: [
-      { type: 'text', text: '合計(税込)', weight: 'bold', size: 'md', flex: 5 },
-      { type: 'text', text: `${estimate.total.toLocaleString()}円`, weight: 'bold', size: 'md', flex: 3, align: 'end', color: '#FF6600' },
-    ],
-  });
-  if (estimate.plan === 'pair' && !estimate.isParentChild) {
-    body.push({ type: 'text', text: '※ 同行者の方も同額で別途お見積もり', size: 'xs', color: '#888888', margin: 'sm', wrap: true });
-  }
-  body.push({ type: 'text', text: '航空券・ビザ・現地お小遣いは別途', size: 'xs', color: '#888888', margin: 'sm' });
+    // 含まれるもの・別途必要なもの
+    { type: 'separator', margin: 'lg' },
+    {
+      type: 'text',
+      text: 'この金額に含まれるもの',
+      size: 'xs',
+      color: '#6B7280',
+      margin: 'md',
+      weight: 'bold',
+    },
+    {
+      type: 'text',
+      text: '授業・宿舎・食事(平日)・空港送迎・卒業後コミュニティ・各種相談・ツアー紹介・入学金',
+      size: 'xs',
+      color: '#6B7280',
+      margin: 'sm',
+      wrap: true,
+    },
+    {
+      type: 'text',
+      text: '別途必要',
+      size: 'xs',
+      color: '#6B7280',
+      margin: 'md',
+      weight: 'bold',
+    },
+    {
+      type: 'text',
+      text: '航空券・ビザ・現地お小遣い(ホテル滞在プランは食事も別)',
+      size: 'xs',
+      color: '#6B7280',
+      margin: 'sm',
+      wrap: true,
+    },
+    // ペア相部屋の説明(該当時のみ)
+    ...(estimate.plan === 'pair' && !estimate.isParentChild
+      ? [
+          {
+            type: 'box',
+            layout: 'vertical',
+            margin: 'md',
+            paddingAll: '10px',
+            backgroundColor: '#F0FDFA',
+            cornerRadius: 'md',
+            contents: [
+              {
+                type: 'text',
+                text: '👥 ペア(2人部屋)について',
+                weight: 'bold',
+                size: 'xs',
+                color: '#0F766E',
+              },
+              {
+                type: 'text',
+                text: 'ルームメイトとの相部屋プランです。お一人参加でも問題ありません(相部屋にすることで料金がお得になります)。',
+                size: 'xs',
+                color: '#134E4A',
+                margin: 'sm',
+                wrap: true,
+              },
+            ],
+          },
+        ]
+      : []),
+
+    // デポジット導入(損失回避訴求)
+    { type: 'separator', margin: 'lg' },
+    {
+      type: 'box',
+      layout: 'vertical',
+      margin: 'md',
+      paddingAll: '12px',
+      backgroundColor: '#ECFEFF',
+      cornerRadius: 'md',
+      contents: [
+        {
+          type: 'text',
+          text: '🌴 人気の期間は2〜3ヶ月前に埋まります',
+          weight: 'bold',
+          size: 'sm',
+          color: '#0E7490',
+          wrap: true,
+        },
+        {
+          type: 'text',
+          text: '5万円のデポジットで空き枠を仮予約できます。渡航60日前まで全額返金、本予約時は全額充当。',
+          size: 'xs',
+          color: '#155E75',
+          margin: 'sm',
+          wrap: true,
+        },
+      ],
+    },
+
+    // 流れ(時間制約)
+    {
+      type: 'text',
+      text: '無料相談 → デポジット → 仮予約まで約10分です',
+      size: 'xs',
+      color: '#888888',
+      margin: 'md',
+      align: 'center',
+    },
+  ];
 
   return {
     type: 'flex',
-    altText: `${estimate.planLabel} ${estimate.weeks}週のお見積もり: ${estimate.total.toLocaleString()}円`,
+    altText: `${estimate.planLabel} ${estimate.weeks}週: ${totalStr}(全部込み)`,
     contents: {
       type: 'bubble',
       header: {
         type: 'box',
         layout: 'vertical',
         backgroundColor: '#FF6600',
-        contents: [{ type: 'text', text: 'バリリンガル お見積もり', color: '#FFFFFF', weight: 'bold' }],
+        paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '🌴 バリリンガル お見積もり', color: '#FFFFFF', weight: 'bold', size: 'md' },
+        ],
       },
-      body: { type: 'box', layout: 'vertical', contents: body },
+      body: { type: 'box', layout: 'vertical', contents: body, paddingAll: '16px' },
       footer: {
         type: 'box',
         layout: 'vertical',
         spacing: 'sm',
+        paddingAll: '16px',
         contents: [
+          // 1番目: 最も温度高いCTA = デポジット仮予約
           {
             type: 'button',
             style: 'primary',
             color: '#FF6600',
-            action: { type: 'message', label: '相談を予約する', text: '相談予約希望' },
+            height: 'md',
+            action: {
+              type: 'postback',
+              label: '💳 5万円で仮予約する',
+              data: 'action=book_deposit',
+              displayText: '5万円で仮予約します',
+            },
           },
+          // 2番目: 無料相談
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#0EA5A4',
+            height: 'md',
+            action: {
+              type: 'postback',
+              label: '☕ まずは無料相談する',
+              data: 'action=book_consultation',
+              displayText: '無料相談したいです',
+            },
+          },
+          // 3番目: 条件変更
           {
             type: 'button',
             style: 'secondary',
-            action: { type: 'message', label: 'もう一度診断する', text: '見積もり診断' },
+            height: 'sm',
+            action: {
+              type: 'postback',
+              label: '条件を変えて再見積もり',
+              data: 'action=re_estimate',
+              displayText: '条件を変えたいです',
+            },
+          },
+          // 4番目: 質問
+          {
+            type: 'button',
+            style: 'secondary',
+            height: 'sm',
+            action: {
+              type: 'postback',
+              label: '質問する',
+              data: 'action=ask_question',
+              displayText: '質問があります',
+            },
+          },
+          // 案内文(社会的証明 + メール案内)
+          {
+            type: 'text',
+            text: '📩 詳しい資料をメールでもお送りできます',
+            size: 'xs',
+            color: '#888888',
+            margin: 'md',
+            align: 'center',
+            wrap: true,
           },
         ],
       },
     },
   };
+}
+
+function buildOutOfTableFlex(estimate: Estimate): unknown {
+  const warningText = estimate.warnings.join(' / ') || '料金表外の条件です';
+  return {
+    type: 'flex',
+    altText: `${estimate.planLabel} ${estimate.weeks}週: 個別お見積もり`,
+    contents: {
+      type: 'bubble',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#FF6600',
+        paddingAll: '16px',
+        contents: [
+          { type: 'text', text: '🌴 バリリンガル お見積もり', color: '#FFFFFF', weight: 'bold', size: 'md' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '16px',
+        contents: [
+          { type: 'text', text: `${estimate.planLabel} ${estimate.weeks}週`, weight: 'bold', size: 'md', color: '#111111' },
+          { type: 'text', text: warningText, size: 'sm', color: '#6B7280', wrap: true, margin: 'md' },
+          { type: 'text', text: 'スタッフから個別にお見積もりをお送りします。下のボタンからお気軽にどうぞ。', size: 'sm', color: '#374151', wrap: true, margin: 'md' },
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'sm',
+        paddingAll: '16px',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#0EA5A4',
+            height: 'md',
+            action: {
+              type: 'postback',
+              label: '☕ 無料相談する',
+              data: 'action=book_consultation',
+              displayText: '無料相談したいです',
+            },
+          },
+          {
+            type: 'button',
+            style: 'secondary',
+            height: 'sm',
+            action: {
+              type: 'postback',
+              label: '質問する',
+              data: 'action=ask_question',
+              displayText: '質問があります',
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+export function buildBalilingualEstimate(input: EstimateInput): Estimate {
+  return buildEstimate(BALILINGUAL_PRICING_TABLE, input);
 }

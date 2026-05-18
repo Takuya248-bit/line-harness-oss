@@ -6,7 +6,6 @@ import {
   updateFriendFollowStatus,
   getFriendByLineUserId,
   getScenarios,
-  enrollFriendInScenario,
   getScenarioSteps,
   advanceFriendScenario,
   completeFriendScenario,
@@ -37,6 +36,7 @@ import { handleInquiry, tryQuickAnswer } from '../../../../os/modules/inquiry/ha
 import { generateDraftWithGroq } from '../services/groq-draft.js';
 import { notifyTelegram } from '../services/telegram-notify.js';
 import { fireEvent } from '../services/event-bus.js';
+import { enrollFriendInScenarioGuarded } from '../services/scenario-runner.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import { buildSurveyQuestionFlex } from '../services/survey-flex.js';
 import { handleBalilingualEstimatePostback } from '../services/balilingual-postback-handler.js';
@@ -45,6 +45,10 @@ import { buildDateSelectionFlex, buildAvailableSlotsFlex, buildBookingConfirmFle
 import { extractCSKnowledge } from '../services/cs-knowledge-extractor.js';
 import { isBalilingualSurveyCompleteTag, sendBalilingualEstimate } from '../services/balilingual-send-estimate.js';
 import type { Env } from '../index.js';
+
+export const OS_BARILINGUAL_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
+export const BALI_RYUGAKU_CENTER_ID = '3e005b38-0adf-492f-9648-ee09d7c78424';
+export const LSTEP_MANAGED_ACCOUNT_IDS: readonly string[] = [OS_BARILINGUAL_ID, BALI_RYUGAKU_CENTER_ID];
 
 const webhook = new Hono<Env>();
 const BALI_RYUGAKU_CENTER_ACCOUNT_ID = '3e005b38-0adf-492f-9648-ee09d7c78424';
@@ -118,9 +122,7 @@ webhook.post('/webhook', async (c) => {
   // バリ島留学センター(BALI_RYUGAKU_CENTER_ID)はまだLステップ運用継続中.
   // 注意: matchedAccountId=null（destinationなし or アカウント不一致）は櫻子等の通常運用なので
   // 必ず通常 handleEvent 経路を通すこと (旧ロジックで null も Lstep扱いになっていてTelegram通知漏れ)
-  const OS_BARILINGUAL_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
-  const BALI_RYUGAKU_CENTER_ID = '3e005b38-0adf-492f-9648-ee09d7c78424';
-  const LSTEP_MANAGED_ACCOUNTS = new Set([OS_BARILINGUAL_ID, BALI_RYUGAKU_CENTER_ID]);
+  const LSTEP_MANAGED_ACCOUNTS = new Set(LSTEP_MANAGED_ACCOUNT_IDS);
   const isLstepManaged = matchedAccountId !== null && LSTEP_MANAGED_ACCOUNTS.has(matchedAccountId);
 
   if (isLstepManaged) {
@@ -325,7 +327,8 @@ async function handleEvent(
             .bind(friend.id, scenario.id)
             .first<{ id: string }>();
           if (!existing) {
-            const friendScenario = await enrollFriendInScenario(db, friend.id, scenario.id);
+            const friendScenario = await enrollFriendInScenarioGuarded(db, friend.id, scenario.id);
+            if (!friendScenario) continue;
 
             // Immediate delivery: if the first step has delay=0, send it now via replyMessage (free)
             const steps = await getScenarioSteps(db, scenario.id);
@@ -437,7 +440,7 @@ async function handleEvent(
           .first();
         if (!exists) {
           try {
-            await enrollFriendInScenario(db, friend.id, scenario.id);
+            await enrollFriendInScenarioGuarded(db, friend.id, scenario.id);
             console.log(`friend_add scenario rescue enroll: friend=${friend.id} scenario=${scenario.id}`);
           } catch (e) {
             console.error('rescue enroll failed:', e);
@@ -517,7 +520,7 @@ async function handleEvent(
                   answers,
                 });
                 if (survey?.on_complete_scenario_id) {
-                  await enrollFriendInScenario(db, friend.id, survey.on_complete_scenario_id);
+                  await enrollFriendInScenarioGuarded(db, friend.id, survey.on_complete_scenario_id);
                 }
                 // Fire tag_added event for on_complete_tag
                 if (survey?.on_complete_tag_id) {
@@ -1177,18 +1180,19 @@ async function handleEvent(
 
           // Start on_complete_scenario_id
           if (survey?.on_complete_scenario_id) {
-            await enrollFriendInScenario(db, friend.id, survey.on_complete_scenario_id);
-
-            // Send first step of the scenario
-            const steps = await getScenarioSteps(db, survey.on_complete_scenario_id);
-            if (steps.length > 0) {
-              const firstStep = steps[0];
-              const expandedContent = expandVariables(firstStep.message_content, friend as { id: string; display_name: string | null; user_id: string | null });
-              const message = buildMessage(firstStep.message_type, expandedContent);
-              try {
-                await lineClient.pushMessage(userId, [message]);
-              } catch (err) {
-                console.error('Failed to send scenario first step after survey completion', err);
+            const friendScenario = await enrollFriendInScenarioGuarded(db, friend.id, survey.on_complete_scenario_id);
+            if (friendScenario) {
+              // Send first step of the scenario
+              const steps = await getScenarioSteps(db, survey.on_complete_scenario_id);
+              if (steps.length > 0) {
+                const firstStep = steps[0];
+                const expandedContent = expandVariables(firstStep.message_content, friend as { id: string; display_name: string | null; user_id: string | null });
+                const message = buildMessage(firstStep.message_type, expandedContent);
+                try {
+                  await lineClient.pushMessage(userId, [message]);
+                } catch (err) {
+                  console.error('Failed to send scenario first step after survey completion', err);
+                }
               }
             }
           }
@@ -1525,12 +1529,14 @@ async function handleEvent(
             .prepare('SELECT id FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ?')
             .bind(friend.id, link.scenario_id)
             .first<{ id: string }>();
+          let canDeliverStep1 = Boolean(existing);
           if (!existing) {
-            await enrollFriendInScenario(db, friend.id, link.scenario_id);
+            const friendScenario = await enrollFriendInScenarioGuarded(db, friend.id, link.scenario_id);
+            canDeliverStep1 = Boolean(friendScenario);
           }
 
           // Get Step1 to deliver inline
-          const step1 = await db
+          const step1 = canDeliverStep1 ? await db
             .prepare(
               `SELECT id, message_type, message_content
                FROM scenario_steps
@@ -1538,7 +1544,7 @@ async function handleEvent(
                LIMIT 1`,
             )
             .bind(link.scenario_id)
-            .first<{ id: string; message_type: string; message_content: string }>();
+            .first<{ id: string; message_type: string; message_content: string }>() : null;
           if (step1) {
             const expandedContent = expandVariables(
               step1.message_content,
@@ -1940,13 +1946,15 @@ async function buildGroqInquiryDraft(
   const systemPrompt = `あなたはバリリンガル（バリ島の語学学校）のCSスタッフです。
 LINEで問い合わせが来た際の返信ドラフトを作成してください。
 
-## バリリンガル事業情報
+## バリリンガル事業情報 (料金は1人あたり・税込)
 入学金: 30,000円（別途必須）
-1人部屋: 1週間119,800円 / 2週間219,800円 / 4週間349,800円
-ペア留学: 1週間98,000円 / 2週間189,000円 / 4週間320,000円
-外泊（自己手配）: 1週間85,000円 / 2週間163,000円 / 4週間246,000円
-含まれるもの: 授業料・食事(朝/昼)・空港送迎・卒業証書
-コース: 英語・ビジネス英語・TOEIC対策・ワーホリ準備・サーフィン英語・ヨガ英語など全9種
+1人部屋(個室): 1週間119,800円 / 2週間219,800円 / 3週間289,000円 / 4週間349,800円 / 8週間629,000円 / 12週間899,000円 / 24週間1,620,000円
+ペア留学(2人部屋・相部屋): 1週間98,000円 / 2週間189,000円 / 3週間249,000円 / 4週間298,000円 / 8週間539,000円 / 12週間768,000円 / 24週間1,370,000円 ※1人参加でもOK、相部屋にすることで料金がお得
+外泊(ホテル/ヴィラなど): 1週間85,000円 / 2週間163,000円 / 3週間210,000円 / 4週間246,000円 / 8週間435,000円 / 12週間612,000円 / 24週間1,058,000円 ※食事は付かない
+含まれるもの(外泊以外): 授業料・食事(平日のみ)・宿舎・空港送迎・卒業後コミュニティ・学習/カリキュラム相談・移住/キャリア相談・ツアー/イベント紹介
+含まれないもの: 入学金・航空券・ビザ料金・現地でのお小遣い
+※5万円のデポジット決済で空き枠の仮予約可能(渡航60日前まで全額返金、本予約時は全額充当)
+コース: 日常英会話・TOEIC対策・ワーホリ準備・サーフィン×英語・ヨガ×英語・副業×英語・親子留学・その他試験対策(TOEFL/IELTS/英検)
 ${fewShotSection}
 
 ## 返信ルール

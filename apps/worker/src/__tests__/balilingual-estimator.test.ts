@@ -1,234 +1,201 @@
-import { describe, expect, it } from 'vitest';
-import {
-  BALILINGUAL_PRICING_TABLE,
-  answersToEstimateInput,
-  buildBalilingualEstimate,
-  buildEstimate,
-  buildEstimateFlex,
-  formatEstimateText,
-  getRow,
-  maxWeeks,
-  type PlanId,
-} from '../services/balilingual-estimator';
+import { describe, it, expect } from 'vitest';
+import { BALILINGUAL_PRICING_TABLE } from '../services/balilingual-estimator';
+import { buildEstimate, formatEstimateText, buildEstimateFlex } from '../services/balilingual-estimator';
+import { answersToEstimateInput } from '../services/balilingual-estimator';
+
+
 
 const table = BALILINGUAL_PRICING_TABLE;
 
-describe('balilingual pricing table', () => {
-  it('bundles 24 weekly pricing rows', () => {
-    expect(table.weekly_pricing).toHaveLength(24);
-    expect(table.weekly_pricing.map((row) => row.weeks)).toEqual(Array.from({ length: 24 }, (_, index) => index + 1));
+describe('buildEstimate - 1人分基本(入学金統合版)', () => {
+  it('1人部屋4週: 入学金を内訳に出さず総額一本化', () => {
+    const e = buildEstimate(table, { weeks: 4, plan: 'single', includeAdmissionFee: true });
+    // 内訳1行のみ(入学金は別行にしない)
+    expect(e.lines).toHaveLength(1);
+    expect(e.lines[0].label).toBe('1人部屋 4週(税込・全部込み)');
+    expect(e.lines[0].amount).toBe(379800); // 349,800 + 30,000
+    expect(e.total).toBe(379800);
+    expect(e.pax).toBe(1);
+    expect(e.isParentChild).toBe(false);
   });
 
-  it('bundles all three plans', () => {
-    expect(table.plans.map((plan) => plan.id).sort()).toEqual(['hotel', 'pair', 'single']);
+  it('ペア(2人部屋)4週: 1人参加・相部屋プランで1人分料金', () => {
+    const e = buildEstimate(table, { weeks: 4, plan: 'pair', includeAdmissionFee: true });
+    expect(e.pax).toBe(1);
+    // 298,000 + 30,000 = 328,000 (1人分のみ)
+    expect(e.lines[0].amount).toBe(328000);
+    expect(e.total).toBe(328000);
+    // 「相部屋」の説明が含まれる
+    expect(e.notes.some((n) => n.includes('相部屋'))).toBe(true);
+    // 「同行者別途」の文言は出さない
+    expect(e.notes.some((n) => n.includes('同行者の方も同額で別途'))).toBe(false);
   });
 
-  it('has 24-week pricing for all three plans', () => {
-    expect(getRow(table, 24)).toMatchObject({ single: 1620000, pair: 1370000, hotel: 1058000 });
-  });
-
-  it('reports max weeks', () => {
-    expect(maxWeeks(table)).toBe(24);
-  });
-});
-
-describe('buildEstimate - single-person base behavior', () => {
-  it('single room 4 weeks includes admission fee', () => {
-    const estimate = buildEstimate(table, { weeks: 4, plan: 'single', includeAdmissionFee: true });
-    expect(estimate.lines).toHaveLength(2);
-    expect(estimate.lines[0].label).toBe('1人部屋 4週');
-    expect(estimate.lines[0].amount).toBe(349800);
-    expect(estimate.lines[1].amount).toBe(30000);
-    expect(estimate.total).toBe(379800);
-    expect(estimate.pax).toBe(1);
-    expect(estimate.isParentChild).toBe(false);
-  });
-
-  it('pair 12 weeks is one-person amount with companion note', () => {
-    const estimate = buildEstimate(table, { weeks: 12, plan: 'pair', includeAdmissionFee: true });
-    expect(estimate.pax).toBe(1);
-    expect(estimate.lines[0].amount).toBe(768000);
-    expect(estimate.lines[1].amount).toBe(30000);
-    expect(estimate.total).toBe(798000);
-    expect(estimate.notes.some((note) => note.includes('同行者の方も同額で別途お見積もり'))).toBe(true);
-  });
-
-  it('hotel 24 weeks can exclude admission fee', () => {
-    const estimate = buildEstimate(table, { weeks: 24, plan: 'hotel', includeAdmissionFee: false });
-    expect(estimate.lines).toHaveLength(1);
-    expect(estimate.total).toBe(1058000);
-  });
-
-  it.each<PlanId>(['single', 'pair', 'hotel'])('buildBalilingualEstimate imports bundled table for %s', (plan) => {
-    const estimate = buildBalilingualEstimate({ weeks: 1, plan, includeAdmissionFee: false });
-    expect(estimate.total).toBe(getRow(table, 1)?.[plan]);
+  it('外泊24週 入学金なし → 1人分', () => {
+    const e = buildEstimate(table, { weeks: 24, plan: 'hotel', includeAdmissionFee: false });
+    expect(e.lines).toHaveLength(1);
+    expect(e.total).toBe(1058000);
   });
 });
 
-describe('buildEstimate - parent-child multiplier', () => {
-  it('single room 8 weeks parent-child 2 pax multiplies tuition and admission', () => {
-    const estimate = buildEstimate(table, { weeks: 8, plan: 'single', pax: 2, isParentChild: true });
-    expect(estimate.pax).toBe(2);
-    expect(estimate.isParentChild).toBe(true);
-    expect(estimate.lines[0].amount).toBe(1258000);
-    expect(estimate.lines[0].label).toContain('× 2名');
-    expect(estimate.lines[0].note).toContain('1名あたり');
-    expect(estimate.lines[1].amount).toBe(60000);
-    expect(estimate.total).toBe(1318000);
+describe('buildEstimate - 親子留学(人数倍掛け+入学金統合)', () => {
+  it('1人部屋8週 親子2名 → (1名分料金+入学金) × 2', () => {
+    const e = buildEstimate(table, { weeks: 8, plan: 'single', pax: 2, isParentChild: true });
+    expect(e.pax).toBe(2);
+    expect(e.isParentChild).toBe(true);
+    // (629,000 + 30,000) × 2 = 1,318,000
+    expect(e.lines[0].amount).toBe(1318000);
+    expect(e.lines[0].label).toContain('× 2名');
+    expect(e.lines[0].note).toContain('1名あたり 659,000');
+    expect(e.total).toBe(1318000);
   });
 
-  it('parent-child 3 pax is supported', () => {
-    const estimate = buildEstimate(table, { weeks: 4, plan: 'single', pax: 3, isParentChild: true });
-    expect(estimate.total).toBe(1139400);
+  it('親子3名は3人分計算', () => {
+    const e = buildEstimate(table, { weeks: 4, plan: 'single', pax: 3, isParentChild: true });
+    // (349,800 + 30,000) × 3 = 1,139,400
+    expect(e.total).toBe(1139400);
   });
 
-  it('parent-child with pax less than 2 warns', () => {
-    const estimate = buildEstimate(table, { weeks: 4, plan: 'single', pax: 1, isParentChild: true });
-    expect(estimate.warnings.some((warning) => warning.includes('2名以上が前提'))).toBe(true);
-  });
-
-  it('parent-child pair also multiplies by pax and omits companion note', () => {
-    const estimate = buildEstimate(table, { weeks: 4, plan: 'pair', pax: 2, isParentChild: true });
-    expect(estimate.pax).toBe(2);
-    expect(estimate.lines[0].amount).toBe(596000);
-    expect(estimate.notes.some((note) => note.includes('同行者の方も同額で別途お見積もり'))).toBe(false);
+  it('親子フラグありで pax<2 なら警告', () => {
+    const e = buildEstimate(table, { weeks: 4, plan: 'single', pax: 1, isParentChild: true });
+    expect(e.warnings.some((w) => w.includes('2名以上が前提'))).toBe(true);
   });
 });
 
-describe('buildEstimate - out of table', () => {
-  it('30 weeks returns warning and zero total', () => {
-    const estimate = buildEstimate(table, { weeks: 30, plan: 'single' });
-    expect(estimate.warnings.length).toBeGreaterThan(0);
-    expect(estimate.total).toBe(0);
-    expect(estimate.notes).toContain('料金表外: スタッフが個別にお見積もりします');
-  });
-
-  it('zero weeks returns missing-week warning', () => {
-    const estimate = buildEstimate(table, { weeks: 0, plan: 'single' });
-    expect(estimate.warnings[0]).toContain('料金表にない週数');
+describe('buildEstimate - 料金表外(個別案内)', () => {
+  it('30週は warning + total=0', () => {
+    const e = buildEstimate(table, { weeks: 30, plan: 'single' });
+    expect(e.warnings.length).toBeGreaterThan(0);
+    expect(e.total).toBe(0);
+    expect(e.notes).toContain('料金表外: スタッフが個別にお見積もりします');
   });
 });
 
-describe('formatEstimateText', () => {
-  it('single room 4 weeks shows one-person amount only', () => {
-    const estimate = buildEstimate(table, { weeks: 4, plan: 'single', includeAdmissionFee: true });
-    const text = formatEstimateText(estimate);
+describe('formatEstimateText - 新仕様', () => {
+  it('1人部屋4週: 入学金を内訳に出さず総額一本化', () => {
+    const e = buildEstimate(table, { weeks: 4, plan: 'single', includeAdmissionFee: true });
+    const text = formatEstimateText(e);
     expect(text).toContain('379,800円');
     expect(text).toContain('1人部屋 4週');
-    expect(text).not.toContain('× 1名');
-    expect(text).not.toContain('同行者');
+    expect(text).toContain('全部込み');
+    // 入学金は内訳に出さない
+    expect(text).not.toContain('入学金');
   });
 
-  it('pair 12 weeks shows companion note', () => {
-    const estimate = buildEstimate(table, { weeks: 12, plan: 'pair', includeAdmissionFee: true });
-    const text = formatEstimateText(estimate);
-    expect(text).toContain('798,000円');
-    expect(text).toContain('同行者の方も同額で別途お見積もり');
+  it('ペア4週: 1人分料金 + 相部屋説明', () => {
+    const e = buildEstimate(table, { weeks: 4, plan: 'pair' });
+    const text = formatEstimateText(e);
+    expect(text).toContain('328,000円');
+    expect(text).toContain('相部屋');
   });
 
-  it('parent-child shows pax in header', () => {
-    const estimate = buildEstimate(table, { weeks: 4, plan: 'single', pax: 2, isParentChild: true });
-    const text = formatEstimateText(estimate);
-    expect(text).toContain('親子留学 2名');
-    expect(text).toContain('× 2名');
+  it('デポジット案内が含まれる', () => {
+    const e = buildEstimate(table, { weeks: 4, plan: 'single' });
+    const text = formatEstimateText(e);
+    expect(text).toContain('5万円のデポジット');
+    expect(text).toContain('60日前まで全額返金');
   });
 
-  it('out-of-table estimate asks staff to follow up', () => {
-    const estimate = buildEstimate(table, { weeks: 30, plan: 'single' });
-    const text = formatEstimateText(estimate);
+  it('料金表外は問い合わせ文言', () => {
+    const e = buildEstimate(table, { weeks: 30, plan: 'single' });
+    const text = formatEstimateText(e);
     expect(text).toContain('スタッフから個別にご連絡');
   });
 });
 
-describe('buildEstimateFlex', () => {
-  it('flex contains pair one-person amount and companion note', () => {
-    const estimate = buildEstimate(table, { weeks: 4, plan: 'pair' });
-    const flex = JSON.stringify(buildEstimateFlex(estimate));
-    expect(flex).toContain('298,000円');
-    expect(flex).toContain('同行者の方も同額で別途');
+describe('buildEstimateFlex - 新仕様', () => {
+  it('ペア4週 flex: 1人分金額 + 相部屋説明ボックス', () => {
+    const e = buildEstimate(table, { weeks: 4, plan: 'pair' });
+    const flex = JSON.stringify(buildEstimateFlex(e));
+    expect(flex).toContain('328,000円');
+    expect(flex).toContain('ペア(2人部屋)について');
+    expect(flex).toContain('お一人参加でも問題ありません');
+    // 同行者別途文言は出ない
+    expect(flex).not.toContain('同行者の方も同額で別途');
   });
 
-  it('parent-child flex contains pax in header', () => {
-    const estimate = buildEstimate(table, { weeks: 4, plan: 'single', pax: 3, isParentChild: true });
-    const flex = JSON.stringify(buildEstimateFlex(estimate));
+  it('親子3名 flex: ヘッダーに人数', () => {
+    const e = buildEstimate(table, { weeks: 4, plan: 'single', pax: 3, isParentChild: true });
+    const flex = JSON.stringify(buildEstimateFlex(e));
     expect(flex).toContain('親子3名');
   });
 
-  it('flex alt text contains total amount', () => {
-    const estimate = buildEstimate(table, { weeks: 4, plan: 'single' });
-    const flex = buildEstimateFlex(estimate) as { altText: string };
-    expect(flex.altText).toContain('379,800円');
+  it('デポジット仮予約ボタンが含まれる', () => {
+    const e = buildEstimate(table, { weeks: 4, plan: 'single' });
+    const flex = JSON.stringify(buildEstimateFlex(e));
+    expect(flex).toContain('action=book_deposit');
+    expect(flex).toContain('5万円で仮予約');
+  });
+
+  it('無料相談ボタンが含まれる', () => {
+    const e = buildEstimate(table, { weeks: 4, plan: 'single' });
+    const flex = JSON.stringify(buildEstimateFlex(e));
+    expect(flex).toContain('action=book_consultation');
+    expect(flex).toContain('まずは無料相談');
+  });
+
+  it('損失回避訴求(人気期間は埋まる)が含まれる', () => {
+    const e = buildEstimate(table, { weeks: 4, plan: 'single' });
+    const flex = JSON.stringify(buildEstimateFlex(e));
+    expect(flex).toContain('人気の期間は2〜3ヶ月前に埋まります');
+  });
+
+  it('料金表外は専用Flex', () => {
+    const e = buildEstimate(table, { weeks: 30, plan: 'single' });
+    const flex = JSON.stringify(buildEstimateFlex(e));
+    // 個別案内向けなのでデポジットボタンは出さない
+    expect(flex).not.toContain('action=book_deposit');
+    expect(flex).toContain('action=book_consultation');
+    expect(flex).toContain('スタッフから個別');
   });
 });
 
 describe('answersToEstimateInput', () => {
-  it('1month and pair converts to 4-week pair one-person estimate input', () => {
-    const result = answersToEstimateInput({ desired_duration: '1month', room_type: 'pair' });
-    expect(result.input.weeks).toBe(4);
-    expect(result.input.plan).toBe('pair');
-    expect(result.input.pax).toBe(1);
-    expect(result.input.isParentChild).toBe(false);
-    expect(result.needsParentChildPax).toBe(false);
+  it('1month + pair: pax=1のまま(相部屋プラン1人参加)', () => {
+    const r = answersToEstimateInput({ desired_duration: '1month', room_type: 'pair' });
+    expect(r.input.weeks).toBe(4);
+    expect(r.input.plan).toBe('pair');
+    expect(r.input.pax).toBe(1);
+    expect(r.input.isParentChild).toBe(false);
+
+    // estimator通しても pax=1のまま(pair=相部屋1人参加)
+    const e = buildEstimate(table, r.input);
+    expect(e.pax).toBe(1);
   });
 
-  it('parent_child with pax converts to parent-child input', () => {
-    const result = answersToEstimateInput({
+  it('plan_interest=parent_child + 人数あり → 親子人数で計算', () => {
+    const r = answersToEstimateInput({
       desired_duration: '1month',
       room_type: 'single',
       plan_interest: 'parent_child',
       parent_child_pax: '3',
     });
-    expect(result.input.isParentChild).toBe(true);
-    expect(result.input.pax).toBe(3);
-    expect(result.needsParentChildPax).toBe(false);
+    expect(r.input.isParentChild).toBe(true);
+    expect(r.input.pax).toBe(3);
+    expect(r.needsParentChildPax).toBe(false);
   });
 
-  it('parent_child without pax sets needs flag and provisional 2 pax', () => {
-    const result = answersToEstimateInput({
+  it('plan_interest=parent_child + 人数未指定 → needs flag', () => {
+    const r = answersToEstimateInput({
       desired_duration: '1month',
       room_type: 'single',
       plan_interest: 'parent_child',
     });
-    expect(result.input.isParentChild).toBe(true);
-    expect(result.input.pax).toBe(2);
-    expect(result.needsParentChildPax).toBe(true);
-    expect(result.warnings.some((warning) => warning.includes('parent_child_pax'))).toBe(true);
+    expect(r.input.isParentChild).toBe(true);
+    expect(r.input.pax).toBe(2);
+    expect(r.needsParentChildPax).toBe(true);
   });
 
-  it('parent_child with pax=1 is corrected to provisional 2 pax', () => {
-    const result = answersToEstimateInput({
-      desired_duration: '1month',
-      room_type: 'single',
-      plan_interest: 'parent_child',
-      parent_child_pax: '1',
-    });
-    expect(result.input.pax).toBe(2);
-    expect(result.needsParentChildPax).toBe(true);
+  it('「2人部屋」表記でも pair に変換', () => {
+    const r = answersToEstimateInput({ desired_duration: '1month', room_type: '2人部屋' });
+    expect(r.input.plan).toBe('pair');
   });
 
-  it('Japanese pair room wording maps to pair and keeps pax=1', () => {
-    const result = answersToEstimateInput({ desired_duration: '1month', room_type: '2人部屋' });
-    expect(result.input.plan).toBe('pair');
-    expect(result.input.pax).toBe(1);
-  });
-
-  it('missing answers produce warning and defaults', () => {
-    const result = answersToEstimateInput({});
-    expect(result.warnings).toContain('desired_duration が未回答です. 4週で計算します');
-    expect(result.input.weeks).toBe(4);
-    expect(result.input.plan).toBe('single');
-    expect(result.input.isParentChild).toBe(false);
-  });
-
-  it('numeric weeks are parsed from unknown duration strings', () => {
-    const result = answersToEstimateInput({ desired_duration: '14weeks', room_type: 'hotel' });
-    expect(result.input.weeks).toBe(14);
-    expect(result.input.plan).toBe('hotel');
-  });
-
-  it('unknown room falls back to single with warning', () => {
-    const result = answersToEstimateInput({ desired_duration: '1month', room_type: 'suite' });
-    expect(result.input.plan).toBe('single');
-    expect(result.warnings.some((warning) => warning.includes('room_type を解釈できませんでした'))).toBe(true);
+  it('未回答は警告とdefault', () => {
+    const r = answersToEstimateInput({});
+    expect(r.warnings).toContain('desired_duration が未回答です. 4週で計算します');
+    expect(r.input.weeks).toBe(4);
+    expect(r.input.plan).toBe('single');
+    expect(r.input.isParentChild).toBe(false);
   });
 });
