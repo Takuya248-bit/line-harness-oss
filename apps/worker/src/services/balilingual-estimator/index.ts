@@ -212,54 +212,74 @@ export function buildEstimateFlex(estimate: Estimate): unknown {
       backgroundColor: '#FFF7ED',
       cornerRadius: 'md',
       contents: [
-        { type: 'text', text: '合計(税込・全部込み)', size: 'xs', color: '#9A3412' },
+        { type: 'text', text: '合計(税込・全部込み)', size: 'sm', color: '#9A3412' },
         {
           type: 'text',
           text: totalStr,
           weight: 'bold',
-          size: '3xl',
+          size: 'xxl',
           color: '#FF6600',
           margin: 'sm',
+          align: 'center',
         },
         ...(perPersonHint
-          ? [{ type: 'text', text: perPersonHint, size: 'xs', color: '#9A3412', margin: 'sm' }]
+          ? [{ type: 'text', text: perPersonHint, size: 'sm', color: '#9A3412', margin: 'sm', align: 'center', wrap: true }]
           : []),
       ],
     },
 
-    // 含まれるもの・別途必要なもの
+    // 含まれるもの (箇条書きで読みやすく)
     { type: 'separator', margin: 'lg' },
     {
-      type: 'text',
-      text: 'この金額に含まれるもの',
-      size: 'xs',
-      color: '#6B7280',
+      type: 'box',
+      layout: 'vertical',
       margin: 'md',
-      weight: 'bold',
+      paddingAll: '12px',
+      backgroundColor: '#F9FAFB',
+      cornerRadius: 'md',
+      contents: [
+        {
+          type: 'text',
+          text: '✅ この金額に含まれるもの',
+          weight: 'bold',
+          size: 'sm',
+          color: '#111827',
+        },
+        {
+          type: 'text',
+          text: '・授業料\n・食事(平日のみ)\n・宿舎\n・空港送迎\n・入学金\n・卒業後コミュニティ\n・学習/キャリア相談\n・ツアー/イベント紹介',
+          size: 'sm',
+          color: '#374151',
+          margin: 'sm',
+          wrap: true,
+        },
+      ],
     },
+    // 別途必要
     {
-      type: 'text',
-      text: '授業・宿舎・食事(平日)・空港送迎・卒業後コミュニティ・各種相談・ツアー紹介・入学金',
-      size: 'xs',
-      color: '#6B7280',
-      margin: 'sm',
-      wrap: true,
-    },
-    {
-      type: 'text',
-      text: '別途必要',
-      size: 'xs',
-      color: '#6B7280',
+      type: 'box',
+      layout: 'vertical',
       margin: 'md',
-      weight: 'bold',
-    },
-    {
-      type: 'text',
-      text: '航空券・ビザ・現地お小遣い(ホテル滞在プランは食事も別)',
-      size: 'xs',
-      color: '#6B7280',
-      margin: 'sm',
-      wrap: true,
+      paddingAll: '12px',
+      backgroundColor: '#FFFBEB',
+      cornerRadius: 'md',
+      contents: [
+        {
+          type: 'text',
+          text: '⚠️ 別途必要',
+          weight: 'bold',
+          size: 'sm',
+          color: '#92400E',
+        },
+        {
+          type: 'text',
+          text: '・航空券\n・ビザ料金\n・現地でのお小遣い' + (estimate.plan === 'hotel' ? '\n・食事(ホテルプランは食事なし)' : ''),
+          size: 'sm',
+          color: '#78350F',
+          margin: 'sm',
+          wrap: true,
+        },
+      ],
     },
     // ペア相部屋の説明(該当時のみ)
     ...(estimate.plan === 'pair' && !estimate.isParentChild
@@ -268,7 +288,7 @@ export function buildEstimateFlex(estimate: Estimate): unknown {
             type: 'box',
             layout: 'vertical',
             margin: 'md',
-            paddingAll: '10px',
+            paddingAll: '12px',
             backgroundColor: '#F0FDFA',
             cornerRadius: 'md',
             contents: [
@@ -276,13 +296,13 @@ export function buildEstimateFlex(estimate: Estimate): unknown {
                 type: 'text',
                 text: '👥 ペア(2人部屋)について',
                 weight: 'bold',
-                size: 'xs',
+                size: 'sm',
                 color: '#0F766E',
               },
               {
                 type: 'text',
-                text: 'ルームメイトとの相部屋プランです。お一人参加でも問題ありません(相部屋にすることで料金がお得になります)。',
-                size: 'xs',
+                text: 'ルームメイトとの相部屋プラン。\nお一人参加でもOK(相部屋にすることで1人部屋より料金がお得です)。',
+                size: 'sm',
                 color: '#134E4A',
                 margin: 'sm',
                 wrap: true,
@@ -312,8 +332,8 @@ export function buildEstimateFlex(estimate: Estimate): unknown {
         },
         {
           type: 'text',
-          text: '5万円のデポジットで空き枠を仮予約できます。渡航60日前まで全額返金、本予約時は全額充当。',
-          size: 'xs',
+          text: '5万円のデポジットで空き枠を仮予約できます。\n渡航60日前まで全額返金、本予約時は全額充当。',
+          size: 'sm',
           color: '#155E75',
           margin: 'sm',
           wrap: true,
@@ -324,11 +344,12 @@ export function buildEstimateFlex(estimate: Estimate): unknown {
     // 流れ(時間制約)
     {
       type: 'text',
-      text: '無料相談 → デポジット → 仮予約まで約10分です',
-      size: 'xs',
-      color: '#888888',
+      text: '無料相談 → デポジット → 仮予約まで約10分',
+      size: 'sm',
+      color: '#6B7280',
       margin: 'md',
       align: 'center',
+      wrap: true,
     },
   ];
 
@@ -337,6 +358,7 @@ export function buildEstimateFlex(estimate: Estimate): unknown {
     altText: `${estimate.planLabel} ${estimate.weeks}週: ${totalStr}(全部込み)`,
     contents: {
       type: 'bubble',
+      size: 'mega',
       header: {
         type: 'box',
         layout: 'vertical',

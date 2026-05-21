@@ -109,7 +109,7 @@ describe('buildEstimateFlex - 新仕様', () => {
     const flex = JSON.stringify(buildEstimateFlex(e));
     expect(flex).toContain('328,000円');
     expect(flex).toContain('ペア(2人部屋)について');
-    expect(flex).toContain('お一人参加でも問題ありません');
+    expect(flex).toContain('お一人参加でもOK');
     // 同行者別途文言は出ない
     expect(flex).not.toContain('同行者の方も同額で別途');
   });
