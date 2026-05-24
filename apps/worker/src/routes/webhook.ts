@@ -66,6 +66,13 @@ function isBaliRyugakuCenterDiagnosis(lineAccountId: string | null | undefined, 
   return lineAccountId === BALI_RYUGAKU_CENTER_ACCOUNT_ID && surveyId === BALI_RYUGAKU_CENTER_SURVEY_ID;
 }
 
+function isImportantSakurakoAction(text: string): boolean {
+  const value = text.trim();
+  if (!value) return false;
+
+  return /^(サービス一覧|改善講座|改善講座購入|顔出しなし設計|顔出しなしBrain|顔出しなしショートBrain|ショート設計Brain|設計思考Brain|顔出しなしショート設計思考|ショート教材診断|にじ特典|Brain本編|オーディション完全攻略|個別サポート|コンサル|数字|気になる)$/.test(value);
+}
+
 webhook.post('/webhook', async (c) => {
   const rawBody = await c.req.text();
   const signature = c.req.header('X-Line-Signature') ?? '';
@@ -880,8 +887,20 @@ async function handleEvent(
       // 単発「はい」等のノイズを抑えるため最低3文字。500文字でtruncate。
       const isFreeText =
         !matchesAutomationRule && !isAutoKeyword && !isTimeCommand && incomingText.trim().length >= 3;
+      const isImportantAction = isImportantSakurakoAction(incomingText);
+      const requiresHumanFollowup =
+        /(返金|解約|決済できない|決済エラー|購入できない|ログインできない|入れません|入金確認|請求書|領収書|キャンセル|アカウント停止|誤って購入|二重課金|間違えて買)/.test(incomingText);
 
-      if ((isPurchaseIntent || isPurchaseCompletion || isNotePurchase || isFreeText) && env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
+      if (
+        (isPurchaseIntent ||
+          isPurchaseCompletion ||
+          isNotePurchase ||
+          isFreeText ||
+          isImportantAction ||
+          requiresHumanFollowup) &&
+        env?.TELEGRAM_BOT_TOKEN &&
+        env?.TELEGRAM_CHAT_ID
+      ) {
         const { notifyTelegramSimple } = await import('../services/telegram-notify.js');
         // line_accounts.name と channel_id を取得 (channel_id は LINE Official Account の数値ID)
         const account = lineAccountId
@@ -914,6 +933,10 @@ async function handleEvent(
           header = `💰 購入完了報告 ${label}`;
         } else if (isPurchaseIntent) {
           header = '🛒 購入意思キーワードを検出';
+        } else if (isImportantAction) {
+          header = '📌 重要アクション';
+        } else if (requiresHumanFollowup) {
+          header = '🙋 人手返信が必要なメッセージ';
         } else {
           header = '💬 自由文メッセージ受信';
         }
@@ -929,10 +952,7 @@ async function handleEvent(
           lines.push('', `🔗 LINEで返信: ${chatLink}`);
         }
         const text = lines.join('\n');
-        // fire-and-forget
-        notifyTelegramSimple(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, text).catch((e) =>
-          console.error('telegram notify failed:', e),
-        );
+        await notifyTelegramSimple(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, text);
       }
     } catch (e) {
       console.error('telegram notify detect error:', e);
