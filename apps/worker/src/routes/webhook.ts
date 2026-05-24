@@ -73,6 +73,44 @@ function isImportantSakurakoAction(text: string): boolean {
   return /^(サービス一覧|改善講座|改善講座購入|顔出しなし設計|顔出しなしBrain|顔出しなしショートBrain|ショート設計Brain|設計思考Brain|顔出しなしショート設計思考|ショート教材診断|にじ特典|Brain本編|オーディション完全攻略|個別サポート|コンサル|数字|気になる)$/.test(value);
 }
 
+async function getAccountChatContext(db: D1Database, lineAccountId: string | null | undefined, lineUserId: string): Promise<{
+  accountLabel: string;
+  chatLink: string | null;
+}> {
+  const account = lineAccountId
+    ? await db
+        .prepare('SELECT name, channel_id FROM line_accounts WHERE id = ?')
+        .bind(lineAccountId)
+        .first<{ name: string; channel_id: string }>()
+    : null;
+  const accountLabel = account?.name || lineAccountId || 'default';
+  const chatLink =
+    account?.channel_id && lineUserId
+      ? `https://chat.line.biz/${account.channel_id}/chat/${lineUserId}`
+      : null;
+
+  return { accountLabel, chatLink };
+}
+
+function lineMessageTypeLabel(type: string): string {
+  switch (type) {
+    case 'image':
+      return '画像';
+    case 'video':
+      return '動画';
+    case 'audio':
+      return '音声';
+    case 'file':
+      return 'ファイル';
+    case 'sticker':
+      return 'スタンプ';
+    case 'location':
+      return '位置情報';
+    default:
+      return type;
+  }
+}
+
 webhook.post('/webhook', async (c) => {
   const rawBody = await c.req.text();
   const signature = c.req.header('X-Line-Signature') ?? '';
@@ -900,22 +938,8 @@ async function handleEvent(
         env?.TELEGRAM_CHAT_ID
       ) {
         const { notifyTelegramSimple } = await import('../services/telegram-notify.js');
-        // line_accounts.name と channel_id を取得 (channel_id は LINE Official Account の数値ID)
-        const account = lineAccountId
-          ? await db
-              .prepare('SELECT name, channel_id FROM line_accounts WHERE id = ?')
-              .bind(lineAccountId)
-              .first<{ name: string; channel_id: string }>()
-          : null;
-        const accountLabel = account?.name || lineAccountId || 'default';
-        // LINE Official Account Manager のチャット直リンク。
-        // 形式: https://chat.line.biz/{channelId}/chat/{lineUserId}
-        // 開くと該当友達のトーク画面に直行できる。
         const lineUserId = event.source.userId ?? '';
-        const chatLink =
-          account?.channel_id && lineUserId
-            ? `https://chat.line.biz/${account.channel_id}/chat/${lineUserId}`
-            : null;
+        const { accountLabel, chatLink } = await getAccountChatContext(db, lineAccountId, lineUserId);
 
         let header: string;
         if (isPurchaseCompletion || isNotePurchase) {
@@ -1028,6 +1052,68 @@ async function handleEvent(
       friendId: friend.id,
       eventData: { text: incomingText, matched, skipAutomations: matched },
     }, lineAccessToken, lineAccountId);
+
+    return;
+  }
+
+  if (event.type === 'message' && event.message.type !== 'text') {
+    const userId = event.source.type === 'user' ? event.source.userId : undefined;
+    if (!userId) return;
+
+    let friend = await getFriendByLineUserId(db, userId);
+    if (!friend) {
+      let profile;
+      try {
+        profile = await lineClient.getProfile(userId);
+      } catch (err) {
+        console.error('Failed to get profile for new non-text message user:', userId, err);
+      }
+      friend = await upsertFriend(db, {
+        lineUserId: userId,
+        displayName: profile?.displayName ?? null,
+        pictureUrl: profile?.pictureUrl ?? null,
+        statusMessage: profile?.statusMessage ?? null,
+      });
+      if (lineAccountId) {
+        await db.prepare('UPDATE friends SET line_account_id = ? WHERE id = ?')
+          .bind(lineAccountId, friend.id).run();
+      }
+    }
+
+    const message = event.message as { type: string; id?: string };
+    const messageLabel = lineMessageTypeLabel(message.type);
+    const content = `[${messageLabel}]${message.id ? ` messageId=${message.id}` : ''}`;
+
+    await db
+      .prepare(
+        `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
+         VALUES (?, ?, 'incoming', ?, ?, NULL, NULL, ?)`,
+      )
+      .bind(crypto.randomUUID(), friend.id, message.type, content, jstNow())
+      .run();
+
+    await upsertChatOnMessage(db, friend.id);
+
+    if (env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
+      try {
+        const { notifyTelegramSimple } = await import('../services/telegram-notify.js');
+        const { accountLabel, chatLink } = await getAccountChatContext(db, lineAccountId, userId);
+        const lines = [
+          '💬 チャットメッセージ受信',
+          `アカウント: ${accountLabel}`,
+          `送信者: ${friend.display_name ?? '(名前未取得)'}`,
+          '',
+          'メッセージ:',
+          `${messageLabel}が届きました`,
+        ];
+        if (chatLink) {
+          lines.push('', `🔗 LINEで返信: ${chatLink}`);
+        }
+        await notifyTelegramSimple(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, lines.join('\n'));
+      } catch (e) {
+        console.error('telegram non-text notify error:', e);
+      }
+    }
 
     return;
   }
