@@ -882,11 +882,10 @@ async function handleEvent(
         }
       }
 
-      // 自由文判定: 自動応答ルールに無い (= matchesAutomationRule=false) かつ
-      // ハードコードキーワードでもない かつ 配信時間コマンドでもない、ある程度の長さがあるテキスト。
-      // 単発「はい」等のノイズを抑えるため最低3文字。500文字でtruncate。
-      const isFreeText =
-        !matchesAutomationRule && !isAutoKeyword && !isTimeCommand && incomingText.trim().length >= 3;
+      // 通常チャット判定: 自動応答・ハードコードキーワード・配信時間コマンド以外は
+      // 短文も含めてTelegramへ通知する。
+      const isNonAutoChat =
+        !matchesAutomationRule && !isAutoKeyword && !isTimeCommand && incomingText.trim().length > 0;
       const isImportantAction = isImportantSakurakoAction(incomingText);
       const requiresHumanFollowup =
         /(返金|解約|決済できない|決済エラー|購入できない|ログインできない|入れません|入金確認|請求書|領収書|キャンセル|アカウント停止|誤って購入|二重課金|間違えて買)/.test(incomingText);
@@ -895,8 +894,7 @@ async function handleEvent(
         (isPurchaseIntent ||
           isPurchaseCompletion ||
           isNotePurchase ||
-          isFreeText ||
-          isImportantAction ||
+          isNonAutoChat ||
           requiresHumanFollowup) &&
         env?.TELEGRAM_BOT_TOKEN &&
         env?.TELEGRAM_CHAT_ID
@@ -938,7 +936,7 @@ async function handleEvent(
         } else if (requiresHumanFollowup) {
           header = '🙋 人手返信が必要なメッセージ';
         } else {
-          header = '💬 自由文メッセージ受信';
+          header = '💬 チャットメッセージ受信';
         }
         const lines = [
           header,
