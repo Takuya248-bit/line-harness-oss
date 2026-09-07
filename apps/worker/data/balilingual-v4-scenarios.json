@@ -1,0 +1,425 @@
+{
+  "line_account_id": "1e7f64a9-50f5-4356-8fcb-228204e167c8",
+  "line_oa": "@409ankpf",
+  "scenario_set": "balilingual-v4",
+  "is_active": false,
+  "scenarios": [
+    {
+      "id": "balilingual_s_01_v4",
+      "name": "S_01_v4",
+      "description": "診断完了後の見積り送付と相談予約促進。A_48h/B_5daysのAB分岐。",
+      "trigger_type": "tag_added",
+      "trigger_tag_id": "アンケート_回答済",
+      "steps": [
+        {
+          "id": "balilingual_s_01_v4_step_001",
+          "step_order": 1,
+          "delay_minutes": 0,
+          "delivery_hour": null,
+          "message_type": "flex",
+          "message_content": "診断ありがとうございます✅\n\n回答内容をもとに、今の条件で見たバリ留学の見積りをまとめました。\n\nまずは「自分が行くなら、どんな準備が必要そうか」を軽く見るくらいで大丈夫です。バリリンガルは、チャングーで英語を学びながら生活のリズムも整えやすい学校です🌴\n\n授業、滞在、食事、到着後の動きがまとまっているので、英語が久しぶりの方や海外生活が初めての方も、迷うところを減らして検討できます。\n\nすぐ決める必要はありません。気になる点があれば、見積りを見ながら一緒に整理しましょう。\n\n返信は短くて大丈夫です。相談で確認したい方、条件だけ見直したい方、資料でゆっくり見たい方、それぞれの進め方を選べます。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": null,
+          "condition_value": null,
+          "next_step_on_false": null,
+          "on_reach_tag_id": "見積送付済"
+        },
+        {
+          "id": "balilingual_s_01_v4_a_step_002",
+          "step_order": 2,
+          "delay_minutes": 240,
+          "delivery_hour": null,
+          "message_type": "flex",
+          "message_content": "お見積もり、確認できましたか？😊\n\n見積り直後は、行く気持ちが少し高まる一方で「航空券や生活費まで考えるとどうなる？」「英語力が足りなくても大丈夫？」と不安も出やすいタイミングです。\n\n実際に相談される方も、最初から決めきっているわけではありません。今の条件で現実的か、準備の順番は何からか、家族や職場にどう説明するかを一緒に整理しています。\n\n申込み前提ではなく、見積りの見方だけでも大丈夫です。迷っているところを短く確認したい方は、そのまま進めてください。\n\n返信は短くて大丈夫です。相談で確認したい方、条件だけ見直したい方、資料でゆっくり見たい方、それぞれの進め方を選べます。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"A_48h\"}",
+          "next_step_on_false": 7,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_01_v4_a_step_003",
+          "step_order": 3,
+          "delay_minutes": 1440,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "バリ留学でよく聞かれる不安を、先にまとめます🌴\n\n費用は「学校に払う分」だけでなく、現地での生活の見通しまで含めて見ると判断しやすくなります。見積りで分かりにくい部分は、相談で一緒に確認できます。\n\n英語力は、完璧にしてから行くものではありません。先生に聞き返せる環境や、生活の中で少しずつ使う場面があることが大事です。\n\n一人参加、同行者との参加、親子での検討など、生活面の心配も人によって違います。気になる点だけ選んで聞いてください。\n\n返信は短くて大丈夫です。相談で確認したい方、条件だけ見直したい方、資料でゆっくり見たい方、それぞれの進め方を選べます。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"A_48h\"}",
+          "next_step_on_false": 7,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_01_v4_a_step_004",
+          "step_order": 4,
+          "delay_minutes": 2880,
+          "delivery_hour": 19,
+          "message_type": "flex",
+          "message_content": "他の留学先やオンライン学習とも迷っている方へ。\n\n選び方は「安いか高いか」だけでは決めにくいです。英語だけを集中的に学びたいのか、海外で暮らす感覚も試したいのか、仕事や学校と両立しながら現実的に動きたいのかで、合う選択肢は変わります。\n\nバリリンガルは、学習と生活の距離が近いことが強みです。授業で覚えた表現を、日常の小さな場面で使ってみる。その繰り返しが「続けられそう」という安心につながります💡\n\nあなたの目的ならどれが合うか、見積りを見ながら整理できます。\n\n返信は短くて大丈夫です。相談で確認したい方、条件だけ見直したい方、資料でゆっくり見たい方、それぞれの進め方を選べます。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"A_48h\"}",
+          "next_step_on_false": 7,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_01_v4_a_step_005",
+          "step_order": 5,
+          "delay_minutes": 4320,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "ここまで見てくださってありがとうございます😊\n\nバリ留学は、一人で考え続けるほど不安が大きくなりやすいです。費用、時期、英語力、同行者や家族の予定。どれも、話してみると「今決めること」と「あとで決めてよいこと」に分けられます。\n\n無料相談では、見積りをもとに、現実的な進め方だけ確認します。強くおすすめする場ではなく、行ける可能性を一緒に判断する時間です。\n\n少しでも前向きなら、熱があるうちに短く確認しておくと後で動きやすくなります🌴\n\n返信は短くて大丈夫です。相談で確認したい方、条件だけ見直したい方、資料でゆっくり見たい方、それぞれの進め方を選べます。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"A_48h\"}",
+          "next_step_on_false": 7,
+          "on_reach_tag_id": "S_01_v4_完了"
+        },
+        {
+          "id": "balilingual_s_01_v4_b_step_002",
+          "step_order": 7,
+          "delay_minutes": 1440,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "昨日は診断ありがとうございました✅\n\nお見積もりは「今すぐ決めるため」ではなく、候補として現実味があるかを見るためのものです。少し時間を置いてから見直す方も多いので、焦らなくて大丈夫です。\n\nただ、気になる点をそのままにしておくと、費用も日程もぼんやりしたままになりやすいです。分からないところだけ先に聞いておくと、検討がかなり楽になります。\n\nバリリンガルでは、学習面だけでなく滞在や生活の不安もまとめて相談できます🌴\n\n返信は短くて大丈夫です。相談で確認したい方、条件だけ見直したい方、資料でゆっくり見たい方、それぞれの進め方を選べます。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"B_5days\"}",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_01_v4_b_step_003",
+          "step_order": 8,
+          "delay_minutes": 2880,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "検討中の方がよく迷うポイントです😊\n\n「英語が不安」\n最初から話せる必要はありません。聞き返せる授業環境と、生活の中で使う機会があることを大切にしています。\n\n「一人や同行者との生活が不安」\n参加の形によって、部屋、移動、過ごし方の心配は変わります。親子やペアで検討している場合も、無理のない形を一緒に考えられます。\n\n「費用の見方が不安」\n見積りだけで判断しにくい部分は、追加で確認できます。\n\n返信は短くて大丈夫です。相談で確認したい方、条件だけ見直したい方、資料でゆっくり見たい方、それぞれの進め方を選べます。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"B_5days\"}",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_01_v4_b_step_004",
+          "step_order": 9,
+          "delay_minutes": 4320,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "バリリンガルが合いやすいのは、「英語を勉強しなきゃ」だけでは続きにくい方です。\n\n授業で学ぶ、先生や仲間と話す、街で少し使ってみる。こうした小さな接点が増えると、英語がテスト勉強ではなく、生活の中の道具として感じやすくなります🌴\n\nもちろん、留学先は目的によって向き不向きがあります。短く集中したい方、暮らしも体験したい方、親子や同行者と安心して動きたい方で、見るべきポイントは違います。\n\n迷っている比較軸があれば、一緒に整理しましょう。\n\n返信は短くて大丈夫です。相談で確認したい方、条件だけ見直したい方、資料でゆっくり見たい方、それぞれの進め方を選べます。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"B_5days\"}",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_01_v4_b_step_005",
+          "step_order": 10,
+          "delay_minutes": 7200,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "最後に一度だけ、相談枠のご案内です😊\n\n今すぐ申込みたい方はもちろん、まだ検討中の方も、見積りをもとに話すと判断しやすくなります。特に、時期・予算・英語力・同行者の予定は、頭の中だけで考えるより、順番に分けた方が楽です。\n\n無料相談では「進めるなら何から」「今は保留なら何を確認しておくか」まで整理します。合わなければ見送りでも大丈夫です。\n\n必要な資料だけ受け取りたい方も、ここから選べます📩\n\n返信は短くて大丈夫です。相談で確認したい方、条件だけ見直したい方、資料でゆっくり見たい方、それぞれの進め方を選べます。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "metadata_equals",
+          "condition_value": "{\"key\":\"balilingual_welcome_v4_variant\",\"value\":\"B_5days\"}",
+          "next_step_on_false": null,
+          "on_reach_tag_id": "S_01_v4_完了"
+        }
+      ]
+    },
+    {
+      "id": "balilingual_s_02_v4_after_booking",
+      "name": "S_02_v4_予約後",
+      "description": "相談予約後のshow率最大化リマインド。",
+      "trigger_type": "tag_added",
+      "trigger_tag_id": "相談予約済",
+      "steps": [
+        {
+          "id": "balilingual_s_02_v4_step_001",
+          "step_order": 1,
+          "delay_minutes": 0,
+          "delivery_hour": null,
+          "message_type": "flex",
+          "message_content": "無料相談のご予約ありがとうございます✅\n\n当日は、見積りを見ながら「現実的に行けそうか」「何を先に確認すればよいか」を一緒に整理します。申込みをその場で決める必要はありません。\n\n事前に考えておくと話しやすいのは、行けそうな時期、予算の上限、不安なことの3つです。はっきり決まっていなくても大丈夫です。\n\n親子や同行者と検討している場合は、人数や生活面の心配もそのまま聞いてください。英語力に自信がない方も、今の状態から準備を考えられます😊\n\n当日は、今すぐ決める話だけでなく、保留する場合に何を確認しておくとよいかまで整理できます。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": null,
+          "condition_value": null,
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_02_v4_step_002",
+          "step_order": 2,
+          "delay_minutes": 1440,
+          "delivery_hour": 18,
+          "message_type": "text",
+          "message_content": "明日はバリリンガルの無料相談です🌴\n\n予約時間と参加URLを、念のためご確認ください。カレンダーにも入れておくと安心です。\n\n当日は、見積りの内容、渡航前に確認したいこと、現地での生活イメージを順番に見ていきます。完璧に準備していなくても問題ありません。\n\n「家族に説明できる材料がほしい」「同行者と予定を合わせたい」「まず不安だけ聞きたい」など、目的は人それぞれです。話しながら一緒に整理しましょう😊\n\n当日は、今すぐ決める話だけでなく、保留する場合に何を確認しておくとよいかまで整理できます。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "面談実施済",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_02_v4_step_003",
+          "step_order": 3,
+          "delay_minutes": 180,
+          "delivery_hour": null,
+          "message_type": "text",
+          "message_content": "本日の無料相談が近づいています✅\n\n費用、時期、英語力、現地生活、親子や同行者との参加など、気になることはそのまま聞いてください。うまく説明しようとしなくて大丈夫です。\n\n見積りを開ける方は手元にあるとスムーズですが、見られない場合もこちらで確認しながら進められます。\n\nもし急な予定変更が必要な場合は、このLINEに返信してください。無理なく話せるタイミングで大丈夫です。\n\n当日は、今すぐ決める話だけでなく、保留する場合に何を確認しておくとよいかまで整理できます。\n\n質問は一つだけでも大丈夫なので、気になることを残したままにしない形で使ってください。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "面談実施済",
+          "next_step_on_false": null,
+          "on_reach_tag_id": "S_02_v4_完了"
+        }
+      ]
+    },
+    {
+      "id": "balilingual_s_03_v4_carousel_no_response",
+      "name": "S_03_v4_カルーセル無反応",
+      "description": "S_01_v4完了後、相談予約なしの軽いリカバリ。",
+      "trigger_type": "tag_added",
+      "trigger_tag_id": "S_01_v4_完了",
+      "steps": [
+        {
+          "id": "balilingual_s_03_v4_step_001",
+          "step_order": 1,
+          "delay_minutes": 1440,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "少しだけ確認です😊\n\n見積りを見たあと、今いちばん止まっている理由はどれに近いですか？\n\nA. 費用の全体像がまだ不安\nB. 英語力が心配\nC. 時期や仕事・学校との調整が難しい\nD. 一人、親子、同行者との生活面が不安\nE. まだ何となく気になる段階\n\nアルファベットだけでも大丈夫です。返信いただければ、そのポイントに絞って短くお答えします。無理に予約へ進めるためではなく、検討しやすくするための確認です🌴\n\n今すぐ予約しない場合でも、疑問を一つ減らしておくと、後で検討を再開しやすくなります。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "相談予約済",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_03_v4_step_002",
+          "step_order": 2,
+          "delay_minutes": 7200,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "いきなり大きく決めなくても大丈夫です🌴\n\n留学は「行くか行かないか」だけで考えると重くなります。まずは、どのくらいなら生活に無理がないか、仕事や学校、家族の予定と合わせて考える方が現実的です。\n\n親子やペアで検討している場合も、全員が同じ不安を持っているとは限りません。学習、生活、費用、移動など、確認したいことを分けると話し合いやすくなります。\n\n条件を変えた見積りも作れます。気になる方は、今の希望だけ送ってください。\n\n今すぐ予約しない場合でも、疑問を一つ減らしておくと、後で検討を再開しやすくなります。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "相談予約済",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_03_v4_step_003",
+          "step_order": 3,
+          "delay_minutes": 20160,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "バリ留学は、今すぐ日程を決められなくても大丈夫です😊\n\n「いつか行きたい」段階でも、費用感、準備の順番、家族や職場に確認することだけ先に見ておくと、動ける時期が来たときに迷いにくくなります。\n\n予約や相談も、申込み前提ではありません。今の条件が合わなければ、時期や参加形態を変えて考えれば大丈夫です。\n\nこのまま情報だけ受け取りたい方も、必要な資料をメールで確認できます📩\n\n今すぐ予約しない場合でも、疑問を一つ減らしておくと、後で検討を再開しやすくなります。\n\n見送りかどうかを決める前に、判断材料だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "相談予約済",
+          "next_step_on_false": null,
+          "on_reach_tag_id": "phase_99"
+        }
+      ]
+    },
+    {
+      "id": "balilingual_s_04_v4_after_meeting",
+      "name": "S_04_v4_面談後",
+      "description": "面談実施後のクロージングフォロー。",
+      "trigger_type": "tag_added",
+      "trigger_tag_id": "面談実施済",
+      "steps": [
+        {
+          "id": "balilingual_s_04_v4_step_001",
+          "step_order": 1,
+          "delay_minutes": 1440,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "昨日は無料相談のお時間ありがとうございました😊\n\nお話しした内容をもとに、確定版の見積りと進め方をまとめました。まずは、相談で確認した条件とずれていないかをご確認ください。\n\nバリリンガルでは、英語学習だけでなく、滞在、生活、到着後の動きまで含めて準備を進めます。初めての海外生活、一人参加、親子や同行者との参加など、不安の種類に合わせて確認していきましょう🌴\n\n家族や職場に共有する場合は、この内容をそのまま使っていただいて大丈夫です。\n\n進める場合も、いったん保留する場合も、次に必要な確認だけ分かれば十分です。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_04_v4_step_002",
+          "step_order": 2,
+          "delay_minutes": 4320,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "その後、ご家族やスケジュールの確認はいかがですか？\n\n進める場合は、必要情報、支払い、渡航準備の順番をこちらから分かりやすくご案内します。急いで一気に決めるより、確認事項を一つずつ終わらせる方が安心です✅\n\nまだ迷っている場合も問題ありません。「家族にどう説明するか」「総額の見方をもう一度確認したい」「同行者の予定に合わせたい」など、止まっている点をそのまま送ってください。\n\n条件変更が必要なら、見積りも調整できます。\n\n進める場合も、いったん保留する場合も、次に必要な確認だけ分かれば十分です。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_04_v4_step_003",
+          "step_order": 3,
+          "delay_minutes": 10080,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "ご検討状況はいかがでしょうか？🌴\n\n面談後に止まりやすいのは、気持ちが冷めたからではなく、確認する相手や項目が増えるからです。費用、時期、英語力、家族や同行者の予定など、どれか一つ残っているだけで進めにくくなります。\n\nまだ決めきれなくても大丈夫です。迷っているポイントを一つだけ送っていただければ、そこに絞ってお答えします。\n\n短い返信で構いません。例:「費用」「時期」「英語力」「家族に相談中」\n\n進める場合も、いったん保留する場合も、次に必要な確認だけ分かれば十分です。\n\n不安が残っている場合は、手続きへ進む前にその部分だけ確認しましょう。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_04_v4_step_004",
+          "step_order": 4,
+          "delay_minutes": 20160,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "ご相談から少し時間が経ちましたので、最後に一度だけご連絡です😊\n\nこのまま進める場合は、必要な手続きと渡航準備の流れをご案内します。今の時期が合わなければ、条件を変えて再見積りすることもできます。\n\n「今回は見送り」でも大丈夫です。留学はタイミングが大事なので、無理に急ぐより、現実的に動ける形を選んだ方が安心です。\n\n進めたい、時期を変えたい、質問だけしたい、どれでもこのLINEに返信してください🌴\n\n進める場合も、いったん保留する場合も、次に必要な確認だけ分かれば十分です。\n\n不安が残っている場合は、手続きへ進む前にその部分だけ確認しましょう。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": "phase_99"
+        }
+      ]
+    },
+    {
+      "id": "balilingual_s_05_v4_long_term",
+      "name": "S_05_v4_長期",
+      "description": "休眠/長期検討者向け56日以上のナーチャリング。",
+      "trigger_type": "tag_added",
+      "trigger_tag_id": "phase_99",
+      "steps": [
+        {
+          "id": "balilingual_s_05_v4_step_001",
+          "step_order": 1,
+          "delay_minutes": 10080,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "お久しぶりです、バリリンガルです🌴\n\nバリ留学は、すぐ決める方もいれば、しばらく情報を集めてから動く方もいます。どちらでも大丈夫です。\n\n大切なのは、行ける時期が見えたときに「何から確認すればいいか」が分かっていること。費用、英語力、生活面、家族や同行者との予定など、事前に分けておくと検討しやすくなります。\n\nこれから少しずつ、違う角度でバリ留学のイメージをお届けします😊\n\n気になったタイミングで、短い返信からで大丈夫です。状況が変わったら、その条件に合わせて考え直せます。\n\n急がせるご案内ではないので、必要な情報だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_002",
+          "step_order": 2,
+          "delay_minutes": 20160,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "卒業生の方からよく聞くのは「英語そのものより、海外生活への怖さが減った」という声です。\n\n最初は、注文する、移動する、先生に聞き返すだけでも緊張します。でも毎日の授業と生活の中で少しずつ英語に触れると、完璧ではなくても伝えてみる感覚が育っていきます。\n\n英語を仕上げてから行く必要はありません。今の状態から、どんな準備をすると安心かを考えれば大丈夫です😊\n\n気になったタイミングで、短い返信からで大丈夫です。状況が変わったら、その条件に合わせて考え直せます。\n\n急がせるご案内ではないので、必要な情報だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_003",
+          "step_order": 3,
+          "delay_minutes": 30240,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "バリリンガルで大事にしているのは、授業だけで終わらない学び方です🌴\n\n教室で覚えた言葉を、先生との会話や日常の小さな場面で使ってみる。うまく言えなかったことを、次の授業でまた確認する。そんな流れがあると、英語が「勉強」だけでなく「生活で使うもの」に変わっていきます。\n\n一人でも、親子や同行者と一緒でも、自分のペースで慣れていける環境かどうかを確認してみてください。\n\n気になったタイミングで、短い返信からで大丈夫です。状況が変わったら、その条件に合わせて考え直せます。\n\n急がせるご案内ではないので、必要な情報だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_004",
+          "step_order": 4,
+          "delay_minutes": 50400,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "忙しい方ほど、「長く行けないから無理」と考えがちです。\n\nでも留学の目的は、人によって違います。英語学習のきっかけを作りたい方、海外生活を一度試したい方、親子や同行者との経験を大切にしたい方など、現実的な形は一つではありません。\n\nまずは、今の生活に無理なく入れられる条件を考えることが大切です。日程が確定していなくても、候補を整理するだけで前に進みます💡\n\n気になったタイミングで、短い返信からで大丈夫です。状況が変わったら、その条件に合わせて考え直せます。\n\n急がせるご案内ではないので、必要な情報だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_005",
+          "step_order": 5,
+          "delay_minutes": 80640,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "費用を考えるときは、授業料だけで比べると分かりにくくなります。\n\n現地での滞在、食事、移動、生活のしやすさ、困ったときの相談先まで含めて見ると、自分に合うか判断しやすくなります。\n\n特に親子や同行者と検討している場合は、人数分の動きや部屋の希望、安心して過ごせるかも大事なポイントです。\n\n見積りの条件を変えると、見え方が変わることもあります。必要なら再見積りで確認できます🌴\n\n気になったタイミングで、短い返信からで大丈夫です。状況が変わったら、その条件に合わせて考え直せます。\n\n急がせるご案内ではないので、必要な情報だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_006",
+          "step_order": 6,
+          "delay_minutes": 100800,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "一人参加が不安な方へ。\n\n最初から社交的である必要はありません。海外に行くだけでも緊張するのに、英語も人間関係も全部がんばろうとすると疲れてしまいます。\n\nバリリンガルでは、授業や生活の中で少しずつ話すきっかけを作れます。困ったことを相談できる相手がいるか、生活の動線が分かりやすいかも、安心して学ぶために大切です😊\n\n一人、親子、同行者ありなど、参加形態に合わせて確認しましょう。\n\n気になったタイミングで、短い返信からで大丈夫です。状況が変わったら、その条件に合わせて考え直せます。\n\n急がせるご案内ではないので、必要な情報だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_007",
+          "step_order": 7,
+          "delay_minutes": 120960,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "親子留学やペアでの留学を考えている方は、早めに条件を整理しておくと安心です。\n\n一人の留学と違って、学習目的、生活ペース、部屋の希望、食事や移動の心配など、確認することが少し増えます。だからこそ、最初から完璧に決めるより「何を相談すべきか」を先に見える化するのがおすすめです。\n\nまだ決定前でも大丈夫です。今の希望をもとに、無理のない考え方を一緒に整理できます🌴\n\n気になったタイミングで、短い返信からで大丈夫です。状況が変わったら、その条件に合わせて考え直せます。\n\n急がせるご案内ではないので、必要な情報だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_008",
+          "step_order": 8,
+          "delay_minutes": 161280,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "チャングーでの生活は、英語を学ぶだけでなく、暮らし方を見直すきっかけにもなります🌴\n\n授業、食事、休憩、街でのちょっとした会話。特別なことをしなくても、いつもの生活の中に英語との接点が増えていきます。\n\n日本で一人で勉強を続けるのが難しかった方も、環境が変わることで続けやすくなることがあります。\n\nバリの雰囲気や学校生活をもっと見たい方は、資料で確認できます📩\n\n気になったタイミングで、短い返信からで大丈夫です。状況が変わったら、その条件に合わせて考え直せます。\n\n急がせるご案内ではないので、必要な情報だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_009",
+          "step_order": 9,
+          "delay_minutes": 201600,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "英語学習が続かなかった方ほど、環境を変える意味があります。\n\n意志の弱さではなく、日常の中に英語を使う場面が少ないだけかもしれません。授業で学び、生活の中で少し使い、分からなかったことをまた聞く。この小さな繰り返しが続くと、英語への苦手意識は少しずつ薄くなります😊\n\n「自分でも大丈夫かな」と思う方ほど、今の英語力を前提に相談してみてください。\n\n気になったタイミングで、短い返信からで大丈夫です。状況が変わったら、その条件に合わせて考え直せます。\n\n急がせるご案内ではないので、必要な情報だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_010",
+          "step_order": 10,
+          "delay_minutes": 241920,
+          "delivery_hour": 12,
+          "message_type": "flex",
+          "message_content": "時期がまだ先でも、見積りだけ先に更新できます。\n\n希望条件は、時間が経つと変わることがあります。仕事や学校の予定、同行者の都合、家族の確認、予算の考え方など、最初の見積りから少しずれるのは自然です。\n\n古い条件のまま悩むより、今の希望で見直した方が判断しやすくなります。すぐ予約しなくても、比較用として持っておくだけで大丈夫です🌴\n\n気になったタイミングで、短い返信からで大丈夫です。状況が変わったら、その条件に合わせて考え直せます。\n\n急がせるご案内ではないので、必要な情報だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_011",
+          "step_order": 11,
+          "delay_minutes": 322560,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "最近よくいただく相談は、どれも特別なものではありません。\n\n「仕事や学校と両立できるか」\n「英語初心者でもついていけるか」\n「一人参加の生活面が不安」\n「親子や同行者と行く場合、何を確認すればいいか」\n「見積りの見方が分からない」\n\n同じところで止まっている場合は、短く返信いただければそこだけお答えします😊\n\nまだ検討中でも、質問だけでも大丈夫です。\n\n気になったタイミングで、短い返信からで大丈夫です。状況が変わったら、その条件に合わせて考え直せます。\n\n急がせるご案内ではないので、必要な情報だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": null
+        },
+        {
+          "id": "balilingual_s_05_v4_step_012",
+          "step_order": 12,
+          "delay_minutes": 403200,
+          "delivery_hour": 12,
+          "message_type": "text",
+          "message_content": "長くご案内を見てくださりありがとうございます😊\n\n今すぐの留学ではない場合も、必要なタイミングでまた声をかけてください。バリ留学は、行ける時期や一緒に行く人、仕事や学校の予定が見えてきたときに一気に現実的になります。\n\n無理に急がなくて大丈夫です。必要になったら、再見積り、資料、質問、相談予約のどれからでも始められます。\n\n配信を止めたい場合は「配信停止」と送ってください🌴\n\n気になったタイミングで、短い返信からで大丈夫です。状況が変わったら、その条件に合わせて考え直せます。\n\n急がせるご案内ではないので、必要な情報だけ受け取る使い方でも問題ありません。\n\nCTA: 相談を予約する / 条件を変えて再見積もり / 質問する / 詳しい資料をメールで受け取る",
+          "condition_type": "tag_not_exists",
+          "condition_value": "成約",
+          "next_step_on_false": null,
+          "on_reach_tag_id": "配信停止_v4"
+        }
+      ]
+    }
+  ]
+}

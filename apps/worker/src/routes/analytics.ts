@@ -234,21 +234,47 @@ analytics.get('/api/analytics/scenarios', async (c) => {
 });
 
 // ========== GET /api/analytics/funnel ==========
-// フェーズ別ファネル分析（phase_*タグベース）
+// フェーズ別ファネル分析（phase_*タグベース、ただしアカウント別カスタム対応）
+// アカウント別のフェーズタグ命名規約:
+//   - balilingual (1e7f64a9-...): 日本語タグ直接運用
+//   - default: phase_* prefix 運用
+export const BALILINGUAL_ACCOUNT_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
+export const ACCOUNT_PHASE_CONFIG: Record<string, { order: string[]; dormant: string; tagPattern: string }> = {
+  [BALILINGUAL_ACCOUNT_ID]: {
+    order: [
+      'アンケート_回答済',
+      'アンケート_相談希望',
+      '面談希望',
+      '面談済み',
+      '見積送付済',
+      'デポジット支払い希望',
+      '入金完了',
+      '留学済み',
+    ],
+    dormant: '今は忙しくて時間を作れないから。（仕事や育児等）',
+    tagPattern: '', // 名前列挙のみ
+  },
+};
+
+const DEFAULT_PHASE_ORDER = [
+  'phase_未相談',
+  'phase_相談済',
+  'phase_見積送付済',
+  'phase_入金待ち',
+  'phase_入金済',
+  'phase_休眠',
+];
+
 analytics.get('/api/analytics/funnel', async (c) => {
   try {
     const db = c.env.DB;
     const lineAccountId = c.req.query('lineAccountId');
 
-    // フェーズ順序定義（休眠は別枠）
-    const phaseOrder = [
-      'phase_未相談',
-      'phase_相談済',
-      'phase_見積送付済',
-      'phase_入金待ち',
-      'phase_入金済',
-      'phase_休眠',
-    ];
+    // アカウント別のフェーズ設定を選ぶ
+    const accountConfig = lineAccountId ? ACCOUNT_PHASE_CONFIG[lineAccountId] : undefined;
+    const phaseOrder = accountConfig?.order ?? DEFAULT_PHASE_ORDER;
+    const dormantPhase = accountConfig?.dormant ?? 'phase_休眠';
+    const allTrackedPhases = [...phaseOrder, dormantPhase];
 
     // 各フェーズの現在人数
     const accountJoin = lineAccountId
@@ -256,17 +282,18 @@ analytics.get('/api/analytics/funnel', async (c) => {
       : '';
     const phaseBinds = lineAccountId ? [lineAccountId] : [];
 
+    // タグ名で IN フィルタ (アカウント別)
+    const placeholders = allTrackedPhases.map(() => '?').join(',');
     const phaseRows = await db
       .prepare(
         `SELECT t.id as tag_id, t.name, COUNT(DISTINCT ft.friend_id) as count
          FROM friend_tags ft
          JOIN tags t ON t.id = ft.tag_id
          ${accountJoin}
-         WHERE t.name LIKE 'phase_%'
-         GROUP BY t.id, t.name
-         ORDER BY t.name`,
+         WHERE t.name IN (${placeholders})
+         GROUP BY t.id, t.name`,
       )
-      .bind(...phaseBinds)
+      .bind(...phaseBinds, ...allTrackedPhases)
       .all<{ tag_id: string; name: string; count: number }>();
 
     // フェーズデータをマップに変換
@@ -279,7 +306,7 @@ analytics.get('/api/analytics/funnel', async (c) => {
     const phases = phaseOrder.map((name) => phaseMap.get(name) ?? { name, count: 0, tag_id: '' });
 
     // コンバージョン率の算出（休眠を除くメインファネル）
-    const mainPhases = phaseOrder.filter((p) => p !== 'phase_休眠');
+    const mainPhases = phaseOrder.filter((p) => p !== dormantPhase);
     const conversions: Array<{ from: string; to: string; rate: number; count: number }> = [];
     for (let i = 0; i < mainPhases.length - 1; i++) {
       const fromPhase = phaseMap.get(mainPhases[i]);

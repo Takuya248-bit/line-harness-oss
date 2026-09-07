@@ -6,7 +6,6 @@ import {
   updateFriendFollowStatus,
   getFriendByLineUserId,
   getScenarios,
-  enrollFriendInScenario,
   getScenarioSteps,
   advanceFriendScenario,
   completeFriendScenario,
@@ -34,17 +33,83 @@ import {
 import type { SurveyChoice } from '@line-crm/db';
 import { classify } from '../../../../os/core/classifier.js';
 import { handleInquiry, tryQuickAnswer } from '../../../../os/modules/inquiry/handler.js';
-import { notifyDiscord } from '../services/discord-notify.js';
 import { generateDraftWithGroq } from '../services/groq-draft.js';
+import { notifyTelegram } from '../services/telegram-notify.js';
 import { fireEvent } from '../services/event-bus.js';
+import { enrollFriendInScenarioGuarded } from '../services/scenario-runner.js';
 import { buildMessage, expandVariables } from '../services/step-delivery.js';
 import { buildSurveyQuestionFlex } from '../services/survey-flex.js';
+import { handleBalilingualEstimatePostback } from '../services/balilingual-postback-handler.js';
 import { getAccessToken, getAvailableSlots, createCalendarEvent, deleteCalendarEvent } from '../services/google-calendar-sa.js';
 import { buildDateSelectionFlex, buildAvailableSlotsFlex, buildBookingConfirmFlex, buildBookingCancelledFlex } from '../services/booking-flex.js';
 import { extractCSKnowledge } from '../services/cs-knowledge-extractor.js';
+import { isBalilingualSurveyCompleteTag, sendBalilingualEstimate } from '../services/balilingual-send-estimate.js';
 import type { Env } from '../index.js';
 
+export const OS_BARILINGUAL_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
+export const BALI_RYUGAKU_CENTER_ID = '3e005b38-0adf-492f-9648-ee09d7c78424';
+export const LSTEP_MANAGED_ACCOUNT_IDS: readonly string[] = [OS_BARILINGUAL_ID, BALI_RYUGAKU_CENTER_ID];
+
 const webhook = new Hono<Env>();
+const BALI_RYUGAKU_CENTER_ACCOUNT_ID = '3e005b38-0adf-492f-9648-ee09d7c78424';
+const BALI_RYUGAKU_CENTER_SURVEY_ID = 'c7b163e7-5ed9-4fc3-ab1c-7678cb9b3273';
+const BALI_DIAGNOSIS_COMPLETION_TEXT = `診断が完了しました！
+
+ご回答ありがとうございます！😊
+あなたのご希望に合わせた最適な留学プランをカウンセラーが選定中です💡
+
+診断結果は、後ほど担当カウンセラーからお送りしますので、お待ちください！
+
+そのほか気になる点などがあれば、メッセージをお送りください。`;
+
+function isBaliRyugakuCenterDiagnosis(lineAccountId: string | null | undefined, surveyId: string): boolean {
+  return lineAccountId === BALI_RYUGAKU_CENTER_ACCOUNT_ID && surveyId === BALI_RYUGAKU_CENTER_SURVEY_ID;
+}
+
+function isImportantSakurakoAction(text: string): boolean {
+  const value = text.trim();
+  if (!value) return false;
+
+  return /^(サービス一覧|改善講座|改善講座購入|顔出しなし設計|顔出しなしBrain|顔出しなしショートBrain|ショート設計Brain|設計思考Brain|顔出しなしショート設計思考|ショート教材診断|にじ特典|Brain本編|オーディション完全攻略|個別サポート|コンサル|数字|気になる)$/.test(value);
+}
+
+async function getAccountChatContext(db: D1Database, lineAccountId: string | null | undefined, lineUserId: string): Promise<{
+  accountLabel: string;
+  chatLink: string | null;
+}> {
+  const account = lineAccountId
+    ? await db
+        .prepare('SELECT name, channel_id FROM line_accounts WHERE id = ?')
+        .bind(lineAccountId)
+        .first<{ name: string; channel_id: string }>()
+    : null;
+  const accountLabel = account?.name || lineAccountId || 'default';
+  const chatLink =
+    account?.channel_id && lineUserId
+      ? `https://chat.line.biz/${account.channel_id}/chat/${lineUserId}`
+      : null;
+
+  return { accountLabel, chatLink };
+}
+
+function lineMessageTypeLabel(type: string): string {
+  switch (type) {
+    case 'image':
+      return '画像';
+    case 'video':
+      return '動画';
+    case 'audio':
+      return '音声';
+    case 'file':
+      return 'ファイル';
+    case 'sticker':
+      return 'スタンプ';
+    case 'location':
+      return '位置情報';
+    default:
+      return type;
+  }
+}
 
 webhook.post('/webhook', async (c) => {
   const rawBody = await c.req.text();
@@ -94,10 +159,16 @@ webhook.post('/webhook', async (c) => {
     c.executionCtx.waitUntil(forwardPromise);
   }
 
-  // バリリンガル（Lステップ管理下）: handleEvent をスキップし、OS処理のみ実行
-  // handleEvent はリッチメニュー操作・シナリオ登録等を行うため、Lステップと競合する
-  const OS_BARILINGUAL_ID = '1e7f64a9-50f5-4356-8fcb-228204e167c8';
-  const isLstepManaged = matchedAccountId === null || matchedAccountId === OS_BARILINGUAL_ID;
+  // Lステップ管理下のアカウント: handleEvent をスキップし、OS処理のみ実行
+  // 2026-05-15 並走mode: バリリンガル本体(OS_BARILINGUAL_ID)を再度setに戻し、
+  // 約2週間のlstep+harness並走期間中はharness側のhandleEventを完全mute.
+  // friends/messages_log保存とOS分類だけ動かしてDB蓄積する.
+  // 並走終了時に下記setからOS_BARILINGUAL_IDを除外+lstep停止+LSTEP_WEBHOOK_URL削除で完全切替.
+  // バリ島留学センター(BALI_RYUGAKU_CENTER_ID)はまだLステップ運用継続中.
+  // 注意: matchedAccountId=null（destinationなし or アカウント不一致）は櫻子等の通常運用なので
+  // 必ず通常 handleEvent 経路を通すこと (旧ロジックで null も Lstep扱いになっていてTelegram通知漏れ)
+  const LSTEP_MANAGED_ACCOUNTS = new Set(LSTEP_MANAGED_ACCOUNT_IDS);
+  const isLstepManaged = matchedAccountId !== null && LSTEP_MANAGED_ACCOUNTS.has(matchedAccountId);
 
   if (isLstepManaged) {
     // OS処理のみ（Lステップと競合する handleEvent は実行しない）
@@ -141,7 +212,7 @@ webhook.post('/webhook', async (c) => {
               'INSERT INTO os_inquiry_log (line_user_id, message, module, confidence, status) VALUES (?, ?, ?, ?, ?)'
             ).bind(userId, text, classResult.module, classResult.confidence, 'received').run();
 
-            // ドラフト生成（Groq優先→Haikuフォールバック）
+            // ドラフト生成（テンプレート優先→Gemini）
             let draft: string | undefined;
             let draftSource: string | undefined;
             if (classResult.module === 'inquiry') {
@@ -149,70 +220,20 @@ webhook.post('/webhook', async (c) => {
               if (quickDraft) {
                 draft = quickDraft;
                 draftSource = 'テンプレート';
-              } else {
+              } else if (c.env.GROQ_API_KEY) {
                 try {
-                  // D1から友だち情報+履歴取得
-                  const friend = await db.prepare(
-                    'SELECT id, display_name, created_at FROM friends WHERE line_user_id = ? LIMIT 1'
-                  ).bind(userId).first<any>();
-                  const friendTags = friend ? await getFriendTags(db, friend.id) : [];
-                  const tagNames = friendTags.map((t: any) => t.name || t.tag_name).join(', ');
-                  const history = friend ? await db.prepare(
-                    'SELECT direction, content FROM messages_log WHERE friend_id = ? ORDER BY created_at DESC LIMIT 5'
-                  ).bind(friend.id).all() : { results: [] };
-                  const historyText = (history.results as any[]).reverse()
-                    .map((m: any) => `${m.direction === 'incoming' ? '友だち' : 'こちら'}: ${m.content}`)
-                    .join('\n');
-
-                  const systemPrompt = `あなたはバリリンガル（バリ島の英語留学学校）のLINE返信担当です。
-
-## 料金表
-【1人部屋】1週119,800円/2週219,800円/4週349,800円(人気)/8週629,000円/12週899,000円
-【ペア留学】1週98,000円/4週320,000円/8週539,000円
-【外泊】1週85,000円(最安)/4週246,000円/8週435,000円
-※入学金30,000円別途。含む:授業料・食事(朝昼)・空港送迎・卒業証書
-
-## 授業
-1日4コマ(50分×4)、マンツーマン3+グループ1(最大3名)、月〜金、初心者OK、卒業生200名超、バリ島チャングー
-
-## コース
-日常英会話/TOEIC/TOEFL/英検/ワーホリ準備/サーフィン×英語/ヨガRYT200/副業スキル×英語/親子留学
-
-## 返信ルール
-- 丁寧語ベース、「!」OK、絵文字最小限
-- 押し売りしない。聞き出す→提案
-- CTA1つ含める
-- 「スタッフ常駐」と書かない
-- 入学金30,000円別途を必ず伝える`;
-
-                  const userPrompt = `名前: ${friend?.display_name ?? '不明'} / タグ: ${tagNames || 'なし'}\n直近のやり取り:\n${historyText || 'なし'}\n\n今回のメッセージ: ${text}\n\n返信ドラフトを作成してください。`;
-
-                  // Groq優先
-                  if (c.env.GROQ_API_KEY) {
-                    draft = await generateDraftWithGroq({ systemPrompt, userPrompt, groqApiKey: c.env.GROQ_API_KEY }) ?? undefined;
-                    if (draft) draftSource = 'Groq';
-                  }
-                  // Haikuフォールバック
-                  if (!draft && c.env.ANTHROPIC_API_KEY) {
-                    const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'x-api-key': c.env.ANTHROPIC_API_KEY,
-                        'anthropic-version': '2023-06-01',
-                      },
-                      body: JSON.stringify({
-                        model: 'claude-haiku-4-5-20251001',
-                        max_tokens: 500,
-                        system: systemPrompt,
-                        messages: [{ role: 'user', content: userPrompt }],
-                      }),
-                    });
-                    if (apiRes.ok) {
-                      const data = await apiRes.json() as { content: { text: string }[] };
-                      draft = data.content?.[0]?.text;
-                      if (draft) draftSource = 'Haiku';
-                    }
+                  const friendRow = await db
+                    .prepare('SELECT id, display_name FROM friends WHERE line_user_id = ? LIMIT 1')
+                    .bind(userId)
+                    .first<{ id: string; display_name: string | null }>();
+                  const groqDraft = await buildGroqInquiryDraft(db, {
+                    message: text,
+                    groqApiKey: c.env.GROQ_API_KEY,
+                    friendId: friendRow?.id,
+                  });
+                  if (groqDraft) {
+                    draft = groqDraft;
+                    draftSource = 'Groq';
                   }
                 } catch (err) {
                   console.error('Draft generation error:', err);
@@ -220,18 +241,16 @@ webhook.post('/webhook', async (c) => {
               }
             }
 
-            // Discord通知
-            if (classResult.module === 'inquiry' && c.env.DISCORD_BOT_TOKEN && c.env.DISCORD_CHANNEL_ID) {
-              const friend = await db.prepare(
-                'SELECT display_name FROM friends WHERE line_user_id = ? LIMIT 1'
-              ).bind(userId).first<any>();
-              await notifyDiscord(c.env.DISCORD_BOT_TOKEN, c.env.DISCORD_CHANNEL_ID, {
-                username: friend?.display_name ?? userId,
+            // Telegram通知（inquiry のみ）
+            if (
+              classResult.module === 'inquiry' &&
+              c.env.TELEGRAM_BOT_TOKEN &&
+              c.env.TELEGRAM_CHAT_ID
+            ) {
+              await sendInquiryTelegramNotification(db, c.env, {
+                lineUserId: userId,
                 message: text,
-                module: classResult.module,
-                confidence: classResult.confidence,
-                draft,
-                draftSource,
+                draft: draft ?? '（ドラフト生成中）',
               });
             }
           } catch (err) {
@@ -332,11 +351,20 @@ async function handleEvent(
       console.error('Failed to record follow action:', err);
     }
 
-    // friend_add シナリオに登録（このアカウントのシナリオのみ）
+    await syncBaliLineRegistrationFromFollow(db, {
+      lineAccountId,
+      lineUserId: userId,
+      friendId: friend.id,
+      metadataSource: 'line_official_webhook',
+    });
+
+    // friend_add シナリオに登録（このアカウントのシナリオのみ・厳密一致）
     const scenarios = await getScenarios(db);
     for (const scenario of scenarios) {
-      // Only trigger scenarios belonging to this account (or unassigned for backward compat)
-      const scenarioAccountMatch = !scenario.line_account_id || !lineAccountId || scenario.line_account_id === lineAccountId;
+      // アカウント厳密一致のみ。NULL = 全アカウント発火 は廃止 (事故防止)。
+      const scenarioAccountMatch = lineAccountId
+        ? scenario.line_account_id === lineAccountId
+        : !scenario.line_account_id;
       if (scenario.trigger_type === 'friend_add' && scenario.is_active && scenarioAccountMatch) {
         try {
           const existing = await db
@@ -344,7 +372,8 @@ async function handleEvent(
             .bind(friend.id, scenario.id)
             .first<{ id: string }>();
           if (!existing) {
-            const friendScenario = await enrollFriendInScenario(db, friend.id, scenario.id);
+            const friendScenario = await enrollFriendInScenarioGuarded(db, friend.id, scenario.id);
+            if (!friendScenario) continue;
 
             // Immediate delivery: if the first step has delay=0, send it now via replyMessage (free)
             const steps = await getScenarioSteps(db, scenario.id);
@@ -383,6 +412,10 @@ async function handleEvent(
                 }
               } catch (err) {
                 console.error('Failed immediate delivery for scenario', scenario.id, err);
+                // replyToken 期限切れ等で失敗した場合、next_delivery_at=NULL のまま cron に
+                // 拾われなくなる。5分後の pushMessage にフォールバックさせる。
+                const fallbackDate = new Date(Date.now() + 9 * 60 * 60_000 + 5 * 60_000);
+                await advanceFriendScenario(db, friendScenario.id, 0, fallbackDate.toISOString().slice(0, -1) + '+09:00');
               }
             }
           }
@@ -432,6 +465,35 @@ async function handleEvent(
           .bind(lineAccountId, friend.id).run();
       }
       console.log(`Auto-registered friend on message: ${userId} → ${friend.id}`);
+    }
+
+    // 救済: follow event を取りこぼしていた友達向け。
+    // friend_add トリガーの active シナリオに未登録なら enroll する (1回だけ)。
+    // これで「LINE webhook 過負荷で follow event ロスト → シナリオ未起動」の被害を後追いで救う。
+    try {
+      const allScenarios = await getScenarios(db);
+      for (const scenario of allScenarios) {
+        if (scenario.trigger_type !== 'friend_add' || !scenario.is_active) continue;
+        // アカウント厳密一致のみ
+        const accountMatch = lineAccountId
+          ? scenario.line_account_id === lineAccountId
+          : !scenario.line_account_id;
+        if (!accountMatch) continue;
+        const exists = await db
+          .prepare(`SELECT id FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ?`)
+          .bind(friend.id, scenario.id)
+          .first();
+        if (!exists) {
+          try {
+            await enrollFriendInScenarioGuarded(db, friend.id, scenario.id);
+            console.log(`friend_add scenario rescue enroll: friend=${friend.id} scenario=${scenario.id}`);
+          } catch (e) {
+            console.error('rescue enroll failed:', e);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('rescue check error:', e);
     }
 
     const incomingText = textMessage.text;
@@ -485,21 +547,42 @@ async function handleEvent(
                 if (survey?.on_complete_tag_id) {
                   await addTagToFriend(db, friend.id, survey.on_complete_tag_id);
                 }
+                if (await isBalilingualSurveyCompleteTag(db, lineAccountId, survey?.on_complete_tag_id)) {
+                  await sendBalilingualEstimate({
+                    db,
+                    lineClient,
+                    lineAccountId,
+                    friendId: friend.id,
+                    lineUserId: userId,
+                    env,
+                  });
+                }
+                await syncBaliDiagnosisCompleteFromSurvey(db, env, {
+                  lineAccountId,
+                  lineUserId: userId,
+                  friendId: friend.id,
+                  surveyId,
+                  answers,
+                });
                 if (survey?.on_complete_scenario_id) {
-                  await enrollFriendInScenario(db, friend.id, survey.on_complete_scenario_id);
+                  await enrollFriendInScenarioGuarded(db, friend.id, survey.on_complete_scenario_id);
                 }
                 // Fire tag_added event for on_complete_tag
                 if (survey?.on_complete_tag_id) {
                   await fireEvent(db, 'tag_added', { friendId: friend.id, tagId: survey.on_complete_tag_id }, lineAccessToken, lineAccountId);
                 }
-                const completionFlex = {
-                  type: 'bubble',
-                  body: { type: 'box', layout: 'vertical', contents: [
-                    { type: 'text', text: 'ありがとうございました!', weight: 'bold', size: 'lg', color: '#F59E0B', align: 'center' },
-                    { type: 'text', text: '回答を受け付けました。', size: 'sm', color: '#64748b', align: 'center', margin: 'md', wrap: true },
-                  ], paddingAll: '20px' },
-                };
-                await lineClient.pushMessage(userId, [buildMessage('flex', JSON.stringify(completionFlex))]);
+                if (isBaliRyugakuCenterDiagnosis(lineAccountId, surveyId)) {
+                  await lineClient.pushMessage(userId, [buildMessage('text', BALI_DIAGNOSIS_COMPLETION_TEXT)]);
+                } else {
+                  const completionFlex = {
+                    type: 'bubble',
+                    body: { type: 'box', layout: 'vertical', contents: [
+                      { type: 'text', text: 'ありがとうございました!', weight: 'bold', size: 'lg', color: '#F59E0B', align: 'center' },
+                      { type: 'text', text: '回答を受け付けました。', size: 'sm', color: '#64748b', align: 'center', margin: 'md', wrap: true },
+                    ], paddingAll: '20px' },
+                  };
+                  await lineClient.pushMessage(userId, [buildMessage('flex', JSON.stringify(completionFlex))]);
+                }
               }
             }
           }
@@ -520,11 +603,57 @@ async function handleEvent(
       .run();
 
     // チャットを作成/更新（ユーザーの自発的メッセージのみ unread にする）
-    // ボタンタップ等の自動応答キーワードは除外
+    // ボタンタップ等の自動応答キーワードは除外。
+    // - hardcoded autoKeywords: バリリンガル等のレガシー
+    // - automations/auto_replies にマッチするキーワード: 自動応答が走るので通知不要
+    //   (このアカウントの自動応答ルールの keyword と incomingText が一致 or 含まれる場合)
     const autoKeywords = ['料金', '機能', 'API', 'フォーム', 'ヘルプ', 'UUID', 'UUID連携について教えて', 'UUID連携を確認', '配信時間', '導入支援を希望します', 'アカウント連携を見る', '体験を完了する', 'BAN対策を見る', '連携確認'];
     const isAutoKeyword = autoKeywords.some(k => incomingText === k);
     const isTimeCommand = /(?:配信時間|配信|届けて|通知)[はを]?\s*\d{1,2}\s*時/.test(incomingText);
-    if (!isAutoKeyword && !isTimeCommand) {
+
+    // 自動応答ルール (automations/auto_replies) でマッチするキーワード判定
+    // → 自動応答が走るメッセージは「自動的にchatをunread化しない」(通知抑制)。
+    let matchesAutomationRule = false;
+    try {
+      // アカウント厳密一致 (NULL = 全許可 は廃止)
+      const accountFilter = lineAccountId
+        ? { sql: ' AND line_account_id = ?', bind: [lineAccountId] }
+        : { sql: ' AND line_account_id IS NULL', bind: [] as string[] };
+
+      // 1. auto_replies に exact / contains で一致するか
+      const autoReplyHit = await db
+        .prepare(
+          `SELECT 1 FROM auto_replies
+           WHERE is_active = 1
+             AND ((match_type='exact' AND keyword = ?) OR (match_type='contains' AND ? LIKE '%' || keyword || '%'))${accountFilter.sql}
+           LIMIT 1`,
+        )
+        .bind(incomingText, incomingText, ...accountFilter.bind)
+        .first();
+      if (autoReplyHit) {
+        matchesAutomationRule = true;
+      } else {
+        // 2. automations(message_received) で keyword/matchType マッチするか
+        const automationHit = await db
+          .prepare(
+            `SELECT 1 FROM automations
+             WHERE is_active = 1 AND event_type = 'message_received'
+               AND (
+                 (json_extract(conditions,'$.matchType')='exact' AND json_extract(conditions,'$.keyword') = ?)
+                 OR
+                 (COALESCE(json_extract(conditions,'$.matchType'),'contains')='contains' AND ? LIKE '%' || json_extract(conditions,'$.keyword') || '%')
+               )${accountFilter.sql}
+             LIMIT 1`,
+          )
+          .bind(incomingText, incomingText, ...accountFilter.bind)
+          .first();
+        if (automationHit) matchesAutomationRule = true;
+      }
+    } catch (e) {
+      console.error('auto-rule match check failed:', e);
+    }
+
+    if (!isAutoKeyword && !isTimeCommand && !matchesAutomationRule) {
       await upsertChatOnMessage(db, friend.id);
     }
 
@@ -616,13 +745,19 @@ async function handleEvent(
       }
     }
 
-    // 自動返信チェック: auto_replies テーブル + automations テーブル両方を参照
+    // 自動返信チェック: auto_replies テーブルのみここで処理
+    // automations テーブル (event_type='message_received') は L817 の fireEvent →
+    // event-bus.ts:processAutomations で一本化処理する。ここで二重処理しない。
     // NOTE: Auto-replies use replyMessage (free, no quota) instead of pushMessage
     // The replyToken is only valid for ~1 minute after the message event
 
-    // 1. auto_replies テーブル（レガシー）
-    const autoReplyQuery = `SELECT * FROM auto_replies WHERE is_active = 1 ORDER BY created_at ASC`;
-    const autoReplies = await db.prepare(autoReplyQuery)
+    // auto_replies テーブル（レガシー）: アカウント厳密一致 (NULL = 全許可 は廃止)
+    const autoReplyQuery = lineAccountId
+      ? `SELECT * FROM auto_replies WHERE is_active = 1 AND line_account_id = ? ORDER BY created_at ASC`
+      : `SELECT * FROM auto_replies WHERE is_active = 1 AND line_account_id IS NULL ORDER BY created_at ASC`;
+    const autoReplies = await (lineAccountId
+      ? db.prepare(autoReplyQuery).bind(lineAccountId)
+      : db.prepare(autoReplyQuery))
       .all<{
         id: string;
         keyword: string;
@@ -632,19 +767,6 @@ async function handleEvent(
         range_min: string | null;
         range_max: string | null;
         is_active: number;
-        created_at: string;
-      }>();
-
-    // 2. automations テーブル（新: /api/automations で作成されたルール）
-    const automationsQuery = `SELECT * FROM automations WHERE is_active = 1 AND event_type = 'message_received' ORDER BY priority DESC, created_at ASC`;
-    const automationsResult = await db.prepare(automationsQuery)
-      .all<{
-        id: string;
-        name: string;
-        conditions: string;
-        actions: string;
-        is_active: number;
-        priority: number;
         created_at: string;
       }>();
 
@@ -710,77 +832,152 @@ async function handleEvent(
       }
     }
 
-    // Check automations table if no match in auto_replies
-    if (!matched) {
-      for (const automation of automationsResult.results) {
-        try {
-          const conditions = JSON.parse(automation.conditions);
-          const actions = JSON.parse(automation.actions);
+    // automations テーブル (event_type='message_received') は L817 fireEvent → event-bus.ts に一本化。
+    // ここで自前ループしない (二重発火防止)。
 
-          if (!conditions.keyword) continue;
+    // 購入意思キーワード検出 → Telegram即時通知 (取り逃し防止)。
+    // 自由文 (自動応答ルールにマッチしない通常メッセージ) → Telegram通知。
+    // この2つだけ通知が飛ぶことで「LINE公式アプリ通知うっとうしい」問題を解決。
+    // 加えて: 事後報告 (振込完了/購入しました等) を検出して購入者タグ付与+通知。
+    try {
+      const purchaseKeywords = [
+        '自己PRテンプレ申込',
+        '30分スポットコンサル',
+        'YouTubeアカウント開設',
+        'オーディション対策レポート',
+        'コンサルレポート制作',
+      ];
+      const intentRe = /(申込|購入したい|購入します|買いたい|欲しいです|注文)/;
+      const isPurchaseIntent =
+        purchaseKeywords.includes(incomingText.trim()) || intentRe.test(incomingText);
 
-          const isMatch =
-            conditions.matchType === 'exact'
-              ? incomingText === conditions.keyword
-              : incomingText.includes(conditions.keyword);
+      // 事後報告 (購入完了/振込完了系) 検出。
+      // 「振込完了」「振り込みました」「お支払いしました」「購入しました」「購入完了」等を含む。
+      const completionRe = /(振込完了|振り込みました|振込みました|お支払いしました|支払いました|入金しました|購入しました|購入完了|お振込しました|お振込みしました)/;
+      const isPurchaseCompletion = completionRe.test(incomingText);
 
-          if (isMatch) {
-            for (const action of actions) {
-              if (action.type === 'reply') {
-                const expandedContent = expandVariables(action.content, friend as { id: string; display_name: string | null; user_id: string | null }, workerUrl);
-                const replyMsg = buildMessage(action.messageType || 'text', expandedContent);
-                // Try replyMessage first, fall back to pushMessage if replyToken expired
-                try {
-                  await lineClient.replyMessage(event.replyToken, [replyMsg]);
-                } catch (replyErr) {
-                  console.error('replyMessage failed, trying pushMessage:', replyErr);
-                  await lineClient.pushMessage(event.source.userId!, [replyMsg]);
-                }
+      // どの商品に対する事後報告かを推測 (直近14日の発言+タグから)
+      // note明示語 ('note買った/note購入しました/noteありがとう' 等) は最優先で note判定。
+      let inferredProduct: 'front' | 'note' | 'brain' | 'consul' | null = null;
+      let inferredTagId: string | null = null;
+      const noteExplicitRe = /(note買いました|note買った|note購入しました|note購入完了|noteありがとう|noteお願い|note読みました|note記事買)/;
+      const isNotePurchase = noteExplicitRe.test(incomingText);
 
-                // CS→ナレッジ自動投入 (fire-and-forget)
-                if (env?.NOTION_API_KEY && env?.NOTION_KNOWLEDGE_DB_ID) {
-                  try {
-                    extractCSKnowledge(incomingText, action.content, {
-                      apiKey: env.NOTION_API_KEY,
-                      dbId: env.NOTION_KNOWLEDGE_DB_ID,
-                    }).catch((e) => console.error('extractCSKnowledge error:', e));
-                  } catch (e) {
-                    console.error('extractCSKnowledge setup error:', e);
-                  }
-                }
+      if (isPurchaseCompletion || isNotePurchase) {
+        // 直近14日の incoming で 商品キーワードを送っているか
+        const recent = await db
+          .prepare(
+            `SELECT content FROM messages_log
+             WHERE friend_id = ? AND direction = 'incoming'
+               AND created_at >= datetime('now','-14 days','+9 hours')
+             ORDER BY created_at DESC LIMIT 50`,
+          )
+          .bind(friend.id)
+          .all<{ content: string }>();
+        const recentText = (recent.results || []).map((r) => r.content).join('\n');
+        // タグも見る
+        const friendTagsRows = await db
+          .prepare(
+            `SELECT t.name FROM friend_tags ft JOIN tags t ON t.id = ft.tag_id WHERE ft.friend_id = ?`,
+          )
+          .bind(friend.id)
+          .all<{ name: string }>();
+        const tagNames = new Set((friendTagsRows.results || []).map((r) => r.name));
 
-                const outLogId = crypto.randomUUID();
-                await db
-                  .prepare(
-                    `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, delivery_type, created_at)
-                     VALUES (?, ?, 'outgoing', ?, ?, NULL, NULL, 'reply', ?)`,
-                  )
-                  .bind(outLogId, friend.id, action.messageType || 'text', action.content, jstNow())
-                  .run();
-              } else if (action.type === 'add_tag' && action.tagId && action.tagId !== 'UNKNOWN') {
-                // phase_*タグの排他制御: 新フェーズ付与時に旧フェーズを自動除去
-                const tagRow = await db.prepare('SELECT name FROM tags WHERE id = ?').bind(action.tagId).first<{name: string}>();
-                if (tagRow?.name?.startsWith('phase_')) {
-                  await db
-                    .prepare(`DELETE FROM friend_tags WHERE friend_id = ? AND tag_id IN (
-                      SELECT id FROM tags WHERE name LIKE 'phase_%' AND id != ?
-                    )`)
-                    .bind(friend.id, action.tagId)
-                    .run();
-                }
-                await db
-                  .prepare(`INSERT OR IGNORE INTO friend_tags (id, friend_id, tag_id, created_at) VALUES (?, ?, ?, ?)`)
-                  .bind(crypto.randomUUID(), friend.id, action.tagId, jstNow())
-                  .run();
-              }
-            }
-            matched = true;
-            break;
+        // 推測順序: noteの明示報告 > フロント商品 > Brain > note > コンサル
+        if (isNotePurchase) {
+          inferredProduct = 'note';
+          inferredTagId = '2ab8814a-f00b-4121-92d8-5f4e8c4b52ee'; // note購入者
+        } else if (/(自己PRテンプレ申込|自己PRテンプレ|自己PR診断書|テンプレート)/.test(recentText) || tagNames.has('自己PR興味')) {
+          inferredProduct = 'front';
+          inferredTagId = '93326d5f-3949-4564-817a-4d2bee9c6bf1'; // フロント商品購入者
+        } else if (tagNames.has('Brainクリック') || /(Brain|オーディション完全攻略|教材買|教材購入)/.test(recentText)) {
+          inferredProduct = 'brain';
+          inferredTagId = '8a691214-a04a-4ed9-b72f-e59a83f338a8'; // Brain購入者
+        } else if (
+          /(コンサルレポート|コンサルレポート申込|30分スポットコンサル|YouTubeアカウント開設|オーディション対策レポート)/.test(recentText) ||
+          tagNames.has('コンサル興味')
+        ) {
+          inferredProduct = 'consul';
+          // コンサル系専用タグは無いので汎用ログのみ
+          inferredTagId = null;
+        }
+
+        if (inferredTagId) {
+          try {
+            await addTagToFriend(db, friend.id, inferredTagId);
+            // tag_added イベント発火 (Brain購入者upsell シナリオ等の連鎖)
+            await fireEvent(
+              db,
+              'tag_added',
+              { friendId: friend.id, eventData: { tagId: inferredTagId, action: 'add' } },
+              lineAccessToken,
+              lineAccountId,
+            );
+          } catch (e) {
+            console.error('purchase completion tag add failed:', e);
           }
-        } catch (err) {
-          console.error('Failed to process automation rule', err);
         }
       }
+
+      // 通常チャット判定: 自動応答・ハードコードキーワード・配信時間コマンド以外は
+      // 短文も含めてTelegramへ通知する。
+      const isNonAutoChat =
+        !matchesAutomationRule && !isAutoKeyword && !isTimeCommand && incomingText.trim().length > 0;
+      const isImportantAction = isImportantSakurakoAction(incomingText);
+      const requiresHumanFollowup =
+        /(返金|解約|決済できない|決済エラー|購入できない|ログインできない|入れません|入金確認|請求書|領収書|キャンセル|アカウント停止|誤って購入|二重課金|間違えて買)/.test(incomingText);
+
+      if (
+        (isPurchaseIntent ||
+          isPurchaseCompletion ||
+          isNotePurchase ||
+          isNonAutoChat ||
+          requiresHumanFollowup) &&
+        env?.TELEGRAM_BOT_TOKEN &&
+        env?.TELEGRAM_CHAT_ID
+      ) {
+        const { notifyTelegramSimple } = await import('../services/telegram-notify.js');
+        const lineUserId = event.source.userId ?? '';
+        const { accountLabel, chatLink } = await getAccountChatContext(db, lineAccountId, lineUserId);
+
+        let header: string;
+        if (isPurchaseCompletion || isNotePurchase) {
+          const label = inferredProduct === 'front'
+            ? '(フロント商品購入者タグ付与済)'
+            : inferredProduct === 'note'
+              ? '(note購入者タグ付与済)'
+              : inferredProduct === 'brain'
+                ? '(Brain購入者タグ付与済)'
+                : inferredProduct === 'consul'
+                  ? '(コンサル系・タグ未付与)'
+                  : '(商品判別不能)';
+          header = `💰 購入完了報告 ${label}`;
+        } else if (isPurchaseIntent) {
+          header = '🛒 購入意思キーワードを検出';
+        } else if (isImportantAction) {
+          header = '📌 重要アクション';
+        } else if (requiresHumanFollowup) {
+          header = '🙋 人手返信が必要なメッセージ';
+        } else {
+          header = '💬 チャットメッセージ受信';
+        }
+        const lines = [
+          header,
+          `アカウント: ${accountLabel}`,
+          `送信者: ${friend.display_name ?? '(名前未取得)'}`,
+          '',
+          'メッセージ:',
+          incomingText.length > 500 ? incomingText.slice(0, 500) + '…' : incomingText,
+        ];
+        if (chatLink) {
+          lines.push('', `🔗 LINEで返信: ${chatLink}`);
+        }
+        const text = lines.join('\n');
+        await notifyTelegramSimple(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, text);
+      }
+    } catch (e) {
+      console.error('telegram notify detect error:', e);
     }
 
     // OS: classify, log, and notify (バリリンガルのみ)
@@ -805,7 +1002,7 @@ async function handleEvent(
         'received'
       ).run();
 
-      // ドラフト生成（inquiry のみ、Groq優先→Haikuフォールバック）
+      // ドラフト生成（テンプレート優先→Gemini）
       let draft: string | undefined;
       let draftSource: string | undefined;
       if (classResult.module === 'inquiry') {
@@ -813,80 +1010,16 @@ async function handleEvent(
         if (quickDraft) {
           draft = quickDraft;
           draftSource = 'テンプレート';
-        } else {
+        } else if (env?.GROQ_API_KEY) {
           try {
-            // D1から友だち情報+タグ+直近履歴を取得
-            const friendTags = friend ? await getFriendTags(db, friend.id) : [];
-            const tagNames = friendTags.map((t: any) => t.name || t.tag_name).join(', ');
-            const history = friend ? await db.prepare(
-              `SELECT direction, content, created_at FROM messages_log WHERE friend_id = ? ORDER BY created_at DESC LIMIT 5`
-            ).bind(friend.id).all() : { results: [] };
-            const historyText = (history.results as any[]).reverse()
-              .map((m) => `${m.direction === 'incoming' ? '友だち' : 'こちら'}: ${m.content}`)
-              .join('\n');
-
-            const systemPrompt = `あなたはバリリンガル（バリ島の英語留学学校）のLINE返信担当です。
-
-## 料金表
-【1人部屋】1週119,800円/2週219,800円/3週289,000円/4週349,800円(人気)/8週629,000円/12週899,000円
-【ペア留学】1週98,000円/2週189,000円/4週320,000円/8週539,000円
-【外泊】1週85,000円(最安)/2週163,000円/4週246,000円/8週435,000円
-※入学金30,000円が別途かかる。料金に含む:授業料・食事(朝昼)・空港送迎・卒業証書
-
-## 授業
-1日4コマ(50分×4)、マンツーマン3+グループ1(最大3名)、月〜金9:00-17:00
-インドネシア人講師(英語漬け)、初心者OK、卒業生200名以上、場所:バリ島チャングー
-
-## コース
-日常英会話/TOEIC対策(3ヶ月で200点UP)/TOEFL対策/英検対策/ワーホリ準備(1-3ヶ月)/サーフィン×英語(4-10月)/ヨガRYT200/副業スキル×英語/親子留学
-
-## 返信ルール
-- 親しみやすいが信頼感あり。丁寧語ベース
-- 「!」OK、絵文字は最小限
-- 押し売りしない。相手の状況を聞き出す→提案
-- CTAを1つ含める
-- 「スタッフ常駐」と書かない(寮にスタッフ常駐していない)
-- 入学金30,000円は別途かかることを必ず伝える`;
-
-            const userPrompt = `## 友だち情報
-名前: ${friend?.display_name ?? '不明'}
-タグ: ${tagNames || 'なし'}
-登録日: ${friend?.created_at ?? '不明'}
-
-## 直近のやり取り
-${historyText || 'なし'}
-
-## 今回のメッセージ
-${incomingText}
-
-上記を踏まえて返信ドラフトを作成してください。`;
-
-            // Groq優先
-            if (env?.GROQ_API_KEY) {
-              draft = await generateDraftWithGroq({ systemPrompt, userPrompt, groqApiKey: env.GROQ_API_KEY }) ?? undefined;
-              if (draft) draftSource = 'Groq';
-            }
-            // Haikuフォールバック
-            if (!draft && env?.ANTHROPIC_API_KEY) {
-              const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'x-api-key': env.ANTHROPIC_API_KEY,
-                  'anthropic-version': '2023-06-01',
-                },
-                body: JSON.stringify({
-                  model: 'claude-haiku-4-5-20251001',
-                  max_tokens: 500,
-                  system: systemPrompt,
-                  messages: [{ role: 'user', content: userPrompt }],
-                }),
-              });
-              if (apiRes.ok) {
-                const data = await apiRes.json() as { content: { text: string }[] };
-                draft = data.content?.[0]?.text;
-                if (draft) draftSource = 'Haiku';
-              }
+            const groqDraft = await buildGroqInquiryDraft(db, {
+              message: incomingText,
+              groqApiKey: env.GROQ_API_KEY,
+              friendId: friend?.id,
+            });
+            if (groqDraft) {
+              draft = groqDraft;
+              draftSource = 'Groq';
             }
           } catch (err) {
             console.error('Draft generation error:', err);
@@ -894,15 +1027,17 @@ ${incomingText}
         }
       }
 
-      // Discord通知（inquiry のみ。全メッセージ通知は騒がしいため）
-      if (classResult.module === 'inquiry' && env?.DISCORD_BOT_TOKEN && env?.DISCORD_CHANNEL_ID) {
-        await notifyDiscord(env.DISCORD_BOT_TOKEN, env.DISCORD_CHANNEL_ID, {
-          username: friend?.display_name ?? event.source?.userId ?? 'unknown',
+      // Telegram通知（inquiry のみ）
+      if (
+        classResult.module === 'inquiry' &&
+        draft &&
+        env?.TELEGRAM_BOT_TOKEN &&
+        env?.TELEGRAM_CHAT_ID
+      ) {
+        await sendInquiryTelegramNotification(db, env, {
+          lineUserId: event.source?.userId ?? 'unknown',
           message: incomingText,
-          module: classResult.module,
-          confidence: classResult.confidence,
           draft,
-          draftSource,
         });
       }
     } catch (err) {
@@ -910,10 +1045,75 @@ ${incomingText}
     }
 
     // イベントバス発火: message_received
+    // auto_replies で既にmatchしている場合は automations をスキップ (二重応答防止)。
+    // ただし他のリスナー (Webhook転送/スコアリング/通知) は呼ぶ必要があるので、
+    // payload に skipAutomations フラグを付けて伝達。
     await fireEvent(db, 'message_received', {
       friendId: friend.id,
-      eventData: { text: incomingText, matched },
+      eventData: { text: incomingText, matched, skipAutomations: matched },
     }, lineAccessToken, lineAccountId);
+
+    return;
+  }
+
+  if (event.type === 'message' && event.message.type !== 'text') {
+    const userId = event.source.type === 'user' ? event.source.userId : undefined;
+    if (!userId) return;
+
+    let friend = await getFriendByLineUserId(db, userId);
+    if (!friend) {
+      let profile;
+      try {
+        profile = await lineClient.getProfile(userId);
+      } catch (err) {
+        console.error('Failed to get profile for new non-text message user:', userId, err);
+      }
+      friend = await upsertFriend(db, {
+        lineUserId: userId,
+        displayName: profile?.displayName ?? null,
+        pictureUrl: profile?.pictureUrl ?? null,
+        statusMessage: profile?.statusMessage ?? null,
+      });
+      if (lineAccountId) {
+        await db.prepare('UPDATE friends SET line_account_id = ? WHERE id = ?')
+          .bind(lineAccountId, friend.id).run();
+      }
+    }
+
+    const message = event.message as { type: string; id?: string };
+    const messageLabel = lineMessageTypeLabel(message.type);
+    const content = `[${messageLabel}]${message.id ? ` messageId=${message.id}` : ''}`;
+
+    await db
+      .prepare(
+        `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, created_at)
+         VALUES (?, ?, 'incoming', ?, ?, NULL, NULL, ?)`,
+      )
+      .bind(crypto.randomUUID(), friend.id, message.type, content, jstNow())
+      .run();
+
+    await upsertChatOnMessage(db, friend.id);
+
+    if (env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
+      try {
+        const { notifyTelegramSimple } = await import('../services/telegram-notify.js');
+        const { accountLabel, chatLink } = await getAccountChatContext(db, lineAccountId, userId);
+        const lines = [
+          '💬 チャットメッセージ受信',
+          `アカウント: ${accountLabel}`,
+          `送信者: ${friend.display_name ?? '(名前未取得)'}`,
+          '',
+          'メッセージ:',
+          `${messageLabel}が届きました`,
+        ];
+        if (chatLink) {
+          lines.push('', `🔗 LINEで返信: ${chatLink}`);
+        }
+        await notifyTelegramSimple(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, lines.join('\n'));
+      } catch (e) {
+        console.error('telegram non-text notify error:', e);
+      }
+    }
 
     return;
   }
@@ -923,6 +1123,20 @@ ${incomingText}
     const postbackEvent = event as PostbackEvent;
     const postbackData = postbackEvent.postback.data;
     console.log('Postback received:', postbackData);
+
+    const userId = event.source.type === 'user' ? event.source.userId : undefined;
+    if (userId) {
+      const balilingualResult = await handleBalilingualEstimatePostback({
+        db,
+        lineClient,
+        replyToken: postbackEvent.replyToken,
+        userId,
+        lineAccountId,
+        postbackData,
+        env,
+      });
+      if (balilingualResult.handled) return;
+    }
 
     // Survey postback: survey:{surveyId}:{questionId}:{choiceId}
     if (postbackData.startsWith('survey:')) {
@@ -1035,6 +1249,23 @@ ${incomingText}
           if (survey?.on_complete_tag_id) {
             await addTagToFriend(db, friend.id, survey.on_complete_tag_id);
           }
+          if (await isBalilingualSurveyCompleteTag(db, lineAccountId, survey?.on_complete_tag_id)) {
+            await sendBalilingualEstimate({
+              db,
+              lineClient,
+              lineAccountId,
+              friendId: friend.id,
+              lineUserId: userId,
+              env,
+            });
+          }
+          await syncBaliDiagnosisCompleteFromSurvey(db, env, {
+            lineAccountId,
+            lineUserId: userId,
+            friendId: friend.id,
+            surveyId,
+            answers,
+          });
 
           // Score-based tag assignment
           if (survey?.score_tag_rules) {
@@ -1053,24 +1284,31 @@ ${incomingText}
 
           // Start on_complete_scenario_id
           if (survey?.on_complete_scenario_id) {
-            await enrollFriendInScenario(db, friend.id, survey.on_complete_scenario_id);
-
-            // Send first step of the scenario
-            const steps = await getScenarioSteps(db, survey.on_complete_scenario_id);
-            if (steps.length > 0) {
-              const firstStep = steps[0];
-              const expandedContent = expandVariables(firstStep.message_content, friend as { id: string; display_name: string | null; user_id: string | null });
-              const message = buildMessage(firstStep.message_type, expandedContent);
-              try {
-                await lineClient.pushMessage(userId, [message]);
-              } catch (err) {
-                console.error('Failed to send scenario first step after survey completion', err);
+            const friendScenario = await enrollFriendInScenarioGuarded(db, friend.id, survey.on_complete_scenario_id);
+            if (friendScenario) {
+              // Send first step of the scenario
+              const steps = await getScenarioSteps(db, survey.on_complete_scenario_id);
+              if (steps.length > 0) {
+                const firstStep = steps[0];
+                const expandedContent = expandVariables(firstStep.message_content, friend as { id: string; display_name: string | null; user_id: string | null });
+                const message = buildMessage(firstStep.message_type, expandedContent);
+                try {
+                  await lineClient.pushMessage(userId, [message]);
+                } catch (err) {
+                  console.error('Failed to send scenario first step after survey completion', err);
+                }
               }
             }
           }
 
           // Send completion message (with score if available)
           try {
+            if (isBaliRyugakuCenterDiagnosis(lineAccountId, surveyId)) {
+              await lineClient.replyMessage(postbackEvent.replyToken, [
+                buildMessage('text', BALI_DIAGNOSIS_COMPLETION_TEXT),
+              ]);
+              return;
+            }
             let completionFlex;
             if (survey?.score_tag_rules) {
               const totalScore = await calculateSurveyScore(db, surveyId, answers);
@@ -1100,6 +1338,43 @@ ${incomingText}
       } catch (err) {
         console.error('Failed to process survey postback', err);
       }
+    }
+
+    const richMenuText = extractRichMenuDisplayText(postbackData);
+    if (richMenuText) {
+      const userId = event.source.type === 'user' ? event.source.userId : undefined;
+      if (!userId) return;
+
+      let friend = await getFriendByLineUserId(db, userId);
+      if (!friend) {
+        let profile;
+        try { profile = await lineClient.getProfile(userId); } catch {}
+        friend = await upsertFriend(db, {
+          lineUserId: userId,
+          displayName: profile?.displayName ?? null,
+          pictureUrl: profile?.pictureUrl ?? null,
+          statusMessage: profile?.statusMessage ?? null,
+        });
+        if (lineAccountId) {
+          await db.prepare('UPDATE friends SET line_account_id = ? WHERE id = ?')
+            .bind(lineAccountId, friend.id).run();
+        }
+      }
+
+      await db
+        .prepare(
+          `INSERT OR IGNORE INTO messages_log (id, friend_id, direction, message_type, content, created_at)
+           VALUES (?, ?, 'incoming', 'text', ?, ?)`,
+        )
+        .bind(crypto.randomUUID(), friend.id, richMenuText, jstNow())
+        .run();
+      await upsertChatOnMessage(db, friend.id);
+
+      await fireEvent(db, 'message_received', {
+        friendId: friend.id,
+        eventData: { text: richMenuText, source: 'rich_menu_postback' },
+      }, lineAccessToken, lineAccountId);
+      return;
     }
 
     // Booking postback: booking_start
@@ -1286,8 +1561,198 @@ ${incomingText}
       }
     }
 
+    // CTA choice postback: cta_choice:{trackedLinkId}
+    // ボタン押下→tag付与+scenario enroll+reply(redirect URL or 受付完了)
+    // tracked_links テーブルの tag_id, scenario_id, original_url を引いて自動処理
+    if (postbackData.startsWith('cta_choice:')) {
+      const userId = event.source.type === 'user' ? event.source.userId : undefined;
+      if (!userId) { console.log('cta_choice: no userId'); return; }
+
+      const linkId = postbackData.substring('cta_choice:'.length);
+      if (!linkId) { console.log('cta_choice: no linkId'); return; }
+
+      try {
+        // friend identification (auto-register if missing, like survey postback)
+        let friend = await getFriendByLineUserId(db, userId);
+        if (!friend) {
+          let profile;
+          try { profile = await lineClient.getProfile(userId); } catch {}
+          friend = await upsertFriend(db, {
+            lineUserId: userId,
+            displayName: profile?.displayName ?? null,
+            pictureUrl: profile?.pictureUrl ?? null,
+            statusMessage: profile?.statusMessage ?? null,
+          });
+          if (lineAccountId) {
+            await db.prepare('UPDATE friends SET line_account_id = ? WHERE id = ?')
+              .bind(lineAccountId, friend.id).run();
+          }
+        }
+
+        // Look up tracked_link
+        const link = await db
+          .prepare('SELECT id, name, original_url, tag_id, scenario_id FROM tracked_links WHERE id = ? AND is_active = 1')
+          .bind(linkId)
+          .first<{ id: string; name: string; original_url: string; tag_id: string | null; scenario_id: string | null }>();
+        if (!link) {
+          console.log('cta_choice: tracked_link not found:', linkId);
+          return;
+        }
+
+        // Record click (anonymized to friend)
+        const clickId = crypto.randomUUID();
+        await db
+          .prepare('INSERT INTO link_clicks (id, tracked_link_id, friend_id, clicked_at) VALUES (?, ?, ?, ?)')
+          .bind(clickId, link.id, friend.id, jstNow())
+          .run();
+        await db
+          .prepare('UPDATE tracked_links SET click_count = click_count + 1, updated_at = ? WHERE id = ?')
+          .bind(jstNow(), link.id)
+          .run();
+
+        // Tag assignment
+        if (link.tag_id) {
+          await addTagToFriend(db, friend.id, link.tag_id);
+          // Fire tag_added event so trigger-based scenarios can react
+          await fireEvent(
+            db,
+            'tag_added',
+            { friendId: friend.id, tagId: link.tag_id },
+            lineAccessToken,
+            lineAccountId,
+          );
+        }
+
+        // Scenario enrollment + immediate Step1 delivery (delay=0 step is replied here)
+        // Time-window restriction in enrollFriendInScenario only applies to delay>0 steps.
+        // For delay=0, we deliver Step1 inline as the reply, and step-delivery cron will
+        // pick up subsequent steps based on their delay.
+        let stepReplyMessage: ReturnType<typeof buildMessage> | null = null;
+        if (link.scenario_id) {
+          const existing = await db
+            .prepare('SELECT id FROM friend_scenarios WHERE friend_id = ? AND scenario_id = ?')
+            .bind(friend.id, link.scenario_id)
+            .first<{ id: string }>();
+          let canDeliverStep1 = Boolean(existing);
+          if (!existing) {
+            const friendScenario = await enrollFriendInScenarioGuarded(db, friend.id, link.scenario_id);
+            canDeliverStep1 = Boolean(friendScenario);
+          }
+
+          // Get Step1 to deliver inline
+          const step1 = canDeliverStep1 ? await db
+            .prepare(
+              `SELECT id, message_type, message_content
+               FROM scenario_steps
+               WHERE scenario_id = ? AND step_order = 1
+               LIMIT 1`,
+            )
+            .bind(link.scenario_id)
+            .first<{ id: string; message_type: string; message_content: string }>() : null;
+          if (step1) {
+            const expandedContent = expandVariables(
+              step1.message_content,
+              friend as { id: string; display_name: string | null; user_id: string | null },
+              workerUrl,
+            );
+            stepReplyMessage = buildMessage(step1.message_type, expandedContent);
+
+            // Mark Step1 as delivered: advance current_step_order to 1 and compute next_delivery_at for Step2
+            const step2 = await db
+              .prepare(
+                `SELECT id, delay_minutes, delivery_hour
+                 FROM scenario_steps
+                 WHERE scenario_id = ? AND step_order = 2
+                 LIMIT 1`,
+              )
+              .bind(link.scenario_id)
+              .first<{ id: string; delay_minutes: number; delivery_hour: number | null }>();
+
+            let nextDeliveryAt: string | null = null;
+            if (step2 && step2.delay_minutes > 0) {
+              const rawDate = new Date(Date.now() + 9 * 60 * 60_000 + step2.delay_minutes * 60_000);
+              if (step2.delivery_hour !== null && step2.delivery_hour !== undefined) {
+                rawDate.setUTCHours(step2.delivery_hour, 0, 0, 0);
+              } else {
+                const hours = rawDate.getUTCHours();
+                if (hours < 9 || hours >= 21) {
+                  if (hours >= 21) rawDate.setUTCDate(rawDate.getUTCDate() + 1);
+                  rawDate.setUTCHours(9, 0, 0, 0);
+                }
+              }
+              nextDeliveryAt = rawDate.toISOString().slice(0, -1) + '+09:00';
+            }
+
+            await db
+              .prepare(
+                `UPDATE friend_scenarios
+                 SET current_step_order = 1, next_delivery_at = ?, updated_at = ?
+                 WHERE friend_id = ? AND scenario_id = ?`,
+              )
+              .bind(nextDeliveryAt, jstNow(), friend.id, link.scenario_id)
+              .run();
+
+            // Log Step1 delivery
+            const logId = crypto.randomUUID();
+            await db
+              .prepare(
+                `INSERT INTO messages_log (id, friend_id, direction, message_type, content, scenario_step_id, created_at)
+                 VALUES (?, ?, 'outgoing', ?, ?, ?, ?)`,
+              )
+              .bind(logId, friend.id, step1.message_type, step1.message_content, step1.id, jstNow())
+              .run();
+          }
+        }
+
+        // Reply with Step1 content (or fallback ack if no scenario)
+        const replyMsg = stepReplyMessage ?? buildMessage('text', '受付しました🌸');
+        try {
+          await lineClient.replyMessage(postbackEvent.replyToken, [replyMsg]);
+        } catch {
+          await lineClient.pushMessage(userId, [replyMsg]);
+        }
+
+        // Telegram notification: who pressed which CTA button (await to ensure fetch completes before isolate ends)
+        if (env?.TELEGRAM_BOT_TOKEN && env?.TELEGRAM_CHAT_ID) {
+          try {
+            const { notifyTelegramSimple } = await import('../services/telegram-notify.js');
+            const userName = friend.display_name || 'unknown';
+            const text = [
+              `🌸 CTAボタン押下`,
+              `👤 ${userName}`,
+              `🔘 ${link.name}`,
+              `🏷️ tag: ${link.tag_id ? 'attached' : '-'}`,
+              `📋 scenario: ${link.scenario_id ? 'enrolled+Step1 sent' : '-'}`,
+              `🔗 ${link.original_url}`,
+            ].join('\n');
+            console.log('cta_choice: about to send Telegram notification');
+            await notifyTelegramSimple(env.TELEGRAM_BOT_TOKEN, env.TELEGRAM_CHAT_ID, text);
+            console.log('cta_choice: Telegram notification sent');
+          } catch (e) {
+            console.error('cta_choice telegram notify failed:', e);
+          }
+        } else {
+          console.log('cta_choice: Telegram env missing', { tokenPresent: !!env?.TELEGRAM_BOT_TOKEN, chatIdPresent: !!env?.TELEGRAM_CHAT_ID });
+        }
+      } catch (err) {
+        console.error('Failed to process cta_choice postback', err);
+      }
+    }
+
     return;
   }
+}
+
+function extractRichMenuDisplayText(postbackData: string): string | null {
+  try {
+    const parsed = JSON.parse(postbackData) as { provider?: string; text?: unknown };
+    if (parsed.provider === 'lml' && typeof parsed.text === 'string' && parsed.text.trim()) {
+      return parsed.text.trim();
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 // スコア診断結果のFlexメッセージ
@@ -1346,6 +1811,316 @@ async function forwardToLstep(url: string, rawBody: string, signature: string): 
   } catch (err) {
     console.error('Lstep forward error:', err);
   }
+}
+
+async function syncBaliLineRegistrationFromFollow(
+  db: D1Database,
+  input: {
+    lineAccountId: string | null;
+    lineUserId: string;
+    friendId: string;
+    metadataSource: string;
+  },
+): Promise<void> {
+  const baliLineAccountId = '3e005b38-0adf-492f-9648-ee09d7c78424';
+  const baliAccountKey = 'bali_ryugaku_center';
+  if (input.lineAccountId !== baliLineAccountId) return;
+
+  try {
+    await db
+      .prepare(
+        `CREATE TABLE IF NOT EXISTS bali_line_registrations (
+          id TEXT PRIMARY KEY,
+          account_id TEXT NOT NULL,
+          line_user_id TEXT NOT NULL,
+          friend_id TEXT,
+          click_id TEXT,
+          device_id TEXT,
+          source TEXT,
+          cta_position TEXT,
+          lp_variant TEXT,
+          registered_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours')),
+          created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+        )`,
+      )
+      .run();
+
+    const existing = await db
+      .prepare('SELECT id FROM bali_line_registrations WHERE account_id = ? AND line_user_id = ? LIMIT 1')
+      .bind(baliAccountKey, input.lineUserId)
+      .first<{ id: string }>();
+    if (existing) return;
+
+    await db
+      .prepare(
+        `INSERT INTO bali_line_registrations (
+          id, account_id, line_user_id, friend_id, source, registered_at
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(crypto.randomUUID(), baliAccountKey, input.lineUserId, input.friendId, input.metadataSource, jstNow())
+      .run();
+  } catch (err) {
+    console.error('Bali line registration sync failed:', err);
+  }
+}
+
+async function syncBaliDiagnosisCompleteFromSurvey(
+  db: D1Database,
+  env: Env['Bindings'] | undefined,
+  input: {
+    lineAccountId: string | null;
+    lineUserId: string;
+    friendId: string;
+    surveyId: string;
+    answers: Record<string, string>;
+  },
+): Promise<void> {
+  const baliLineAccountId = '3e005b38-0adf-492f-9648-ee09d7c78424';
+  const baliAccountKey = 'bali_ryugaku_center';
+  if (input.lineAccountId !== baliLineAccountId) return;
+
+  const completedAt = jstNow();
+  try {
+    const existing = await db.prepare('SELECT metadata FROM friends WHERE id = ? LIMIT 1').bind(input.friendId).first<{ metadata: string | null }>();
+    let metadata: Record<string, unknown> = {};
+    try {
+      metadata = JSON.parse(existing?.metadata || '{}') as Record<string, unknown>;
+    } catch {
+      metadata = {};
+    }
+
+    const merged = {
+      ...metadata,
+      account_key: baliAccountKey,
+      line_account_id: baliLineAccountId,
+      official_line_id: '@391irgle',
+      line_channel_id: '2004191362',
+      diagnosis_completed_at: completedAt,
+      scenario_status: '診断済',
+      diagnosis_source: 'line_harness_survey',
+      diagnosis_survey_id: input.surveyId,
+      diagnosis_answers: input.answers,
+    };
+    await db.prepare('UPDATE friends SET metadata = ?, updated_at = ? WHERE id = ?')
+      .bind(JSON.stringify(merged), completedAt, input.friendId)
+      .run();
+
+    await db.prepare(
+      `CREATE TABLE IF NOT EXISTS conversion_points (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        event_type TEXT NOT NULL,
+        value REAL,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+      )`,
+    ).run();
+    await db.prepare(
+      `CREATE TABLE IF NOT EXISTS conversion_events (
+        id TEXT PRIMARY KEY,
+        conversion_point_id TEXT NOT NULL,
+        friend_id TEXT NOT NULL,
+        user_id TEXT,
+        affiliate_code TEXT,
+        metadata TEXT,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%f', 'now', '+9 hours'))
+      )`,
+    ).run();
+
+    let point = await db.prepare('SELECT id FROM conversion_points WHERE event_type = ? AND name = ? LIMIT 1')
+      .bind('diagnosis_complete', 'バリ島留学センター 診断完了')
+      .first<{ id: string }>();
+    if (!point) {
+      point = { id: crypto.randomUUID() };
+      await db.prepare('INSERT INTO conversion_points (id, name, event_type, value, created_at) VALUES (?, ?, ?, ?, ?)')
+        .bind(point.id, 'バリ島留学センター 診断完了', 'diagnosis_complete', null, completedAt)
+        .run();
+    }
+    await db.prepare(
+      `INSERT INTO conversion_events (id, conversion_point_id, friend_id, user_id, affiliate_code, metadata, created_at)
+       VALUES (?, ?, ?, ?, NULL, ?, ?)`,
+    )
+      .bind(crypto.randomUUID(), point.id, input.friendId, input.lineUserId, JSON.stringify({
+        ...merged,
+        conversion_source: baliAccountKey,
+        conversion_event: 'diagnosis_complete',
+      }), completedAt)
+      .run();
+
+    await sendBaliMetaLeadFromSurvey(env, {
+      lineUserId: input.lineUserId,
+      friendId: input.friendId,
+      completedAt,
+      metadata: merged,
+    });
+  } catch (err) {
+    console.error('Bali diagnosis complete sync failed:', err);
+  }
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const data = new TextEncoder().encode(value.trim().toLowerCase());
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function sendBaliMetaLeadFromSurvey(
+  env: Env['Bindings'] | undefined,
+  input: { lineUserId: string; friendId: string; completedAt: string; metadata: Record<string, unknown> },
+): Promise<void> {
+  const accessToken = env?.META_ACCESS_TOKEN || env?.META_CAPI_ACCESS_TOKEN;
+  if (!env?.META_PIXEL_ID || !accessToken) return;
+  const eventId =
+    typeof input.metadata.click_id === 'string' && input.metadata.click_id
+      ? `diagnosis_complete:${input.metadata.click_id}`
+      : `diagnosis_complete:${input.lineUserId}:${input.completedAt.slice(0, 10)}`;
+  const eventTime = Math.floor(Date.parse(input.completedAt) / 1000) || Math.floor(Date.now() / 1000);
+  const response = await fetch(`https://graph.facebook.com/v20.0/${env.META_PIXEL_ID}/events`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      access_token: accessToken,
+      data: [{
+	        event_name: 'DiagnosisComplete',
+        event_time: eventTime,
+        event_id: eventId,
+        action_source: 'system_generated',
+        user_data: {
+          external_id: [await sha256Hex(input.lineUserId || input.friendId)],
+        },
+        custom_data: {
+          account_key: 'bali_ryugaku_center',
+          lead_source: 'diagnosis_complete',
+          status: 'diagnosis_complete',
+          campaign_id: input.metadata.campaign_id ?? null,
+          adset_id: input.metadata.adset_id ?? null,
+          ad_id: input.metadata.ad_id ?? null,
+          utm_campaign: input.metadata.utm_campaign ?? input.metadata.campaign ?? null,
+          utm_content: input.metadata.utm_content ?? input.metadata.content ?? null,
+        },
+      }],
+    }),
+  });
+  if (!response.ok) {
+    console.error(`Bali Meta Lead from survey failed: ${response.status} ${await response.text().catch(() => '')}`);
+  }
+}
+
+async function buildGroqInquiryDraft(
+  db: D1Database,
+  params: { message: string; groqApiKey: string; friendId: string | undefined },
+): Promise<string | null> {
+  const fewShotRows = await db
+    .prepare(
+      `SELECT icl.final_draft as finalDraft, oil.message
+       FROM inquiry_correction_log icl
+       JOIN os_inquiry_log oil ON icl.inquiry_id = oil.id
+       WHERE icl.correction_type = 'approved' AND icl.final_draft IS NOT NULL
+       ORDER BY icl.created_at DESC LIMIT 3`,
+    )
+    .all<{ finalDraft: string; message: string }>();
+  const fewShots = (fewShotRows.results ?? []).map((r) => ({
+    message: r.message,
+    finalDraft: r.finalDraft,
+  }));
+
+  const historyRows = params.friendId
+    ? await db
+        .prepare(
+          `SELECT direction, content FROM messages_log
+           WHERE friend_id = ? ORDER BY created_at DESC LIMIT 10`,
+        )
+        .bind(params.friendId)
+        .all<{ direction: string; content: string }>()
+    : { results: [] as { direction: string; content: string }[] };
+
+  const history = [...(historyRows.results ?? [])].reverse().map(
+    (r) => `${r.direction === 'incoming' ? 'ユーザー' : '返信'}: ${r.content}`,
+  );
+
+  const fewShotSection = fewShots.length > 0
+    ? '\n## 過去の良い返信例\n' + fewShots.map((fs, i) =>
+        `### 例${i + 1}\n質問: ${fs.message}\n返信: ${fs.finalDraft}`
+      ).join('\n\n')
+    : '';
+
+  const historySection = history.length > 0
+    ? '\n## 過去のやり取り\n' + history.join('\n')
+    : '';
+
+  const systemPrompt = `あなたはバリリンガル（バリ島の語学学校）のCSスタッフです。
+LINEで問い合わせが来た際の返信ドラフトを作成してください。
+
+## バリリンガル事業情報 (料金は1人あたり・税込)
+入学金: 30,000円（別途必須）
+1人部屋(個室): 1週間119,800円 / 2週間219,800円 / 3週間289,000円 / 4週間349,800円 / 8週間629,000円 / 12週間899,000円 / 24週間1,620,000円
+ペア留学(2人部屋・相部屋): 1週間98,000円 / 2週間189,000円 / 3週間249,000円 / 4週間298,000円 / 8週間539,000円 / 12週間768,000円 / 24週間1,370,000円 ※1人参加でもOK、相部屋にすることで料金がお得
+外泊(ホテル/ヴィラなど): 1週間85,000円 / 2週間163,000円 / 3週間210,000円 / 4週間246,000円 / 8週間435,000円 / 12週間612,000円 / 24週間1,058,000円 ※食事は付かない
+含まれるもの(外泊以外): 授業料・食事(平日のみ)・宿舎・空港送迎・卒業後コミュニティ・学習/カリキュラム相談・移住/キャリア相談・ツアー/イベント紹介
+含まれないもの: 入学金・航空券・ビザ料金・現地でのお小遣い
+※5万円のデポジット決済で空き枠の仮予約可能(渡航60日前まで全額返金、本予約時は全額充当)
+コース: 日常英会話・TOEIC対策・ワーホリ準備・サーフィン×英語・ヨガ×英語・副業×英語・親子留学・その他試験対策(TOEFL/IELTS/英検)
+${fewShotSection}
+
+## 返信ルール
+- 親しみやすいが信頼感あり。「!」はOK、絵文字は最小限
+- 質問には即答。不明な場合は「確認してお伝えします」
+- CTAは1つに絞る。200文字以内で簡潔に
+- 返信文のみを出力。前置きや説明は不要
+
+## 禁止事項
+- 「スタッフ常駐」と書かない
+- 不確かな料金を書かない
+- 入学金30,000円は必ず「別途」と書く`;
+
+  const userPrompt = `${historySection}
+
+## お客様のメッセージ
+${params.message}
+
+上記に対する返信ドラフトを書いてください。`;
+
+  return generateDraftWithGroq({
+    systemPrompt,
+    userPrompt,
+    groqApiKey: params.groqApiKey,
+  });
+}
+
+async function sendInquiryTelegramNotification(
+  db: D1Database,
+  bindings: Env['Bindings'],
+  params: { lineUserId: string; message: string; draft: string },
+): Promise<void> {
+  const token = bindings.TELEGRAM_BOT_TOKEN;
+  const chatId = bindings.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+
+  const logRow = await db
+    .prepare(`SELECT id FROM os_inquiry_log WHERE line_user_id = ? ORDER BY created_at DESC LIMIT 1`)
+    .bind(params.lineUserId)
+    .first<{ id: string }>();
+
+  const friendForName = await db
+    .prepare('SELECT display_name FROM friends WHERE line_user_id = ? LIMIT 1')
+    .bind(params.lineUserId)
+    .first<{ display_name: string | null }>();
+
+  if (!logRow) return;
+
+  await db
+    .prepare(`UPDATE os_inquiry_log SET telegram_draft = ? WHERE id = ?`)
+    .bind(params.draft, logRow.id)
+    .run();
+
+  await notifyTelegram({
+    botToken: token,
+    chatId,
+    lineUserId: params.lineUserId,
+    userName: friendForName?.display_name ?? params.lineUserId,
+    message: params.message,
+    draft: params.draft,
+    inquiryLogId: logRow.id,
+  });
 }
 
 export { webhook };

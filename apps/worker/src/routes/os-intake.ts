@@ -8,7 +8,7 @@
 import { Hono } from 'hono';
 import { classify } from '../../../../os/core/classifier.js';
 import { tryQuickAnswer, handleInquiry } from '../../../../os/modules/inquiry/handler.js';
-import { notifyDiscord } from '../services/discord-notify.js';
+import { notifyTelegram } from '../services/telegram-notify.js';
 import { generateDraftWithGroq } from '../services/groq-draft.js';
 import type { Env } from '../index.js';
 
@@ -106,11 +106,12 @@ osIntake.post('/api/os/intake', async (c) => {
 
         const systemPrompt = `あなたはバリリンガル（バリ島の英語留学学校）のLINE返信担当です。
 
-## 料金表
-【1人部屋】1週119,800円/2週219,800円/3週289,000円/4週349,800円(人気)/8週629,000円/12週899,000円
-【ペア留学】1週98,000円/2週189,000円/4週320,000円/8週539,000円
-【外泊】1週85,000円(最安)/2週163,000円/4週246,000円/8週435,000円
-※入学金30,000円が別途かかる。料金に含む:授業料・食事(朝昼)・空港送迎・卒業証書
+## 料金表(1人あたり・税込)
+【1人部屋(個室)】1週119,800円/2週219,800円/3週289,000円/4週349,800円(人気)/8週629,000円(人気)/12週899,000円(人気)/16週1,149,000円/20週1,390,000円/24週1,620,000円
+【ペア留学(2人部屋・相部屋)】1週98,000円/2週189,000円/3週249,000円/4週298,000円/8週539,000円/12週768,000円/16週980,000円/20週1,150,000円/24週1,370,000円 ※1人参加でもOK、相部屋にすることで料金がお得
+【外泊(ホテル/ヴィラなど)】1週85,000円(最安)/2週163,000円/3週210,000円/4週246,000円/8週435,000円/12週612,000円/16週772,000円/20週890,000円/24週1,058,000円 ※食事は付かない
+※入学金30,000円が別途かかる。料金に含むもの(外泊以外):授業料・食事(平日のみ)・宿舎・空港送迎・卒業後コミュニティ・学習/カリキュラム相談・移住/キャリア相談・ツアー/イベント紹介
+※5万円のデポジット決済で空き枠の仮予約可能(渡航60日前まで全額返金、本予約時は全額充当)
 
 ## 授業
 1日4コマ(50分×4)、マンツーマン3+グループ1(最大3名)、月〜金9:00-17:00
@@ -168,38 +169,20 @@ ${message}
     }
   }
 
-  // 5. Discord通知
-  if (c.env.DISCORD_BOT_TOKEN && c.env.DISCORD_CHANNEL_ID) {
+  // 5. Telegram通知
+  if (c.env.TELEGRAM_BOT_TOKEN && c.env.TELEGRAM_CHAT_ID && draft && uid && inquiryQueueId) {
     try {
-      const discordMsgId = await notifyDiscord(c.env.DISCORD_BOT_TOKEN, c.env.DISCORD_CHANNEL_ID, {
-        username: name,
+      await notifyTelegram({
+        botToken: c.env.TELEGRAM_BOT_TOKEN,
+        chatId: c.env.TELEGRAM_CHAT_ID,
+        lineUserId: uid,
+        userName: name,
         message,
-        module: classResult.module,
-        confidence: classResult.confidence,
-        phase: phase || undefined,
         draft,
-        inquiryId: inquiryQueueId ? String(inquiryQueueId) : undefined,
-        draftSource,
-      });
-      if (discordMsgId && inquiryQueueId) {
-        await db.prepare('UPDATE inquiry_queue SET discord_message_id = ? WHERE id = ?').bind(discordMsgId, inquiryQueueId).run();
-      }
-    } catch (err) {
-      console.error('Discord notify error:', err);
-    }
-  } else if (c.env.DISCORD_WEBHOOK_URL) {
-    // フォールバック（旧Webhook、ボタンなし）
-    try {
-      await fetch(c.env.DISCORD_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          embeds: [{ title: '📩 INQUIRY', description: message.slice(0, 200), color: 0x3b82f6,
-            fields: [{ name: 'ユーザー', value: name, inline: true }, ...(draft ? [{ name: '💬 ドラフト', value: draft.slice(0, 1000), inline: false }] : [])] }],
-        }),
+        inquiryLogId: String(inquiryQueueId),
       });
     } catch (err) {
-      console.error('Discord webhook fallback error:', err);
+      console.error('Telegram notify error:', err);
     }
   }
 
