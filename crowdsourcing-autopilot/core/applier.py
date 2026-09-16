@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Dict
 
@@ -17,7 +19,7 @@ from core.gift import generate_gift
 from core.proposer import generate_proposal
 
 # 自動送信に対応しているプラットフォーム
-_AUTO_SUBMIT_PLATFORMS = {"crowdworks", "lancers", "coconala"}
+_AUTO_SUBMIT_PLATFORMS: set = set()  # 現在全PF手動（クリップボード+ブラウザオープン方式）
 
 _EXTERNAL_URLS = {
     "remoteok": "https://remoteok.com/remote-jobs/{eid}",
@@ -26,6 +28,93 @@ _EXTERNAL_URLS = {
     "arbeitnow": "https://www.arbeitnow.com/job/{eid}",
     "upwork": "https://www.upwork.com/jobs/~{eid}",
 }
+
+
+async def _fetch_full_description(job: Any) -> str:
+    """案件詳細ページから本文を取得する。"""
+    import httpx
+    from bs4 import BeautifulSoup
+    import os
+
+    urls = {
+        "lancers": f"https://www.lancers.jp/work/detail/{job.external_id}",
+        "crowdworks": f"https://crowdworks.jp/public/jobs/{job.external_id}",
+        "coconala": f"https://coconala.com/requests/{job.external_id}",
+    }
+    url = urls.get(job.platform)
+    if not url:
+        return ""
+
+    cookies = {
+        "lancers": os.environ.get("LANCERS_SESSION", ""),
+        "crowdworks": os.environ.get("CROWDWORKS_SESSION", ""),
+        "coconala": os.environ.get("COCONALA_COOKIE", ""),
+    }
+    cookie = cookies.get(job.platform, "")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "ja,en-US;q=0.9",
+    }
+    if cookie:
+        headers["Cookie"] = cookie
+
+    async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
+        r = await client.get(url, headers=headers)
+        if r.status_code >= 400:
+            return ""
+
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    # lancers: 案件詳細本文セレクター候補
+    for sel in [
+        ".p-work-detail__description",
+        ".c-wysiwyg",
+        "[class*='description']",
+        ".p-job-detail__body",
+    ]:
+        el = soup.select_one(sel)
+        if el:
+            return el.get_text(separator="\n", strip=True)[:2000]
+
+    return ""
+
+
+def _manual_apply_page_url(job: Any) -> str:
+    all_urls = {**_EXTERNAL_URLS, **{
+        "crowdworks": "https://crowdworks.jp/public/jobs/{eid}",
+        "lancers": "https://www.lancers.jp/work/propose_start/{eid}",
+        "coconala": "https://coconala.com/requests/{eid}",
+    }}
+    url_tpl = all_urls.get(job.platform, "")
+    return url_tpl.format(eid=job.external_id) if url_tpl else ""
+
+
+def _open_for_manual_apply(job: Any, proposal_text: str, gift_url: str) -> bool:
+    """提案文をクリップボードにコピーし、ブラウザで応募ページを開く。macOS専用。"""
+    url = _manual_apply_page_url(job)
+
+    clip_text = proposal_text
+    if gift_url:
+        clip_text += f"\n\n🎁 手土産資料: {gift_url}"
+
+    clipboard_ok = False
+    try:
+        subprocess.run(["pbcopy"], input=clip_text.encode(), check=True)
+        print("提案文をクリップボードにコピーしました。")
+        clipboard_ok = True
+    except Exception:
+        pass
+
+    browser_ok = False
+    if url:
+        try:
+            subprocess.run(["open", url], check=True)
+            print(f"ブラウザで応募ページを開きました: {url}")
+            browser_ok = True
+        except Exception:
+            pass
+
+    return clipboard_ok or browser_ok
 
 
 def _job_from_row(row: Any) -> Job:
@@ -57,22 +146,26 @@ async def apply_to_job(job_id: int, auto_confirm: bool = False) -> Dict[str, Any
 
     job = _job_from_row(row)
 
-    # 提案文: DBのドラフトを使うか新規生成
+    # 案件詳細を補完（descriptionが短い場合は詳細ページをfetch）
+    if len(job.description or "") < 100:
+        try:
+            full_desc = await _fetch_full_description(job)
+            if full_desc:
+                job = job.model_copy(update={"description": full_desc})
+                print(f"案件詳細を取得しました（{len(full_desc)}文字）")
+        except Exception as exc:
+            print(f"詳細取得スキップ: {exc}")
+
     draft_row = await latest_draft_for_job(db_path, job_id)
     if draft_row:
         proposal_id, proposal_text = draft_row
+        print("保存済みドラフトを使用します。")
     else:
         print("提案文を生成中...")
         proposal_text = await generate_proposal(job, db_path)
         proposal_id = await insert_proposal_draft(db_path, job_id, proposal_text)
 
-    # 手土産コンテンツを生成
-    print("手土産コンテンツを生成中...")
-    try:
-        gift = await generate_gift(job)
-        gift_url = gift.get("url") or ""
-    except Exception:
-        gift_url = ""
+    gift_url = ""  # 手土産は一旦無効化
 
     # 提案文を表示
     print("\n" + "=" * 60)
@@ -84,14 +177,13 @@ async def apply_to_job(job_id: int, auto_confirm: bool = False) -> Dict[str, Any
         print(f"\n🎁 手土産資料: {gift_url}")
     print("=" * 60)
 
-    # 外部サイトの場合はURLを表示して終了
-    if job.platform not in _AUTO_SUBMIT_PLATFORMS:
-        url_tpl = _EXTERNAL_URLS.get(job.platform, "")
-        url = url_tpl.format(eid=job.external_id) if url_tpl else ""
-        gift_line = f"\n🎁 手土産資料: {gift_url}" if gift_url else ""
-        msg = f"このプラットフォームは自動送信非対応です。\n上記の提案文をコピーして手動で応募してください。\n{url}{gift_line}"
-        print(f"\n{msg}")
-        return {"ok": False, "message": msg, "proposal": proposal_text}
+    apply_url = _manual_apply_page_url(job)
+    manual_ok = _open_for_manual_apply(job, proposal_text, gift_url)
+    if manual_ok:
+        msg = "クリップボードにコピー済み。Cmd+V で貼り付けて送信してください。"
+    else:
+        msg = f"提案文（上記）をコピーして手動で応募してください。\n{apply_url if apply_url else ''}"
+    return {"ok": True, "message": msg, "proposal": proposal_text}
 
     # 自動送信対応プラットフォーム
     if not auto_confirm:

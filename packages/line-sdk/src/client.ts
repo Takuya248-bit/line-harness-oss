@@ -63,6 +63,41 @@ export class LineClient {
     );
   }
 
+  /**
+   * Get follower IDs (paginated).
+   * NOTE: Premium ID + Verified Account 限定。通常はライトプランでも403返る.
+   */
+  async getFollowerIds(
+    start?: string,
+    limit = 1000,
+  ): Promise<{ userIds: string[]; next?: string }> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (start) params.set('start', start);
+    return this.request<{ userIds: string[]; next?: string }>(
+      `/followers/ids?${params.toString()}`,
+      {},
+      'GET',
+    );
+  }
+
+  /**
+   * Get insight followers (aggregate). ライトプラン以上で使える.
+   * date: YYYYMMDD (UTC). 指定日が新しすぎると status='unready'.
+   * https://developers.line.biz/en/reference/messaging-api/#get-number-of-followers
+   */
+  async getInsightFollowers(date: string): Promise<{
+    status: 'ready' | 'unready' | 'out_of_service';
+    followers?: number;
+    targetedReaches?: number;
+    blocks?: number;
+  }> {
+    return this.request(
+      `/insight/followers?date=${date}`,
+      {},
+      'GET',
+    );
+  }
+
   // ─── Messaging ───────────────────────────────────────────────────────────
 
   async pushMessage(to: string, messages: Message[]): Promise<void> {

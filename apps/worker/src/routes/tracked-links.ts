@@ -11,6 +11,7 @@ import {
 import { addTagToFriend, enrollFriendInScenario } from '@line-crm/db';
 import type { TrackedLink } from '@line-crm/db';
 import type { Env } from '../index.js';
+import { fireEvent } from '../services/event-bus.js';
 
 const trackedLinks = new Hono<Env>();
 
@@ -160,18 +161,53 @@ trackedLinks.get('/t/:linkId', async (c) => {
 
         // Run automatic actions if a friend is identified
         if (friendId) {
-          const actions: Promise<unknown>[] = [];
-
+          // タグ付与は同期的に実行 (tag_added イベント発火の前に必須)
           if (link.tag_id) {
-            actions.push(addTagToFriend(c.env.DB, friendId, link.tag_id));
+            try {
+              // 既にタグを持っているかチェック (重複イベント発火を防ぐ)
+              const had = await c.env.DB
+                .prepare('SELECT 1 FROM friend_tags WHERE friend_id = ? AND tag_id = ?')
+                .bind(friendId, link.tag_id)
+                .first();
+              await addTagToFriend(c.env.DB, friendId, link.tag_id);
+              if (!had) {
+                // tag_added イベント発火 → tag_added トリガーのシナリオ
+                // (Brainクリック後クロージング等) を起動
+                let lineAccountId: string | null = null;
+                let lineAccessToken: string | undefined = c.env.LINE_CHANNEL_ACCESS_TOKEN;
+                try {
+                  const friendRow = await c.env.DB
+                    .prepare('SELECT line_account_id FROM friends WHERE id = ?')
+                    .bind(friendId)
+                    .first<{ line_account_id: string | null }>();
+                  if (friendRow?.line_account_id) {
+                    lineAccountId = friendRow.line_account_id;
+                    const { getLineAccountById } = await import('@line-crm/db');
+                    const account = await getLineAccountById(c.env.DB, lineAccountId);
+                    if (account) lineAccessToken = account.channel_access_token;
+                  }
+                } catch (e) {
+                  console.error('tracked-link account resolve failed:', e);
+                }
+                await fireEvent(
+                  c.env.DB,
+                  'tag_added',
+                  { friendId, eventData: { tagId: link.tag_id, action: 'add' } },
+                  lineAccessToken,
+                  lineAccountId,
+                );
+              }
+            } catch (e) {
+              console.error('tracked-link addTag failed:', e);
+            }
           }
 
           if (link.scenario_id) {
-            actions.push(enrollFriendInScenario(c.env.DB, friendId, link.scenario_id));
-          }
-
-          if (actions.length > 0) {
-            await Promise.allSettled(actions);
+            try {
+              await enrollFriendInScenario(c.env.DB, friendId, link.scenario_id);
+            } catch (e) {
+              console.error('tracked-link enroll failed:', e);
+            }
           }
         }
       } catch (err) {

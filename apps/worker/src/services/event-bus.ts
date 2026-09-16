@@ -120,10 +120,21 @@ async function processAutomations(
 ): Promise<void> {
   try {
     const allAutomations = await getActiveAutomationsByEvent(db, eventType);
-    // Filter by account: match this account's automations + unassigned (backward compat)
-    const automations = allAutomations.filter(
-      (a) => !a.line_account_id || !lineAccountId || a.line_account_id === lineAccountId,
-    );
+    // アカウント間競合の絶対防止: lineAccountId が解決済みなら厳密一致のみ。
+    // 未割当 (line_account_id NULL) のautomationは「全アカウント発火」を意味しない。
+    // 過去の backward-compat 挙動 (NULL = 全許可) は事故の温床なので廃止。
+    const automations = lineAccountId
+      ? allAutomations.filter((a) => a.line_account_id === lineAccountId)
+      : allAutomations.filter((a) => !a.line_account_id);
+
+    // message_received は最初にmatchした1件のみ実行 (キーワード包含による多重発火防止)。
+    // それ以外のイベント (friend_add, tag_change等) は従来通り全件実行。
+    const exclusiveMatch = eventType === 'message_received';
+
+    // auto_replies で既に応答済みの場合 automations はスキップ
+    if (eventType === 'message_received' && payload.eventData?.skipAutomations) {
+      return;
+    }
 
     for (const automation of automations) {
       const conditions = JSON.parse(automation.conditions) as Record<string, unknown>;
@@ -132,11 +143,29 @@ async function processAutomations(
       // 条件チェック（簡易版: 条件が空なら常にマッチ）
       if (!matchConditions(conditions, payload)) continue;
 
+      // 連打抑制 (rate limit): message_received で同じ friend × 同じ automation が
+      // 30秒以内に成功実行されていたら今回はスキップ。リッチメニュー連打対策。
+      if (eventType === 'message_received' && payload.friendId) {
+        const recent = await db
+          .prepare(
+            `SELECT 1 FROM automation_logs
+             WHERE automation_id = ? AND friend_id = ? AND status = 'success'
+               AND created_at >= datetime('now', '-30 seconds', '+9 hours')
+             LIMIT 1`,
+          )
+          .bind(automation.id, payload.friendId)
+          .first();
+        if (recent) {
+          if (exclusiveMatch) break;
+          continue;
+        }
+      }
+
       const results: Array<{ action: string; success: boolean; error?: string }> = [];
 
       for (const action of actions) {
         try {
-          await executeAction(db, action, payload, lineAccessToken);
+          await executeAction(db, action, payload, lineAccessToken, lineAccountId);
           results.push({ action: action.type, success: true });
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : String(err);
@@ -154,6 +183,8 @@ async function processAutomations(
         actionsResult: JSON.stringify(results),
         status: allSuccess ? 'success' : anySuccess ? 'partial' : 'failed',
       });
+
+      if (exclusiveMatch) break;
     }
   } catch (err) {
     console.error('processAutomations error:', err);
@@ -176,15 +207,24 @@ function matchConditions(
     }
   }
 
-  // tag_id チェック
-  if (conditions.tag_id !== undefined && payload.eventData) {
-    if (payload.eventData.tagId !== conditions.tag_id) return false;
+  // tag_id / tagId チェック (DB上はcamelCase 'tagId' で保存されているケースもあるので両対応)
+  const condTagId = conditions.tag_id ?? conditions.tagId;
+  if (condTagId !== undefined && payload.eventData) {
+    if (payload.eventData.tagId !== condTagId) return false;
   }
 
   // keyword チェック（message_received イベント用）
+  // matchType を尊重する: 'exact' なら完全一致、それ以外は包含
   if (conditions.keyword !== undefined && payload.eventData) {
     const text = payload.eventData.text as string | undefined;
-    if (!text || !text.includes(conditions.keyword as string)) return false;
+    if (!text) return false;
+    const keyword = conditions.keyword as string;
+    const matchType = (conditions.matchType as string | undefined) ?? 'contains';
+    if (matchType === 'exact') {
+      if (text !== keyword) return false;
+    } else {
+      if (!text.includes(keyword)) return false;
+    }
   }
 
   return true;
@@ -196,6 +236,7 @@ async function executeAction(
   action: { type: string; params: Record<string, string> },
   payload: EventPayload,
   lineAccessToken?: string,
+  lineAccountId?: string | null,
 ): Promise<void> {
   const friendId = payload.friendId;
   if (!friendId && action.type !== 'send_webhook') {
@@ -203,9 +244,44 @@ async function executeAction(
   }
 
   switch (action.type) {
-    case 'add_tag':
-      await addTagToFriend(db, friendId!, action.params.tagId);
+    case 'add_tag': {
+      const tagId = action.params.tagId;
+      if (!tagId || tagId === 'UNKNOWN') break;
+
+      // 重複付与判定: 既に持っているタグなら tag_added 連鎖を起こさない (無限ループ防止)。
+      const had = await db
+        .prepare('SELECT 1 FROM friend_tags WHERE friend_id = ? AND tag_id = ?')
+        .bind(friendId!, tagId)
+        .first();
+
+      await addTagToFriend(db, friendId!, tagId);
+
+      if (!had) {
+        // 新規付与のときだけ tag_added トリガーの scenarios/automations を起動。
+        // tag_added scenarios の enroll
+        const allScenarios = await import('@line-crm/db').then((m) => m.getScenarios(db));
+        for (const scenario of allScenarios) {
+          if (scenario.trigger_type !== 'tag_added' || !scenario.is_active || scenario.trigger_tag_id !== tagId) {
+            continue;
+          }
+          try {
+            await enrollFriendInScenario(db, friendId!, scenario.id);
+          } catch (e) {
+            console.error('add_tag scenario enroll failed', e);
+          }
+        }
+
+        // tag_added イベントを発火 (automations側のtag_addedトリガー連鎖)
+        await fireEvent(
+          db,
+          'tag_added',
+          { friendId: friendId!, eventData: { tagId, action: 'add' } },
+          lineAccessToken,
+          lineAccountId,
+        );
+      }
       break;
+    }
 
     case 'remove_tag':
       await removeTagFromFriend(db, friendId!, action.params.tagId);
@@ -232,16 +308,30 @@ async function executeAction(
       if (!friend) break;
       const lineClient = new LineClient(lineAccessToken);
       const msgType = action.params.messageType || 'text';
+      const content = action.params.content;
       if (msgType === 'flex') {
-        const contents = JSON.parse(action.params.content);
+        const contents = JSON.parse(content);
         await lineClient.pushMessage(friend.line_user_id, [
           { type: 'flex', altText: action.params.altText || 'Message', contents },
         ]);
       } else {
         // Default: text message
         await lineClient.pushMessage(friend.line_user_id, [
-          { type: 'text', text: action.params.content },
+          { type: 'text', text: content },
         ]);
+      }
+      // messages_log への記録 (履歴集計・売上検知・放置検出に必要)
+      try {
+        const logId = crypto.randomUUID();
+        await db
+          .prepare(
+            `INSERT INTO messages_log (id, friend_id, direction, message_type, content, broadcast_id, scenario_step_id, delivery_type, created_at)
+             VALUES (?, ?, 'outgoing', ?, ?, NULL, NULL, 'automation', ?)`,
+          )
+          .bind(logId, friendId, msgType, content, jstNow())
+          .run();
+      } catch (e) {
+        console.error('messages_log insert failed in send_message:', e);
       }
       break;
     }
@@ -358,9 +448,10 @@ async function processNotifications(
 ): Promise<void> {
   try {
     const allRules = await getActiveNotificationRulesByEvent(db, eventType);
-    const rules = allRules.filter(
-      (r) => !r.line_account_id || !lineAccountId || r.line_account_id === lineAccountId,
-    );
+    // アカウント厳密一致のみ。NULL = 全アカウント発火 は廃止。
+    const rules = lineAccountId
+      ? allRules.filter((r) => r.line_account_id === lineAccountId)
+      : allRules.filter((r) => !r.line_account_id);
 
     for (const rule of rules) {
       let channels: string[] = JSON.parse(rule.channels);

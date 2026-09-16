@@ -19,6 +19,16 @@ export async function processBroadcastSend(
   broadcastId: string,
   workerUrl?: string,
 ): Promise<Broadcast> {
+  // 二重送信防止: status='draft' or 'scheduled' のときだけ送信を許可。
+  // 'sending'/'sent' は既に処理中/処理済みなのでスキップ。
+  const before = await getBroadcastById(db, broadcastId);
+  if (!before) {
+    throw new Error(`Broadcast ${broadcastId} not found`);
+  }
+  if (before.status !== 'draft' && before.status !== 'scheduled') {
+    return before;
+  }
+
   // Mark as sending
   await updateBroadcastStatus(db, broadcastId, 'sending');
 
@@ -54,15 +64,28 @@ export async function processBroadcastSend(
 
       const friends = await getFriendsByTag(db, broadcast.target_tag_id);
 
-      // 配信停止タグチェック: 「配信停止」タグが付いた友だちを除外
+      // 配信停止/配信頻度下げ希望タグチェック: 除外対象
       const stopTagFriends = await db
         .prepare(
-          `SELECT ft.friend_id FROM friend_tags ft JOIN tags t ON ft.tag_id = t.id WHERE t.name = '配信停止'`,
+          `SELECT ft.friend_id FROM friend_tags ft JOIN tags t ON ft.tag_id = t.id
+           WHERE t.name IN ('配信停止', '配信頻度下げ希望')`,
         )
         .all<{ friend_id: string }>();
       const stopFriendIds = new Set((stopTagFriends.results || []).map((r) => r.friend_id));
 
-      const followingFriends = friends.filter((f) => f.is_following && !stopFriendIds.has(f.id));
+      // アカウント間競合の絶対防止: broadcast.line_account_id と friend.line_account_id が
+      // 不一致な相手には送らない。タグ自体は他アカウントの友達にも付いている可能性があるため。
+      const broadcastAccountId = (broadcast as unknown as { line_account_id: string | null }).line_account_id ?? null;
+      const followingFriends = friends.filter((f) => {
+        if (!f.is_following) return false;
+        if (stopFriendIds.has(f.id)) return false;
+        const friendAccountId = (f as unknown as { line_account_id: string | null }).line_account_id ?? null;
+        if (broadcastAccountId) {
+          return friendAccountId === broadcastAccountId;
+        }
+        // broadcast 側 NULL のときは friend 側も NULL のみ
+        return friendAccountId === null;
+      });
       totalCount = followingFriends.length;
 
       // Send in batches with stealth delays to mimic human patterns
@@ -123,17 +146,21 @@ export async function processScheduledBroadcasts(
   db: D1Database,
   lineClient: LineClient,
   workerUrl?: string,
+  lineAccountId?: string | null,
 ): Promise<void> {
-  const now = jstNow();
   const allBroadcasts = await getBroadcasts(db);
 
   const nowMs = Date.now();
-  const scheduled = allBroadcasts.filter(
-    (b) =>
-      b.status === 'scheduled' &&
-      b.scheduled_at !== null &&
-      new Date(b.scheduled_at).getTime() <= nowMs,
-  );
+  const scheduled = allBroadcasts.filter((b) => {
+    if (b.status !== 'scheduled') return false;
+    if (b.scheduled_at === null) return false;
+    if (new Date(b.scheduled_at).getTime() > nowMs) return false;
+    // アカウント分離: lineAccountId 指定があれば厳密一致のみ
+    if (lineAccountId === undefined) return true;
+    const bAccountId = (b as unknown as { line_account_id: string | null }).line_account_id ?? null;
+    if (lineAccountId === null) return bAccountId === null;
+    return bAccountId === lineAccountId;
+  });
 
   for (const broadcast of scheduled) {
     try {

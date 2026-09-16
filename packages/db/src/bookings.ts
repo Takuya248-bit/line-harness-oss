@@ -10,6 +10,7 @@ export interface BookingRow {
   google_event_id: string | null;
   status: string;
   note: string | null;
+  is_test_booking?: number;
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +23,8 @@ export interface CreateBookingInput {
   endTime: string;
   googleEventId?: string;
   note?: string;
+  /** v4 DRY-RUN テスト印. BALILINGUAL_DRY_RUN_BOOKING=true 時に true で挿入. */
+  isTestBooking?: boolean;
 }
 
 export async function createBooking(db: D1Database, input: CreateBookingInput): Promise<BookingRow> {
@@ -29,8 +32,8 @@ export async function createBooking(db: D1Database, input: CreateBookingInput): 
   const now = jstNow();
   await db
     .prepare(
-      `INSERT INTO bookings (id, friend_id, line_account_id, title, start_time, end_time, google_event_id, note, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?)`,
+      `INSERT INTO bookings (id, friend_id, line_account_id, title, start_time, end_time, google_event_id, note, status, is_test_booking, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?)`,
     )
     .bind(
       id,
@@ -41,6 +44,7 @@ export async function createBooking(db: D1Database, input: CreateBookingInput): 
       input.endTime,
       input.googleEventId ?? null,
       input.note ?? null,
+      input.isTestBooking ? 1 : 0,
       now,
       now,
     )

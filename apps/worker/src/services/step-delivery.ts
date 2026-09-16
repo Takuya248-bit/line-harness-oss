@@ -136,6 +136,7 @@ export async function processStepDeliveries(
   db: D1Database,
   lineClient: LineClient,
   workerUrl?: string,
+  lineAccountId?: string | null,
 ): Promise<void> {
   // Skip delivery outside 9:00-23:00 JST window
   const jstHour = new Date(Date.now() + 9 * 60 * 60_000).getUTCHours();
@@ -146,6 +147,24 @@ export async function processStepDeliveries(
 
   for (let i = 0; i < dueFriendScenarios.length; i++) {
     const fs = dueFriendScenarios[i];
+
+    // アカウント分離: lineAccountId 指定がある場合、friend が同じアカウントか確認。
+    // 他アカウントのfriend は別cronループで処理されるのでスキップ。これで重複送信と
+    // 「他アカウントのtokenで送ってしまう」事故を防ぐ。
+    if (lineAccountId !== undefined) {
+      const friendRow = await db
+        .prepare('SELECT line_account_id FROM friends WHERE id = ?')
+        .bind(fs.friend_id)
+        .first<{ line_account_id: string | null }>();
+      const friendAccountId = friendRow?.line_account_id ?? null;
+      if (lineAccountId === null) {
+        // デフォルトアカウント担当 cron: friend.line_account_id が NULL のものだけ処理
+        if (friendAccountId !== null) continue;
+      } else {
+        if (friendAccountId !== lineAccountId) continue;
+      }
+    }
+
     try {
       // Stealth: add small random delay between deliveries to avoid burst patterns
       if (i > 0) {
@@ -172,6 +191,25 @@ async function processSingleDelivery(
   },
   workerUrl?: string,
 ): Promise<void> {
+  // Atomic claim: next_delivery_at を一時的に NULL にして他の worker/cron に拾わせない。
+  // current_step_order と next_delivery_at の両方を WHERE に入れて、
+  // 他のリクエストが既に進めていた場合は UPDATE が 0 件になり、ここで早期 return する。
+  // これにより同一レコードに対する並列処理を防ぎ、step 重複送信を防ぐ。
+  if (fs.next_delivery_at !== null) {
+    const claim = await db
+      .prepare(
+        `UPDATE friend_scenarios
+         SET next_delivery_at = NULL, updated_at = ?
+         WHERE id = ? AND current_step_order = ? AND next_delivery_at = ? AND status = 'active'`,
+      )
+      .bind(jstNow(), fs.id, fs.current_step_order, fs.next_delivery_at)
+      .run();
+    if (!claim.meta || claim.meta.changes === 0) {
+      // 他の処理が既にこのレコードを進めた → スキップ
+      return;
+    }
+  }
+
   // Get friend first to read preferred delivery hour from metadata
   const friend = await getFriendById(db, fs.friend_id);
   if (!friend || !friend.is_following) {
@@ -179,10 +217,11 @@ async function processSingleDelivery(
     return;
   }
 
-  // 配信停止タグチェック: タグ「配信停止」が付いている友だちはシナリオをスキップ
+  // 配信停止/配信頻度下げ希望 タグチェック: 該当者はシナリオをスキップ
   const stopTag = await db
     .prepare(
-      `SELECT 1 FROM friend_tags ft JOIN tags t ON ft.tag_id = t.id WHERE ft.friend_id = ? AND t.name = '配信停止'`,
+      `SELECT 1 FROM friend_tags ft JOIN tags t ON ft.tag_id = t.id
+       WHERE ft.friend_id = ? AND t.name IN ('配信停止', '配信頻度下げ希望')`,
     )
     .bind(fs.friend_id)
     .first();

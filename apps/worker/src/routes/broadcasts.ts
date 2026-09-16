@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import {
   getBroadcasts,
   getBroadcastById,
@@ -11,7 +12,7 @@ import { LineClient } from '@line-crm/line-sdk';
 import { processBroadcastSend } from '../services/broadcast.js';
 import { processSegmentSend } from '../services/segment-send.js';
 import type { SegmentCondition } from '../services/segment-query.js';
-import { buildTagCondition } from '../services/segment-query.js';
+import { buildSegmentQuery, buildTagCondition } from '../services/segment-query.js';
 import type { Env } from '../index.js';
 
 const broadcasts = new Hono<Env>();
@@ -31,6 +32,70 @@ function serializeBroadcast(row: DbBroadcast) {
     successCount: row.success_count,
     createdAt: row.created_at,
   };
+}
+
+const CROSS_TENANT_CONFIRM_ERROR = 'cross-tenant broadcast requires confirmCrossTenant=true';
+
+async function readOptionalJson<T>(c: Context<Env>): Promise<T | null> {
+  try {
+    return await c.req.raw.clone().json<T>();
+  } catch {
+    return null;
+  }
+}
+
+function hasCrossTenantAccountMix(rows: Array<{ line_account_id: string | null }>): boolean {
+  const accounts = new Set(rows.map((row) => row.line_account_id ?? '__NULL_LINE_ACCOUNT__'));
+  return accounts.size > 1;
+}
+
+async function getBroadcastTargetAccountRows(
+  db: D1Database,
+  broadcast: DbBroadcast,
+): Promise<Array<{ line_account_id: string | null }>> {
+  if (broadcast.target_type === 'all') {
+    const result = await db
+      .prepare(
+        `SELECT DISTINCT line_account_id FROM friends WHERE is_following = 1`,
+      )
+      .all<{ line_account_id: string | null }>();
+    return result.results ?? [];
+  }
+
+  if (broadcast.target_type === 'tag') {
+    if (!broadcast.target_tag_id) {
+      return [];
+    }
+
+    const result = await db
+      .prepare(
+        `SELECT DISTINCT f.line_account_id
+         FROM friends f
+         INNER JOIN friend_tags ft ON ft.friend_id = f.id
+         WHERE ft.tag_id = ? AND f.is_following = 1`,
+      )
+      .bind(broadcast.target_tag_id)
+      .all<{ line_account_id: string | null }>();
+    return result.results ?? [];
+  }
+
+  return [];
+}
+
+async function getSegmentTargetAccountRows(
+  db: D1Database,
+  condition: SegmentCondition,
+): Promise<Array<{ line_account_id: string | null }>> {
+  const { sql, bindings } = buildSegmentQuery(condition);
+  const accountSql = sql.replace(
+    'SELECT f.id, f.line_user_id FROM friends f WHERE',
+    'SELECT DISTINCT f.line_account_id FROM friends f WHERE',
+  );
+  const result = await db
+    .prepare(accountSql)
+    .bind(...bindings)
+    .all<{ line_account_id: string | null }>();
+  return result.results ?? [];
 }
 
 // GET /api/broadcasts - list all
@@ -192,6 +257,12 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
       return c.json({ success: false, error: 'Broadcast is already sent or sending' }, 400);
     }
 
+    const body = await readOptionalJson<{ confirmCrossTenant?: boolean }>(c);
+    const accountRows = await getBroadcastTargetAccountRows(c.env.DB, existing);
+    if (hasCrossTenantAccountMix(accountRows) && body?.confirmCrossTenant !== true) {
+      return c.json({ success: false, error: CROSS_TENANT_CONFIRM_ERROR }, 409);
+    }
+
     const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
     await processBroadcastSend(c.env.DB, lineClient, id, c.env.WORKER_URL);
 
@@ -203,10 +274,9 @@ broadcasts.post('/api/broadcasts/:id/send', async (c) => {
   }
 });
 
-// POST /api/broadcasts/:id/send-segment - send to a filtered segment
-broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
+async function handleSegmentSend(c: Context<Env>) {
   try {
-    const id = c.req.param('id');
+    const id = c.req.param('id')!;
     const existing = await getBroadcastById(c.env.DB, id);
 
     if (!existing) {
@@ -217,7 +287,7 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
       return c.json({ success: false, error: 'Broadcast is already sent or sending' }, 400);
     }
 
-    const body = await c.req.json<{ conditions: SegmentCondition }>();
+    const body = await c.req.json<{ conditions: SegmentCondition; confirmCrossTenant?: boolean }>();
 
     if (!body.conditions || !body.conditions.operator || !Array.isArray(body.conditions.rules)) {
       return c.json(
@@ -226,16 +296,27 @@ broadcasts.post('/api/broadcasts/:id/send-segment', async (c) => {
       );
     }
 
+    const accountRows = await getSegmentTargetAccountRows(c.env.DB, body.conditions);
+    if (hasCrossTenantAccountMix(accountRows) && body.confirmCrossTenant !== true) {
+      return c.json({ success: false, error: CROSS_TENANT_CONFIRM_ERROR }, 409);
+    }
+
     const lineClient = new LineClient(c.env.LINE_CHANNEL_ACCESS_TOKEN);
     await processSegmentSend(c.env.DB, lineClient, id, body.conditions);
 
     const result = await getBroadcastById(c.env.DB, id);
     return c.json({ success: true, data: result ? serializeBroadcast(result) : null });
   } catch (err) {
-    console.error('POST /api/broadcasts/:id/send-segment error:', err);
+    console.error(`POST ${c.req.path} error:`, err);
     return c.json({ success: false, error: 'Internal server error' }, 500);
   }
-});
+}
+
+// POST /api/broadcasts/:id/send-segment - send to a filtered segment
+broadcasts.post('/api/broadcasts/:id/send-segment', handleSegmentSend);
+
+// POST /api/broadcasts/:id/send-to-segment - compatibility alias
+broadcasts.post('/api/broadcasts/:id/send-to-segment', handleSegmentSend);
 
 // POST /api/broadcasts/:id/send-tags - send to friends matching tag conditions
 // Simplified API for multi-tag segment sends.
